@@ -829,3 +829,172 @@ body {
     cursor: pointer;
     box-shadow: var(--shadow-glass);
 }
+
+/* ==========================================================================
+   Vehicle 360 Sliding Panel
+   ========================================================================== */
+.vehicle-details-panel {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 400px;
+    height: 100vh;
+    z-index: 1000;
+    transform: translateX(100%);
+    transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    display: flex;
+    flex-direction: column;
+    padding: 2rem;
+    overflow-y: auto;
+    border-radius: var(--radius-lg) 0 0 var(--radius-lg);
+    border-right: none;
+}
+
+.vehicle-details-panel.open {
+    transform: translateX(0);
+}
+
+.panel-close {
+    position: absolute;
+    top: 1.5rem;
+    right: 1.5rem;
+    background: rgba(255,255,255,0.05);
+    border: none;
+    width: 36px; height: 36px;
+    border-radius: 50%;
+    color: var(--text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+}
+
+.panel-close:hover {
+    background: rgba(255,255,255,0.1);
+    color: var(--text-primary);
+}
+
+.panel-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+/* Speedometer Gauge */
+.panel-speedometer-container {
+    display: flex;
+    justify-content: center;
+    margin-bottom: 2rem;
+}
+
+.speedometer {
+    position: relative;
+    width: 200px;
+    height: 120px;
+}
+
+.speed-svg {
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+}
+
+.speed-bg {
+    fill: none;
+    stroke: rgba(255,255,255,0.1);
+    stroke-width: 8;
+    stroke-linecap: round;
+}
+
+.speed-fill {
+    fill: none;
+    stroke: var(--primary);
+    stroke-width: 8;
+    stroke-linecap: round;
+    stroke-dasharray: 125.6; /* Approx circumference of half circle r=40 */
+    stroke-dashoffset: 125.6;
+    transition: stroke-dashoffset 0.5s ease-out, stroke 0.3s;
+    filter: drop-shadow(0 0 8px var(--primary-glow));
+}
+
+.speed-value {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 100%;
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1;
+}
+
+/* Panel Stats Grid */
+.panel-stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    margin-bottom: 2rem;
+}
+
+.stat-box {
+    padding: 1rem;
+    border-radius: var(--radius-md);
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+}
+
+.stat-box .stat-icon {
+    font-size: 1.5rem;
+}
+
+.stat-box .stat-label {
+    font-size: 0.75rem;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.stat-box .stat-val {
+    font-size: 1.1rem;
+    font-weight: 700;
+    font-family: 'Outfit', monospace;
+}
+
+.panel-location {
+    padding: 1.5rem;
+    border-radius: var(--radius-md);
+    margin-bottom: 2rem;
+}
+
+.panel-actions {
+    display: flex;
+    gap: 1rem;
+    margin-top: auto;
+}
+
+/* Map Layer Control */
+.map-layer-control {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 1.2rem;
+    color: var(--primary);
+}
+
+.map-layer-control:hover {
+    background: rgba(255,255,255,0.1);
+    transform: scale(1.05);
+}

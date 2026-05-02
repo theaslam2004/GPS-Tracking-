@@ -11,7 +11,8 @@ const defaultData = {
     devices: [], // { imei: string, ownerId: string, name: string }
     requests: [], // { id: string, imei: string, userId: string, status: 'pending'|'approved'|'rejected', timestamp: string }
     subscriptions: [], // { userId: string, validityDays: number, expirationDate: string }
-    deviceLastSeen: {} // Transient data, not strictly needed in JSON, but good for persistence { imei: { timestamp, lat, lng } }
+    deviceLastSeen: {}, // Transient data, not strictly needed in JSON, but good for persistence { imei: { timestamp, lat, lng } }
+    deviceHistory: {} // { imei: [points] }
 };
 
 function readData() {
@@ -130,6 +131,16 @@ module.exports = {
         const data = readData();
         return data.devices.filter(d => d.ownerId === userId);
     },
+    togglePinDevice: (userId, imei) => {
+        const data = readData();
+        const device = data.devices.find(d => d.ownerId === userId && d.imei === imei);
+        if (device) {
+            device.pinned = !device.pinned;
+            writeData(data);
+            return device.pinned;
+        }
+        return false;
+    },
     getCustomerSubscription: (userId) => {
         const data = readData();
         const sub = data.subscriptions.find(s => s.userId === userId);
@@ -145,7 +156,9 @@ module.exports = {
     updateDeviceLastSeen: (imei, locationData) => {
         const data = readData();
         if (!data.deviceLastSeen) data.deviceLastSeen = {};
-        data.deviceLastSeen[imei] = {
+        if (!data.deviceHistory) data.deviceHistory = {};
+        
+        const point = {
             timestamp: locationData.timestamp,
             latitude: locationData.latitude,
             longitude: locationData.longitude,
@@ -153,7 +166,18 @@ module.exports = {
             odometer: locationData.odometer || 0,
             rawHex: locationData.rawHex || ''
         };
+        
+        data.deviceLastSeen[imei] = point;
+        
+        if(!data.deviceHistory[imei]) data.deviceHistory[imei] = [];
+        data.deviceHistory[imei].push(point);
+        if(data.deviceHistory[imei].length > 500) data.deviceHistory[imei].shift();
+        
         writeData(data);
+    },
+    getHistory: (imei) => {
+        const data = readData();
+        return data.deviceHistory ? data.deviceHistory[imei] || [] : [];
     },
     
     updateSubscriptionValidity: (userId, extraDays) => {

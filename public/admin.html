@@ -107,6 +107,20 @@
                 </div>
             </div>
         </div>
+        
+        <!-- Live System Logs -->
+        <div class="glass-panel" style="margin-top: 2rem; padding: 1.5rem; border-radius: var(--radius-lg); overflow: hidden;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                <h3 style="font-size: 1.2rem;"><i class="fa-solid fa-terminal" style="color: var(--success); margin-right: 8px;"></i> Live System Logs</h3>
+                <span style="font-size: 0.8rem; color: var(--success); display: flex; align-items: center; gap: 6px;">
+                    <i class="fa-solid fa-circle fa-fade"></i> TCP Server Active
+                </span>
+            </div>
+            <div id="liveLogs" style="background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.05); padding: 1rem; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--success); height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px;">
+                <!-- Logs will appear here -->
+                <div style="color: var(--text-secondary);">[System] Initialized. Waiting for incoming TCP connections on port 8080...</div>
+            </div>
+        </div>
     </div>
 
     <!-- Add Customer Modal -->
@@ -164,6 +178,7 @@
             }
         });
     </script>
+    <script src="/socket.io/socket.io.js"></script>
     <script src="js/admin.js"></script>
 </body>
 </html>

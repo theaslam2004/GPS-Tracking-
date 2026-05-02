@@ -152,5 +152,38 @@ async function approveDevice(requestId) {
 
 // Initial load
 loadDashboard();
-// Refresh every 5 seconds to check for new data on pending devices
-setInterval(loadDashboard, 5000);
+
+// Socket.io for Real-Time Live Logs
+const socket = io();
+
+socket.on('admin_update', () => {
+    loadDashboard(); // Triggered when a request is created or approved
+});
+
+socket.on('admin_live_log', (log) => {
+    const container = document.getElementById('liveLogs');
+    if(!container) return;
+    
+    const timeStr = new Date(log.time).toLocaleTimeString();
+    const isParsed = log.status === 'parsed';
+    const color = isParsed ? 'var(--primary)' : 'var(--warning)';
+    const prefix = isParsed ? '[DATA]' : '[RAW]';
+    
+    const logEl = document.createElement('div');
+    logEl.style.animation = 'slide-up 0.3s ease-out';
+    logEl.innerHTML = `<span style="color:var(--text-secondary)">[${timeStr}] ${prefix}</span> <span style="color:${color}; font-weight:600;">${log.imei}</span> <span style="opacity: 0.8;">${log.hex}</span>`;
+    
+    container.appendChild(logEl);
+    container.scrollTop = container.scrollHeight;
+    
+    if(container.children.length > 50) {
+        container.removeChild(container.firstElementChild); // keep the initial waiting message if it's the only one, but 50 is fine
+    }
+    
+    // Soft update the request table if this IMEI was pending
+    const reqRow = Array.from(document.querySelectorAll('#requestTableBody td')).find(td => td.innerText === log.imei);
+    if(reqRow) {
+        // We know it came online, reload dashboard to update the UI
+        loadDashboard();
+    }
+});

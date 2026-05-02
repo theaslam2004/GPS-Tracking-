@@ -54,6 +54,7 @@ app.post('/api/admin/update-validity', (req, res) => {
 app.post('/api/admin/approve-device', (req, res) => {
     const { requestId } = req.body;
     const success = store.approveRequest(requestId);
+    if(success) io.emit('admin_update'); // notify admin to reload table
     res.json({ success });
 });
 
@@ -61,8 +62,18 @@ app.post('/api/admin/approve-device', (req, res) => {
 app.post('/api/customer/request-device', (req, res) => {
     const { userId, imei } = req.body;
     const result = store.requestDevice(userId, imei);
-    if (result.error) res.json({ success: false, error: result.error });
-    else res.json({ success: true, request: result });
+    if (result.error) {
+        res.json({ success: false, error: result.error });
+    } else {
+        io.emit('admin_update'); // notify admin to reload table
+        res.json({ success: true, request: result });
+    }
+});
+
+app.post('/api/customer/pin-device', (req, res) => {
+    const { userId, imei } = req.body;
+    const pinned = store.togglePinDevice(userId, imei);
+    res.json({ success: true, pinned });
 });
 
 app.get('/api/customer/data', (req, res) => {
@@ -70,6 +81,13 @@ app.get('/api/customer/data', (req, res) => {
     res.json({
         devices: store.getCustomerDevices(userId),
         subscription: store.getCustomerSubscription(userId)
+    });
+});
+
+app.get('/api/customer/history', (req, res) => {
+    const imei = req.query.imei;
+    res.json({
+        history: store.getHistory(imei)
     });
 });
 
@@ -145,12 +163,28 @@ const tcpServer = net.createServer((socket) => {
 
             // Broadcast the parsed data to all connected web clients
             io.emit('device_data', parsedData);
+            
+            // Send live log to admin
+            io.emit('admin_live_log', {
+                time: parsedData.timestamp,
+                imei: parsedData.imei,
+                hex: parsedData.rawHex,
+                status: 'parsed'
+            });
         } else {
             console.log(`[TCP] Could not parse data (or not a location packet). Sending raw to UI.`);
             // Send raw data to frontend for debugging
             io.emit('raw_log', {
                 time: new Date().toISOString(),
                 hex: data.toString('ascii')
+            });
+            
+            // Send live log to admin
+            io.emit('admin_live_log', {
+                time: new Date().toISOString(),
+                imei: 'Unknown',
+                hex: data.toString('ascii'),
+                status: 'raw'
             });
         }
     });

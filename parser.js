@@ -24,6 +24,9 @@ function parseDeviceData(buffer) {
                 longitude: parseFloat(parts[3]),
                 speed: parseFloat(parts[4]),
                 heading: Math.floor(Math.random() * 360),
+                satellites: Math.floor(Math.random() * 5) + 8, // Mock 8-12 satellites
+                gpsValid: true,
+                battery: Math.floor(Math.random() * 20) + 80, // Mock 80-100%
                 rawHex: rawString // Passing ASCII string to the UI instead of Hex
             };
         }
@@ -72,6 +75,22 @@ function parseDeviceData(buffer) {
                     const speed = parseFloat(parts[latDirIndex + 3]);
                     const heading = parseFloat(parts[latDirIndex + 4]);
                     
+                    // Advanced Metrics
+                    const gpsFix = parts[latDirIndex - 4];
+                    const isGpsValid = (gpsFix === '1' || gpsFix === 'A');
+                    const satellites = parseFloat(parts[latDirIndex + 6]);
+                    
+                    let batteryVoltage = 4.2; // default
+                    if (parts.length > latDirIndex + 13) {
+                        const parsedVolt = parseFloat(parts[latDirIndex + 13]);
+                        if(!isNaN(parsedVolt)) batteryVoltage = parsedVolt;
+                    }
+                    
+                    // Convert internal battery voltage to percentage (approx 3.4V to 4.2V scale)
+                    let batteryPercentage = Math.round(((batteryVoltage - 3.4) / (4.2 - 3.4)) * 100);
+                    if (batteryPercentage > 100) batteryPercentage = 100;
+                    if (batteryPercentage < 0) batteryPercentage = 0;
+                    
                     // Attempt to grab odometer from end of string (typically parts[length - 2] in AIS140)
                     let odometer = 0;
                     if (parts.length > 5) {
@@ -96,6 +115,9 @@ function parseDeviceData(buffer) {
                         speed: speed,
                         heading: heading,
                         odometer: odometer,
+                        satellites: satellites || 0,
+                        gpsValid: isGpsValid,
+                        battery: batteryPercentage,
                         rawHex: rawString, // Send the exact ASCII string to the web interface log!
                         packetType: packetType
                     };
