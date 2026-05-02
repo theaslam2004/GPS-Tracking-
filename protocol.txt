@@ -1,0 +1,3228 @@
+
+
+ 
+1 
+ 
+TS101 Plus – 4G Yantra Protocol Manual 1.0v 
+Document Classif ication: Restricted 
+Version1.0 
+Doc. Number: 
+IIQMS/DOC/PMO/PM/4G/001 
+Date  Prepared: 
+01/02/2024 
+Note: This inf ormation is property of  
+iTriangle  Inf otech Private Limited 
+Prepared  By: PMO                   
+Verif ied By: PDO 
+Approved By: Kiran AR 
+ 
+TS101 PLUS - 4G PROTOCOL MANUAL 
+V1.2 
+ 
+ 
+  
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+
+ 
+2 
+ 
+TS101 Plus – 4G Yantra Protocol Manual 1.0v 
+Document Classif ication: Restricted 
+Version1.0 
+Doc. Number: 
+IIQMS/DOC/PMO/PM/4G/001 
+Date  Prepared: 
+01/02/2024 
+Note: This inf ormation is property of  
+iTriangle  Inf otech Private Limited 
+Prepared  By: PMO                   
+Verif ied By: PDO 
+Approved By: Kiran AR 
+ 
+ 
+REVISION HISTORY 
+Version  
+No 
+ 
+DATE 
+ 
+DESCRIPTION 
+ 
+Revised By 
+1.0 01-01-2023 First Version Pavan Naik 
+1.1 10-01-2024 Added more option of protocol  format  Kumaraswamy  P 
+1.2 30-07-2025 Added Extension sample Packet Kumaraswamy P 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+  
+
+ 
+3 
+ 
+TS101 Plus – 4G Yantra Protocol Manual 1.0v 
+Document Classif ication: Restricted 
+Version1.0 
+Doc. Number: 
+IIQMS/DOC/PMO/PM/4G/001 
+Date  Prepared: 
+01/02/2024 
+Note: This inf ormation is property of  
+iTriangle  Inf otech Private Limited 
+Prepared  By: PMO                   
+Verif ied By: PDO 
+Approved By: Kiran AR 
+Contents 
+ 
+1. Introduction ............................................................................................................................5 
+2. Intended audience .................................................................................................................5 
+3. TS101 PLUS-4G Data Format ...............................................................................................5 
+4. Outbound Communication ...................................................................................................6 
+5. Login Packet .......................................................................................................................6 
+5.1 Login Sample Packet .....................................................................................................6 
+6 Primary and Secondary Server Tracking Packet ...............................................................7 
+6.1 Primary Server Protocol Format ...................................................................................7 
+6.2 Primary Server Sample Packet .....................................................................................7 
+6.3 Secondary Server Protocol Format ............................................................................11 
+6.4 Secondary Server Sample Packet ..............................................................................11 
+7 Health Monitoring Packet ...................................................................................................15 
+7.1 Health Monitoring Sample Packet ..............................................................................15 
+8 Maintenance Server Packet ................................................................................................16 
+9 Primary Server Tracking Packet (Extended Format) .......................................................17 
+9.1 Tracking with Extended Protocol Formatter .............................................................17 
+9.1.1 Protocol Formatter 1 (General)............................................................................17 
+9.1.2 Bit Status................................................................................................................18 
+9.2 UART Mode Packet Format .........................................................................................19 
+9.2.1 Sample Packet of UART Data ..................................................................................19 
+9.3 RS485 .............................................................................................................................22 
+9.4 RS485 Packet Format ...................................................................................................23 
+9.4.1 Sample Packet of UART Data ..................................................................................23 
+9.5 CAN Data Packet Format .............................................................................................26 
+9.5.1 CAN Data Sample Packet.........................................................................................26 
+9.6 CAN Filtering Data ........................................................................................................29 
+9.6.1 Sample Packet...........................................................................................................29 
+9.7 OBD RAW Data .............................................................................................................30 
+9.7.1 Sample Packet...........................................................................................................30 
+9.8 VIN Packet Format ........................................................................................................33 
+9.8.1 Sample Packet...........................................................................................................33 
+9.9 DTC Packet Format ......................................................................................................34 
+9.9.1 DTC Sample Packet ..................................................................................................34 
+
+ 
+4 
+ 
+TS101 Plus – 4G Yantra Protocol Manual 1.0v 
+Document Classif ication: Restricted 
+Version1.0 
+Doc. Number: 
+IIQMS/DOC/PMO/PM/4G/001 
+Date  Prepared: 
+01/02/2024 
+Note: This inf ormation is property of  
+iTriangle  Inf otech Private Limited 
+Prepared  By: PMO                   
+Verif ied By: PDO 
+Approved By: Kiran AR 
+10 General Diagnostic Commands .....................................................................................36 
+10.1 General Device Diagnostic Information .....................................................................36 
+11 Message ID Table .............................................................................................................37 
+12 Inbound Communication.................................................................................................40 
+12.1 Single Key Config Parameters ....................................................................................40 
+12.2 Sample Packet ..............................................................................................................40 
+12.3 Multiple Key Config Parameters .................................................................................41 
+12.4 Sample Packet. .............................................................................................................41 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+ 
+  
+
+ 
+5 
+ 
+TS101 Plus – 4G Yantra Protocol Manual 1.0v 
+Document Classif ication: Restricted 
+Version1.0 
+Doc. Number: 
+IIQMS/DOC/PMO/PM/4G/001 
+Date  Prepared: 
+01/02/2024 
+Note: This inf ormation is property of  
+iTriangle  Inf otech Private Limited 
+Prepared  By: PMO                   
+Verif ied By: PDO 
+Approved By: Kiran AR 
+1. Introduction 
+This  document  outlines  the  communication  protocol  implemented  in  the  device  for  seamless 
+integration  with  a  platform.  The  protocol  facilitates  bidirectional  communication,  allowing  the 
+device  to send  outbound  messages  to  the  server  and  receive  inbound  messages  in  return,  all 
+transmitted  via a wireless channel.  
+Device communication to platform based on the following points. 
+- Outbound messages - Outbound messages refer to data transmissions  originating from 
+the  device  and  destined  for  the  server.  These  messages   serve  to  convey  crucial 
+information,  updates, or requests from the device to the integrated platform. 
+- Inbound messages - Inbound messages refer to data transmissions  originating from the 
+server   and   destined   for  the   device.   These   messages   provide   essential   updates, 
+commands,  or configurations  to the  device,  allowing  seamless  communication  between 
+the server and the integrated platform. 
+2. Intended audience 
+This  document  is  intended  for  reference  for direct  customers,  system  integrators who  wish  to 
+integrate the device with their platform. 
+3. TS101 PLUS-4G Data Format 
+The device sends the following information  packets to the server/SMS. All the packets which will 
+be sent to the server are as per NMEA standard. 
+2 types of communication occur between the device and the outside world. 
+ 
+1. Outbound Communication: 
+ 
+• Login: Initiates the communication  session between  the device and the server. 
+• Tracking: Regularly transmits the device's  current location and related information. 
+• Health Monitoring:  Sends data related to the health and status of the device. 
+• Emergency:  Signals an emergency situation  from the device to the server. 
+• Emergency SMS: Sends emergency  alerts via SMS. 
+• Maintenance:  Communicates  maintenance-related  information. 
+• Command  Response: Responds  to commands  initiated by the server. 
+• CAN Packet: Sends vehicle ECU Controller  Area Network  (CAN) packets. 
+ 
+2. Inbound Communication: 
+ 
+• GPRS Based Commands:  Allows the server to send OTA commands to the device over 
+the General Packet Radio Service (GPRS). 
+• SMS Based Commands:  Enables to send commands  to the device via Short Message 
+Service (SMS). 
+
+ 
+6 
+ 
+TS101 Plus – 4G Yantra Protocol Manual 1.0v 
+Document Classif ication: Restricted 
+Version1.0 
+Doc. Number: 
+IIQMS/DOC/PMO/PM/4G/001 
+Date  Prepared: 
+01/02/2024 
+Note: This inf ormation is property of  
+iTriangle  Inf otech Private Limited 
+Prepared  By: PMO                   
+Verif ied By: PDO 
+Approved By: Kiran AR 
+4. Outbound Communication 
+Enables the device to send data, updates, and information  to external entities,  such as servers 
+or SMS gateways. 
+Below is a quick view of the type of packets  and the channel on which the packets will be sent. 
+ 
+Sl 
+No 
+ 
+Packet 
+Server Packet Details 
+Primary Secondary Maintenance 
+1 Login Yes Yes No 
+2 Tracking Yes Yes No 
+3 Health Yes Yes No 
+4 Maintenance No No Yes 
+5 CAN Packet Yes No No 
+6 RS232 Yes No No 
+7 Frequency Input Yes No No 
+8 
+Command Response 
+      Yes  No Yes 
+ 
+5. Login Packet 
+The login packet serves as an establishment  of a successful connection between the device and 
+the  server.  Also,  initiates  and  authenticates  immediately  after  the  connection  establishment  is 
+successful. 
+Allows  the  device  to  configure  login  packets  with  information to both  primary  and  secondary 
+servers. 
+The  login  packet  is  sent  to  initiate  and  authenticate  the  communication  session  between  the 
+device and the server.  It signals  that the device  is active  and ready to transmit  and receive data 
+securely. 
+5.1 Login Sample Packet 
+- $KA1234,868886061660604,010013,0100,28.601093,N,76.921288,E*10 
+Login Data Format 
+SL.NO Field Description Sample Data 
+1 Start Character $ $ 
+2 Vehicle Registration  No 
+Mapped vehicle registration 
+Number. 
+KA1234 
+3 IMEI 
+15-digit unique IMEI number 
+of the GPS device 
+868886061660604 
+4 Firmware Version 
+Actual Firmware Version  of the 
+Device 
+010013 
+5 Protocol Version 
+Communication  Protocol 
+Identifier 
+0100 
+
+ 
+7 
+ 
+TS101 Plus – 4G Yantra Protocol Manual 1.0v 
+Document Classif ication: Restricted 
+Version1.0 
+Doc. Number: 
+IIQMS/DOC/PMO/PM/4G/001 
+Date  Prepared: 
+01/02/2024 
+Note: This inf ormation is property of  
+iTriangle  Inf otech Private Limited 
+Prepared  By: PMO                   
+Verif ied By: PDO 
+Approved By: Kiran AR 
+6 Latitude 
+Latitude value in decimal 
+Degrees 
+28.601093 
+7 Latitude Dir N/S N 
+8 Longitude 
+Longitude  value in decimal 
+Degrees 
+76.921288 
+9 Longitude  Dir E/W E 
+10 Checksum  Separator * * 
+11 Checksum Checksum 10 
+6 Primary and Secondary Server Tracking Packet 
+The Government  of India has designed an Intelligent Transport Systems (ITS) under Automotive 
+Industry  Standard-140  to  increase  the  safety  of  passengers  and  ensure  the  efficiency  of  the 
+transport  system. The  regular  tracking  packet  contains  location  information  and  other  required 
+information as per AIS140 standard.  
+The  location Packet  will  be  sent to  both primary and  secondary  servers. Contains  location 
+information  and  other  essential  data  as  mandated  by  the  AIS140  standard.  sent  exclusively  to 
+the primary or secondary server, as defined  in the server configuration.  
+6.1 Primary Server Protocol  Format 
+The regular tracking packet contains location information and other required information as 
+per the AIS140 standard. Based on the number of packets available for sending the data, the 
+device will can either single tracking packet or the multiple tracking packet to the server. 
+6.2 Primary Server Sample Packet 
+$Header,iTriangle1,010013,NR,1,L,868886061660604,KA1234,1,12042023,013615,28.675840
+,N,77.062378,E,21.0,212,20,206.0,1.26,0.68,Airtel,1,1,26.0,3.9,0,C,21,404,10,8ab,975e416,45,
+8ab,de74335,38,8ab,e09c934,43,8ab,951a834,0,0,0,0000,0100,019053,0.000,0.000,18,()*78 
+Primary (Server-1) Packet Data Format 
+SL.No Field Description Sample Data 
+1 Start Character Start character 
+$ 
+2 Header The header of the packet 
+Header 
+3 Vendor ID Vendor identification  header 
+iTriangle1 
+4 Firmware Version 
+Actual Firmware Version  of the 
+device 
+010004 
+
+ 
+8 
+ 
+TS101 Plus – 4G Yantra Protocol Manual 1.0v 
+Document Classif ication: Restricted 
+Version1.0 
+Doc. Number: 
+IIQMS/DOC/PMO/PM/4G/001 
+Date  Prepared: 
+01/02/2024 
+Note: This inf ormation is property of  
+iTriangle  Inf otech Private Limited 
+Prepared  By: PMO                   
+Verif ied By: PDO 
+Approved By: Kiran AR 
+5 Packet Type 
+Specify the packet type 
+NR   = Normal 
+EA   = Emergency Alert 
+TA   = Tamper Alert 
+HP   = Health Packet 
+IN    = Ignition On 
+IF     = Ignition Off 
+BD   = Vehicle Battery Disconnect 
+BR   = Vehicle Battery Reconnect 
+BL   = Internal Battery Low 
+HB  = Harsh Braking 
+HA  = Harsh Acceleration 
+RT  =  Rash Turning 
+DT  = Emergency Tamper 
+OA  = Over the Air Command 
+ 
+ 
+NR 
+6 Message ID Refer, to Message-ID  Table 16 
+7 Packet Status L=Live or H= History L 
+8 IMEI 
+The 15-digit unique IMEI number of 
+the device 
+864495034476850 
+9 Vehicle Reg. No 
+Mapped vehicle registration 
+Number 
+KA01IG1234 
+10 GPS Fix 
+1 = GPS fix Valid 
+0 = GPS fix Invalid 
+1 
+11 Date 
+Date value per GPS date time 
+(DDMMYYYY) 
+02022019 
+12 Time 
+Time value as per GPS date time In 
+UTC format (HHMMSS) 
+083507 
+13 Latitude 
+Latitude value in decimal Degrees. 
+Minimum 6 Decimal Places 
+12.975843 
+14 Latitude Dir Latitude Direction N 
+15 Longitude 
+Longitude  value in decimal 
+Degrees. Minimum  6 Decimal 
+Places 
+77.549438 
+16 Longitude  Dir Longitude  Direction E 
+17 Speed 
+Vehicle speed is calculated by 
+GPS module in km/hrs. 
+(Up to One Decimal Value) 
+0.0 
+
+ 
+9 
+ 
+TS101 Plus – 4G Yantra Protocol Manual 1.0v 
+Document Classif ication: Restricted 
+Version1.0 
+Doc. Number: 
+IIQMS/DOC/PMO/PM/4G/001 
+Date  Prepared: 
+01/02/2024 
+Note: This inf ormation is property of  
+iTriangle  Inf otech Private Limited 
+Prepared  By: PMO                   
+Verif ied By: PDO 
+Approved By: Kiran AR 
+18 Heading Course over the ground  in degrees 126 
+19 No of Satellites 
+Number of satellites available 
+for fix 
+5 
+20 Altitude The altitude of the device in meters 799.0 
+21 PDOP Positional  dilution of precision 0.00 
+22 HDOP Horizontal  dilution of precision 1.59 
+23 
+Network 
+Operator Name 
+Name of Network  Operator Airtel 
+24 Ignition Status 1= Ignition On, 0 = Ignition Off 1 
+25 
+Main Power 
+Status 
+0=Vehicle Battery disconnected 
+1=Vehicle Battery reconnected 
+1 
+26 
+Main Input 
+Voltage 
+Indicator showing  source 
+Voltage in Volts. (Up to One 
+Decimal Value) 
+12.4 
+27 
+Internal Battery 
+Voltage 
+Indicates the level of battery 
+Charge Remains. (Up to One 
+Decimal Value) 
+4.3 
+28 
+Emergency 
+Status 
+1= ON, 0 = OFF 1 
+29 
+Tamper Alert 
+(Optional) 
+C = Cover Closed 
+O= Cover Opened 
+C 
+30 
+GSM Signal 
+Strength 
+Value Ranging from 0 – 31 31 
+31 MCC (Serving) 
+Mobile Country Code of serving 
+Cell 
+404 
+32 MNC(Serving) 
+Mobile Network Code of 
+serving cell 
+86 
+33 LAC (Serving) 
+Location Area Code of serving 
+Cell 
+7b73 
+34 Cell ID (Serving) GSM Cell ID of the serving cell b74a 
+35 
+GSM Signal 
+Strength  
+(NMR 1
+st
+ Neighbor) 
+Signal Strength of 1
+st
+ neighbor 55 
+
+ 
+10 
+ 
+TS101 Plus – 4G Yantra Protocol Manual 1.0v 
+Document Classif ication: Restricted 
+Version1.0 
+Doc. Number: 
+IIQMS/DOC/PMO/PM/4G/001 
+Date  Prepared: 
+01/02/2024 
+Note: This inf ormation is property of  
+iTriangle  Inf otech Private Limited 
+Prepared  By: PMO                   
+Verif ied By: PDO 
+Approved By: Kiran AR 
+36 
+LAC 
+(NMR 1
+st
+ Neighbor) 
+LAC of 1
+st
+ neighbor 02a0 
+37 
+Cell ID 
+(NMR 1
+st
+ Neighbor) 
+Cell ID of 1
+st
+ neighbor cell 7d0b 
+38 
+GSM Signal 
+Strength 
+(NMR 2
+nd
+ Neighbor) 
+Signal Strength of 2
+nd
+  
+Neighbor 
+49 
+39 
+LAC 
+(NMR 2
+nd
+ Neighbor) 
+LAC of 2
+nd
+ neighbor 4d0a 
+40 
+Cell ID 
+(NMR 2
+nd
+ Neighbor) 
+Cell ID of 2
+nd
+ neighbor cell 7d0b 
+41 
+GSM Signal 
+Strength 
+(NMR 3
+rd
+ Neighbor) 
+Signal Strength of 3
+rd
+ neighbor 49 
+42 
+LAC 
+(NMR 3
+rd
+ Neighbor) 
+LAC of 3
+rd
+ neighbor 1948 
+43 
+Cell ID 
+(NMR 3
+rd
+ Neighbor) 
+Cell ID of 3
+rd
+ neighbor  cell 7b73 
+44 
+GSM Signal 
+Strength 
+(NMR 4
+th
+ Neighbor) 
+Signal Strength of 4
+th
+ neighbor 59 
+45 
+LAC 
+(NMR 4
+th
+ Neighbor) 
+LAC of 4
+th
+ neighbor ffff 
+46 
+Cell ID 
+(NMR 4
+th
+ Neighbor) 
+Cell ID of 4
+th
+ neighbor  cell 0000 
+47 Digital Input Status 
+4 digital input status 
+DIN1, DIN2(Panic),  DIN3, DIN4 
+(0=OFF;1=ON) 
+0000 
+48 
+Digital Output 
+Status 
+4 external  digital outputs 
+Status DOUT1, DOUT2,  DOUT3, 
+DOUT4 
+(0=Disable, 1=Enable) 
+0001 
+49 Frame Number 
+Sequence  Number of the 
+Messages  (000001 to 999999) 
+008273 
+50 Analog Input 1 Analog input 1 voltage in volts 0.0 
+51 Analog Input 2 Analog input 2 voltage in volts 0.0 
+53 Delta Distance Distance in meters 0 
+54 OTA Response 
+Information  of the command 
+Execution. 
+() 
+
+ 
+11 
+ 
+TS101 Plus – 4G Yantra Protocol Manual 1.0v 
+Document Classif ication: Restricted 
+Version1.0 
+Doc. Number: 
+IIQMS/DOC/PMO/PM/4G/001 
+Date  Prepared: 
+01/02/2024 
+Note: This inf ormation is property of  
+iTriangle  Inf otech Private Limited 
+Prepared  By: PMO                   
+Verif ied By: PDO 
+Approved By: Kiran AR 
+55 
+Protocol Field 
+Formatter  1 
+Protocol Field Formatter  1 (32 Bit)  9223372036854775808 
+X X Field 
+X field of data based on 
+Configuration.  (Maximum  32) 
+X field of data based on 
+Configuration. 
+(Maximum  32) 
+ 
+End Character Indicated End of the frame * 
+55+X+1 Checksum 
+Ensures No error in transmission. 
+(optimal) 
+3E 
+ 
+6.3 Secondary Server Protocol Format 
+Secondary server tracking packet structure that aligns with the AIS140 standard, device ensures 
+that  the  transmitted  data  meets  regulatory  requirements  and  contributes  to  the  safety  and 
+efficiency  goals  to  respective  state  departments.  The  emphasis  on  security  measures  and 
+adaptability  enhances the reliability and effectiveness  of the tracking system. 
+6.4 Secondary Server Sample Packet 
+$Header,iTriangle1,010013,NR,1,L,868886061660604,KA1234,1,12042023,013615,28.675840
+,N,77.062378,E,21.0,212,20,206.0,1.26,0.68,Airtel,1,1,26.0,3.9,0,C,21,404,10,8ab,975e416,45,
+8ab,de74335,38,8ab,e09c934,43,8ab,951a834,0,0,0,0000,0100,019053,0.000,0.000,18,()*78 
+Secondary  (Server-2) Packet Data Format 
+SL.No Field Description Sample Data 
+1 Start Character Start character $ 
+2 Header The header of the packet Header 
+3 Vendor ID Vendor identification  header iTriangle1 
+4 Firmware Version 
+Actual firmware Version  of the 
+device. 
+010004 
+
+ 
+12 
+ 
+TS101 Plus – 4G Yantra Protocol Manual 1.0v 
+Document Classif ication: Restricted 
+Version1.0 
+Doc. Number: 
+IIQMS/DOC/PMO/PM/4G/001 
+Date  Prepared: 
+01/02/2024 
+Note: This inf ormation is property of  
+iTriangle  Inf otech Private Limited 
+Prepared  By: PMO                   
+Verif ied By: PDO 
+Approved By: Kiran AR 
+5 Packet Type 
+Specify the packet type 
+NR   = Normal 
+EA   = Emergency Alert 
+TA   = Tamper Alert 
+HP   = Health Packet 
+IN    = Ignition On 
+IF     = Ignition Off 
+BD   = Vehicle Battery 
+Disconnect 
+BR   = Vehicle Battery 
+Reconnect 
+BL   = Internal Battery Low 
+HB  = Harsh Braking 
+HA  = Harsh Acceleration 
+RT  =  Rash Turning 
+DT  = Emergency Tamper 
+OA  = Over the Air Command 
+ 
+NR 
+6 Message ID Refer, to Message  ID Table 16 
+7 Packet Status L=Live or H= History L 
+8 IMEI 
+15-digit unique IMEI number 
+of 
+the device 
+864495034476850 
+9 Vehicle Reg. No 
+Mapped vehicle registration 
+Number 
+KA01IG1234 
+10 GPS Fix 
+1 = GPS fix Valid 
+0 = GPS fix Invalid 
+1 
+11 Date 
+Date value per GPS date time 
+(DDMMYYYY) 
+02022019 
+12 Time 
+Time value as per GPS 
+date/time  
+In UTC format (HHMMSS) 
+083507 
+13 Latitude 
+Latitude value in decimal 
+Degrees. Minimum  6 Decimal 
+Places 
+12.975843 
+14 Latitude Dir Latitude Direction N 
+15 Longitude 
+Longitude  value in decimal 
+Degrees. Minimum  6 Decimal 
+Places 
+77.549438 
+16 Longitude  Dir Longitude  Direction E 
+17 Speed 
+Vehicle speed is calculated by 
+GPS module in km/hrs. 
+(Up to One Decimal Value) 
+0.0 
+
+ 
+13 
+ 
+TS101 Plus – 4G Yantra Protocol Manual 1.0v 
+Document Classif ication: Restricted 
+Version1.0 
+Doc. Number: 
+IIQMS/DOC/PMO/PM/4G/001 
+Date  Prepared: 
+01/02/2024 
+Note: This inf ormation is property of  
+iTriangle  Inf otech Private Limited 
+Prepared  By: PMO                   
+Verif ied By: PDO 
+Approved By: Kiran AR 
+18 Heading 
+Course over the ground  in 
+degrees 
+126 
+19 No of Satellites 
+Number of satellites available 
+for fix 
+5 
+20 Altitude 
+The altitude of the device in 
+meters 
+799.0 
+21 PDOP Positional  dilution of precision 0.00 
+22 HDOP Horizontal  dilution of precision 1.59 
+23 
+Network Operator 
+Name 
+Name of Network  Operator Airtel 
+24 Ignition Status 1= Ignition On, 0 = Ignition Off 1 
+25 Main Power Status 
+0=Vehicle Battery 
+disconnected 
+1=Vehicle Battery 
+reconnected 
+1 
+26 Main Input Voltage 
+Indicator showing  source 
+Voltage in Volts. 
+(Up to One Decimal Value) 
+12.4 
+27 
+Internal Battery 
+Voltage 
+Indicates the level of battery 
+Charge Remains. 
+(Up to One Decimal Value) 
+4.3 
+28 Emergency  Status 1= ON, 0 = OFF 1 
+29 
+Tamper Alert 
+(Optional) 
+C = Cover Closed 
+O= Cover Opened 
+C 
+30 
+GSM Signal 
+Strength 
+Value Ranging from 0 – 31 31 
+31 MCC (Serving) 
+Mobile Country Code of 
+serving 
+Cell 
+404 
+32 MNC(Serving) 
+Mobile Network Code of 
+serving cell 
+86 
+33 LAC (Serving) 
+Location Area Code of serving 
+Cell 
+7b73 
+34 Cell ID (Serving) GSM Cell ID of serving cell b74a 
+35 
+GSM Signal 
+Strength (NMR 1
+st
+ 
+Neighbor) 
+Signal Strength of 1
+st
+ 
+Neighbor 
+55 
+
+ 
+14 
+ 
+TS101 Plus – 4G Yantra Protocol Manual 1.0v 
+Document Classif ication: Restricted 
+Version1.0 
+Doc. Number: 
+IIQMS/DOC/PMO/PM/4G/001 
+Date  Prepared: 
+01/02/2024 
+Note: This inf ormation is property of  
+iTriangle  Inf otech Private Limited 
+Prepared  By: PMO                   
+Verif ied By: PDO 
+Approved By: Kiran AR 
+36 
+LAC  
+(NMR 1
+st 
+Neighbor) 
+LAC of 1
+st
+ Neighbor 02a0 
+37 
+Cell ID  
+(NMR 1
+st
+ Neighbor) 
+Cell ID of 1
+st
+ Neighbor cell 7d0b 
+38 
+GSM Signal 
+Strength (NMR 2
+nd
+ 
+Neighbor) 
+Signal Strength of 2
+nd
+  
+Neighbor 
+49 
+39 
+LAC  
+(NMR 2
+nd
+ Neighbor) 
+LAC of 2
+nd
+ Neighbor 4d0a 
+40 
+Cell ID  
+(NMR 2
+nd
+ Neighbor) 
+Cell ID of 2
+nd
+ Neighbor cell 7d0b 
+41 
+GSM Signal 
+Strength (NMR 3
+rd
+ 
+Neighbor) 
+Signal Strength of 3
+rd
+ 
+Neighbor 
+49 
+42 
+LAC  
+(NMR 3
+rd
+ Neighbor) 
+LAC of 3
+rd
+ Neighbor 1948 
+43 
+Cell ID 
+(NMR 3
+rd
+ Neighbor) 
+Cell ID of 3
+rd
+ Neighbor cell 7b73 
+44 
+GSM Signal 
+Strength (NMR 4th 
+Neighbor) 
+Signal Strength of 4
+th
+ Neighbor 59 
+45 
+LAC (NMR 4
+th
+ 
+Neighbor) 
+LAC of 4
+th
+ Neighbor ffff 
+46 
+Cell ID (NMR 4
+th
+ 
+Neighbor) 
+Cell ID of 4
+th
+ Neighbor cell 0000 
+47 Digital Input Status 
+4 digital input statuses 
+DIN1, DIN2(Panic),  DIN3, 
+DIN4 (0/1) 
+0001 
+48 
+Digital Output 
+Status 
+4 external  digital outputs 
+Status DOUT1, DOUT2, 
+DOUT3, DOUT4 
+(0=Disable, 1=Enable) 
+0001 
+49 Frame Number 
+Sequence  Number of the 
+Messages  (000001 to999999) 
+008273 
+50 Analog Input 1 Analog input 1 voltage in volts 0.0 
+51 Analog Input 2 Analog input 2 voltage in volts 0.0 
+53 Delta Distance Distance in meters 0 
+54 OTA Response 
+Information  of the command 
+Execution. 
+() 
+
+ 
+15 
+ 
+TS101 Plus – 4G Yantra Protocol Manual 1.0v 
+Document Classif ication: Restricted 
+Version1.0 
+Doc. Number: 
+IIQMS/DOC/PMO/PM/4G/001 
+Date  Prepared: 
+01/02/2024 
+Note: This inf ormation is property of  
+iTriangle  Inf otech Private Limited 
+Prepared  By: PMO                   
+Verif ied By: PDO 
+Approved By: Kiran AR 
+56 End Character Indicated End of the frame * 
+55 Checksum 
+Ensures No error in 
+transmission 
+(optimal) 
+3E 
+7 Health Monitoring Packet  
+This packet will be sent by the device based on the configured interval. This contains information 
+about  the device health  like battery  percentage,  memory  percentage  etc. These  packets will  be 
+sent to only the Primary  & secondary  server. 
+7.1 Health Monitoring  Sample Packet 
+- $Header,ITriangle,010004,864495034476850,100,40,0.00,10,30, 01000001, 12.2, 
+13.5* 
+Health Monitoring Packet 
+Sl. No Field Description Sample Data 
+1 Start Character $ $ 
+2 Header The header of the packet Header 
+3 Vendor ID Vendor identifier ITriangle1 
+4 Firmware Version 
+Version details of the Firmware 
+used 
+010004 
+5 IMEI 
+15-digit standard  unique 
+IMEI no. 
+864495034476850 
+6 Battery percentage 
+Indication  for the internal 
+battery charge in percentage 
+100 
+7 
+Low battery threshold 
+Percentage 
+Indication  for the low battery 
+alert generated in percentage 
+40 
+8 
+Flash Memory % 
+Used 
+Indicates the % of memory 
+used. 
+0.00 
+9 
+Data update rate 
+when ignition ON 
+Ignition ON Interval time 
+in seconds 
+10 
+10 
+Data update rate 
+when ignition OFF 
+Ignition OFF Interval time 
+in seconds 
+30 
+11 Digital IO Status 
+4 digital inputs status + 4 Digital 
+Output Status DIN1, 
+DIN2(Panic),  DIN3, DIN4, 
+01000001 
+
+ 
+16 
+ 
+TS101 Plus – 4G Yantra Protocol Manual 1.0v 
+Document Classif ication: Restricted 
+Version1.0 
+Doc. Number: 
+IIQMS/DOC/PMO/PM/4G/001 
+Date  Prepared: 
+01/02/2024 
+Note: This inf ormation is property of  
+iTriangle  Inf otech Private Limited 
+Prepared  By: PMO                   
+Verif ied By: PDO 
+Approved By: Kiran AR 
+DOUT1, DOUT2,  DOUT3, 
+DOUT4(0=OFF;  1=ON) 
+12 Analog Input 1  Analog Input 1 Voltage. 12.2 
+13 Analog Input 2 Analog Input 2 Voltage 13.5 
+14 End character 
+Indication  for the End of the 
+Frame 
+* 
+8 Maintenance Server Packet 
+The maintenance  server packet should be sent to the maintenance  server as soon as the device 
+connects to the server. 
+Maintenance Server Connect Packet Format 
+SL No Parameter  Description 
+1 Start of the String Indicates the beginning  of the packet. 
+2 Packet Header The header of the packet. 
+3 IMEI Number IMEI number of the device. 
+4 Reserved Reserved 
+5 Reserved Reserved 
+6 Timestamp The timestamp of the packet when it is generated. 
+7 Reserved Always sends as A 
+8 Hardware  Version  Hardware  Version of the device 
+9 Firmware Version The current running firmware version  of the device. 
+10 Core Version Core Version 
+11 Power Controller  Version The version of the Power Controller 
+12 GNSS Firmware Version The version of the GNSS Firmware 
+13 Reserved Reserved 
+14 ITR Layer Version ITR Layer Version 
+14 ICCID ICCID 
+15 IMSI IMSI 
+16 Operator Name/Code Operator Name/Code 
+17 No of Watchdog Resets 
+The number of Watchdog  Resets of the Main Module from 
+the Last Maintenance  restart. 
+18 
+No of Watchdog Resets 
+of Power Controller 
+The number of Watchdog  Resets of the Power Controller 
+from the Last Maintenance  restart. 
+19 
+Number GNSS Module 
+Restarts 
+Number of times the GNSS module Has been Restarted 
+from the last maintenance  
+20 Number of Hard resets 
+Number of times the device has been restarted due to 
+unknown reason  from the last maintenance  Restart 
+21 
+Number of times the SIM 
+profile got switched 
+The number of times the SIM profile got switched 
+successfully  from the last maintenance  restart. 
+22 % Of Storage Filled % Of Storage Filled 
+23 Last Ignition off X Value Accelerometer  X value recorded  when the last ignition off 
+
+ 
+17 
+ 
+TS101 Plus – 4G Yantra Protocol Manual 1.0v 
+Document Classif ication: Restricted 
+Version1.0 
+Doc. Number: 
+IIQMS/DOC/PMO/PM/4G/001 
+Date  Prepared: 
+01/02/2024 
+Note: This inf ormation is property of  
+iTriangle  Inf otech Private Limited 
+Prepared  By: PMO                   
+Verif ied By: PDO 
+Approved By: Kiran AR 
+24 Last Ignition off Y Value Accelerometer  Y value recorded  when the last ignition off 
+25 Last Ignition off Z Value Accelerometer  Z value recorded  when the last ignition off 
+26 Current X Value Accelerometer  latest X Value 
+27 Current Y Value Accelerometer  latest Y Value 
+28 Current Z Value Accelerometer  latest Z Value 
+29-45 Reserved Reserved 
+46 External Power Voltage External Power Voltage 
+47 Internal Battery Voltage Internal Battery Voltage 
+48 Checksum  Separator Checksum  Separator 
+49 Checksum 
+XOR of all data excluding  data separator (*), checksum itself 
+and ending characters 
+9   Primary Server Tracking Packet (Extended Format) 
+By incorporating these features into the regular tracking packet, the device can efficiently transmit 
+location  information  and extended  hardware  data to the server. The adaptive  transmission  logic 
+and  dynamic  inclusion  of  hardware  features  enhance  the  versatility  and  effectiveness  of  the 
+tracking system. 
+9.1 Extension Sample Packet format: 
+$Header,iTriangle,TA050200_A03_0147,NR,1,L,863674078906805,KA1234,1,05022025,1101
+24,12.976348,N,77.549759,E,0.0,152,12,904.0,2.32,0.96,Airtel,1,1,12.1,4.0,0,O,17,404,45,204
+4,2bf6220,0,23c4,364ec1e,8,2044,12d2a,0,0,0,0,0,0,0001,0100,003293,0.000,0.000,533.400,()
+,1073741824,34*1B 
+9.2 Tracking with Extended Protocol Formatter  
+ 
+9.2.1 Protocol Formatter 1 (General) 
+ 
+SL No Bit Position Parameter 
+1 31 Reserved 
+2 30 Bit Status 
+3 29 Frequency  Input 1 
+4 28 Duty cycle Input1  
+5 27 1-wire Temperature  1 
+6 26 1-wire Temperature  2 
+7 25 1-wire Temperature  3 
+8 24 1-wire I Button 
+9 23 Pulse Info 
+10 22 Driver ID 
+11 21 Authentication  Status 
+12 20 UART Data 
+13 19 Reserved 
+14 18 Reserved 
+15 17 Reserved 
+16 16 Reserved 
+17 15 Reserved 
+18 14 Reserved 
+
+ 
+18 
+ 
+TS101 Plus – 4G Yantra Protocol Manual 1.0v 
+Document Classif ication: Restricted 
+Version1.0 
+Doc. Number: 
+IIQMS/DOC/PMO/PM/4G/001 
+Date  Prepared: 
+01/02/2024 
+Note: This inf ormation is property of  
+iTriangle  Inf otech Private Limited 
+Prepared  By: PMO                   
+Verif ied By: PDO 
+Approved By: Kiran AR 
+19 13 Reserved 
+20 12 Reserved 
+21 11 Reserved 
+22 10 Reserved 
+23 9 Reserved 
+24 8 Reserved 
+25 7 Reserved 
+26 6 Reserved 
+27 5 Reserved 
+28 4 Reserved 
+29 3 Reserved 
+30 2 Reserved 
+31 1 Reserved 
+32 0 Reserved 
+ 
+9.2.2 Bit Status 
+ 
+SL No Bit Position Parameter 
+1 31 Reserved 
+2 30 Reserved 
+3 29 Reserved 
+4 28 Reserved 
+5 27 Reserved 
+6 26 Reserved 
+7 25 Reserved 
+8 24 Reserved 
+9 23 Reserved 
+10 22 Reserved 
+11 21 Reserved 
+12 20 Reserved 
+13 19 Reserved 
+14 18 Reserved 
+15 17 Reserved 
+16 16 Reserved 
+17 15 Reserved 
+18 14 Reserved 
+19 13 Reserved 
+20 12 Reserved 
+21 11 Reserved 
+22 10 Reserved 
+23 9 Reserved 
+24 8 Reserved 
+25 7 Reserved 
+26 6 Reserved 
+
+ 
+19 
+ 
+TS101 Plus – 4G Yantra Protocol Manual 1.0v 
+Document Classif ication: Restricted 
+Version1.0 
+Doc. Number: 
+IIQMS/DOC/PMO/PM/4G/001 
+Date  Prepared: 
+01/02/2024 
+Note: This inf ormation is property of  
+iTriangle  Inf otech Private Limited 
+Prepared  By: PMO                   
+Verif ied By: PDO 
+Approved By: Kiran AR 
+27 5 Reserved 
+28 4 DIN 5 Status 
+29 3 DIN 4 Status 
+30 2 Towing Status 
+31 1 Fall Status 
+32 0 Sleep  Status 
+ 
+9.3 UART Mode Packet Format 
+By  providing  the  capability  to  forward  data  from  the  RS232  (UART-Universal  Asynchronous 
+receiver  /  transmitter)  in  both  real-time  and  logged  modes,  the  device  ensures  flexibility  and 
+adaptability  to different  application  scenarios.  This  feature  caters  to diverse  requirements,  from 
+immediate  event-based  data  transmission  to  periodic,  logged  transmission  for  efficient  data 
+handling and processing. 
+9.3.1 Sample Packet of UART Data 
+$Header,iTriangle1,BH4GIC02_010019,NR,20,L,868886061659952,KA1234,0,01022000,0103
+49,0.000000,N,0.000000,E,0.0,0,0,0.0,0.00,0.00,Airtel,1,1,12.2,3.9,0,O,28,404,45,215c,c54b64
+8,0,0,0,0,0,0,0,0,0,0,0,0,0000,0100,001096,0.000,0.000,0,(),1,VISHWA*03 
+ 
+Primary  Server Data Format 
+SL.No Field Description Sample Data 
+1 Start Character Start character $ 
+2 Header The header of the packet Header 
+3 Vendor ID 
+Vendor identification 
+header 
+iTriangle1 
+4 
+Firmware 
+Version 
+Actual Firmware Version  of 
+the device 
+BH4GIC02_010015 
+5 Packet Type 
+Specify the packet type 
+NR   = Normal 
+EA   = Emergency Alert 
+TA   = Tamper Alert 
+HP   = Health Packet 
+IN    = Ignition On 
+IF     = Ignition Off 
+BD   = Vehicle Battery 
+Disconnect 
+BR   = Vehicle Battery 
+Reconnect 
+BL   = Internal Battery Low 
+HB  = Harsh Braking 
+HA  = Harsh Acceleration 
+RT  =  Rash Turning 
+DT  = Emergency Tamper 
+OA  = Over the Air 
+Command 
+NR 
+
+ 
+20 
+ 
+TS101 Plus – 4G Yantra Protocol Manual 1.0v 
+Document Classif ication: Restricted 
+Version1.0 
+Doc. Number: 
+IIQMS/DOC/PMO/PM/4G/001 
+Date  Prepared: 
+01/02/2024 
+Note: This inf ormation is property of  
+iTriangle  Inf otech Private Limited 
+Prepared  By: PMO                   
+Verif ied By: PDO 
+Approved By: Kiran AR 
+6 Message ID 
+Refer, to Message-ID 
+Table 
+20 
+7 Packet Status L=Live or H= History L 
+8 IMEI 
+The 15-digit unique IMEI 
+number of the device 
+868886061659952 
+9 Vehicle Reg. No 
+Mapped vehicle 
+registration  Number 
+KA1234 
+10 GPS Fix 
+1 = GPS fix Valid 
+0 = GPS fix Invalid 
+0 
+11 Date 
+Date value per GPS date 
+time 
+(DDMMYYYY) 
+01022000 
+12 Time 
+Time value as per GPS 
+date time 
+In UTC format (HHMMSS) 
+010349 
+13 Latitude 
+Latitude value in decimal 
+Degrees. Minimum  6 
+Decimal Places 
+0.000000 
+14 Latitude Dir Latitude Direction N 
+15 Longitude 
+Longitude  value in decimal 
+Degrees. Minimum  6 
+Decimal Places 
+0.000000 
+16 Longitude  Dir Longitude  Direction E 
+17 Speed 
+Vehicle speed is calculated 
+by 
+GPS module in km/hrs. 
+(Up to One Decimal Value) 
+0.0 
+18 Heading 
+Course over the ground  in 
+degrees 
+0 
+19 No of Satellites 
+Number of satellites 
+available 
+for fix 
+0 
+20 Altitude 
+The altitude of the device 
+in meters 
+0.0 
+21 PDOP 
+Positional  dilution of 
+precision 
+0.00 
+22 HDOP 
+Horizontal  dilution of 
+precision 
+0.00 
+23 
+Network 
+Operator Name 
+Name of Network  Operator Airtel 
+24 Ignition Status 
+1= Ignition On, 0 = Ignition 
+Off 
+1 
+25 
+Main Power 
+Status 
+0=Vehicle Battery 
+disconnected 
+1 
+
+ 
+21 
+ 
+TS101 Plus – 4G Yantra Protocol Manual 1.0v 
+Document Classif ication: Restricted 
+Version1.0 
+Doc. Number: 
+IIQMS/DOC/PMO/PM/4G/001 
+Date  Prepared: 
+01/02/2024 
+Note: This inf ormation is property of  
+iTriangle  Inf otech Private Limited 
+Prepared  By: PMO                   
+Verif ied By: PDO 
+Approved By: Kiran AR 
+1=Vehicle Battery 
+reconnected 
+26 
+Main Input 
+Voltage 
+Indicator showing  source 
+Voltage in Volts. 
+(Up to One Decimal Value) 
+12.2 
+27 
+Internal Battery 
+Voltage 
+Indicates the level of 
+battery 
+Charge Remains. 
+(Up to One Decimal Value) 
+3.9 
+28 
+Emergency 
+Status 
+1= ON, 0 = OFF 0 
+29 
+Tamper Alert 
+(Optional) 
+C = Cover Closed 
+O= Cover Opened 
+O 
+30 
+GSM Signal 
+Strength 
+Value Ranging from 0 – 31 28 
+31 MCC (Serving) 
+Mobile Country Code of 
+serving Cell 
+404 
+32 MNC(Serving) 
+Mobile Network Code of 
+serving cell 
+45 
+33 LAC (Serving) 
+Location Area Code of 
+serving Cell 
+215c 
+34 Cell ID (Serving) 
+GSM Cell ID of the serving 
+cell 
+c54b648 
+35 
+GSM Signal 
+Strength 
+(NMR 1
+st
+ Neighbor) 
+Signal Strength of 1
+st
+ 
+Neighbor 
+0 
+36 
+LAC 
+(NMR 1stNeighbor) 
+LAC of 1
+st
+ Neighbor 0 
+37 
+Cell ID 
+(NMR 1stNeighbor) 
+Cell ID of 1
+st
+ Neighbor cell 0 
+38 
+GSM Signal 
+Strength 
+(NMR 2ndNeighbor) 
+Signal Strength of 2
+nd
+ 
+Neighbor 
+0 
+39 
+LAC 
+(NMR 2ndNeighbor) 
+LAC of 2
+nd
+ Neighbor 0 
+40 
+Cell ID 
+(NMR 2ndNeighbor) 
+Cell ID of 2
+nd
+Neighbor cell 0 
+41 
+GSM Signal 
+Strength 
+(NMR 3rdNeighbor) 
+Signal Strength of 3
+rd
+ 
+Neighbor 
+0 
+42 
+LAC 
+(NMR 3
+rd
+ Neighbor) 
+LAC of 3
+rd
+ Neighbor 0 
+
+ 
+22 
+ 
+TS101 Plus – 4G Yantra Protocol Manual 1.0v 
+Document Classif ication: Restricted 
+Version1.0 
+Doc. Number: 
+IIQMS/DOC/PMO/PM/4G/001 
+Date  Prepared: 
+01/02/2024 
+Note: This inf ormation is property of  
+iTriangle  Inf otech Private Limited 
+Prepared  By: PMO                   
+Verif ied By: PDO 
+Approved By: Kiran AR 
+43 
+Cell ID 
+(NMR 3
+rd
+ Neighbor) 
+Cell ID of 3
+rd
+ Neighbor cell 0 
+44 
+GSM Signal 
+Strength 
+(NMR 4
+th
+ Neighbor) 
+Signal Strength of 4
+th
+ 
+Neighbor 
+0 
+45 
+LAC 
+(NMR 4
+th
+ Neighbor) 
+LAC of 4
+th
+ Neighbor 0 
+46 
+Cell ID 
+(NMR 4
+th
+ Neighbor) 
+Cell ID of 4
+th
+ Neighbor cell 0 
+47 
+Digital Input 
+Status 
+4 digital input status 
+DIN1, DIN2(Panic),  DIN3, 
+DIN4 (0=OFF;1=ON) 
+0000 
+48 
+Digital Output 
+Status 
+4 external  digital outputs 
+Status DOUT1, DOUT2, 
+DOUT3, DOUT4 
+(0=Disable, 1=Enable) 
+0100 
+49 Frame Number 
+Sequence  Number of the 
+Messages  (000001 to 
+999999) 
+001096 
+50 Analog Input 1 
+Analog input 1 voltage in 
+volts 
+0.000 
+51 Analog Input 2 
+Analog input 2 voltage in 
+volts 
+0.000 
+53 Delta Distance Distance in meters 0 
+54 OTA Response 
+Information  of the 
+command 
+Execution. 
+() 
+55 UART Status  Bit 1 
+56 3
+rd
+ Party Serial Data Payload VISHWA 
+57 End Character Indicated End of the frame * 
+58 Checksum 
+Ensures No error in 
+transmission. 
+(optimal) 
+03 
+ 
+9.4 RS485  
+Recommended  Standard  485,  is  a  standard  defining  the  electrical  characteristics  of  a  digital 
+signaling circuit for serial communication. It is widely used for communication  over long distances 
+in  various  applications  such  as  industrial  automation,  process control,  and  data  acquisition. 
+RS485  supports  multiple  devices  on  a  single  communication  line,  making  it  suitable  for  multi-
+point and multi-drop  configurations. 
+
+ 
+23 
+ 
+TS101 Plus – 4G Yantra Protocol Manual 1.0v 
+Document Classif ication: Restricted 
+Version1.0 
+Doc. Number: 
+IIQMS/DOC/PMO/PM/4G/001 
+Date  Prepared: 
+01/02/2024 
+Note: This inf ormation is property of  
+iTriangle  Inf otech Private Limited 
+Prepared  By: PMO                   
+Verif ied By: PDO 
+Approved By: Kiran AR 
+9.5 RS485 Packet Format 
+RS485 supports  a multi-point  configuration,  meaning that multiple  devices can be connected  on 
+the  same  communication  line.  Each  device  has  a  unique  address,  and  communication  can  be 
+initiated by any device on the network. This makes RS485 suitable for multidrop networks where 
+multiple devices share the same communication  line. 
+9.5.1 Sample Packet of UART Data 
+$Header,iTriangle,BH01_A03_0131.1_Test,NR,1029,L,861557068969267,KA1234,1,0102202
+4,124405,12.976396,N,77.549591,E,0.0,136,6,892.0,2.36,1.25,Airtel,1,1,12.3,3.9,0,O,22,404,4
+5,2044,2bf620c,161,2044,12d2a,0,0,0,0,0,0,0,0,0,0000,0100,000013,0.000,0.000,0.000,(),983
+04,1,3E01061C72068D09D3*33 
+Primary  Server Data Format 
+SL.No Field Description Sample Data 
+1 Start Character Start character $ 
+2 Header The header of the packet Header 
+3 Vendor ID 
+Vendor identification 
+header 
+iTriangle1 
+4 
+Firmware 
+Version 
+Actual Firmware Version  of 
+the device 
+BH01_A03_0131.1_Test 
+5 Packet Type 
+Specify the packet type 
+NR   = Normal 
+EA   = Emergency Alert 
+TA   = Tamper Alert 
+HP   = Health Packet 
+IN    = Ignition On 
+IF     = Ignition Off 
+BD   = Vehicle Battery 
+Disconnect 
+BR   = Vehicle Battery 
+Reconnect 
+BL   = Internal Battery Low 
+HB  = Harsh Braking 
+HA  = Harsh Acceleration 
+RT  =  Rash Turning 
+DT  = Emergency Tamper 
+OA  = Over the Air 
+Command 
+NR 
+6 Message ID 
+Refer, to Message-ID 
+Table 
+1029 
+7 Packet Status L=Live or H= History L 
+8 IMEI 
+The 15-digit unique IMEI 
+number of the device 
+861557068969267 
+9 Vehicle Reg. No 
+Mapped vehicle 
+registration  Number 
+KA1234 
+
+ 
+24 
+ 
+TS101 Plus – 4G Yantra Protocol Manual 1.0v 
+Document Classif ication: Restricted 
+Version1.0 
+Doc. Number: 
+IIQMS/DOC/PMO/PM/4G/001 
+Date  Prepared: 
+01/02/2024 
+Note: This inf ormation is property of  
+iTriangle  Inf otech Private Limited 
+Prepared  By: PMO                   
+Verif ied By: PDO 
+Approved By: Kiran AR 
+10 GPS Fix 
+1 = GPS fix Valid 
+0 = GPS fix Invalid 
+0 
+11 Date 
+Date value per GPS date 
+time 
+(DDMMYYYY) 
+01022024 
+12 Time 
+Time value as per GPS 
+date time 
+In UTC format (HHMMSS) 
+124405 
+13 Latitude 
+Latitude value in decimal 
+Degrees. Minimum  6 
+Decimal Places 
+12.976396 
+14 Latitude Dir Latitude Direction N 
+15 Longitude 
+Longitude  value in decimal 
+Degrees. Minimum  6 
+Decimal Places 
+77.549591 
+16 Longitude  Dir Longitude  Direction E 
+17 Speed 
+Vehicle speed is calculated 
+by 
+GPS module in km/hrs. 
+(Up to One Decimal Value) 
+0.0 
+18 Heading 
+Course over the ground  in 
+degrees 
+136 
+19 No of Satellites 
+Number of satellites 
+available 
+for fix 
+6 
+20 Altitude 
+The altitude of the device 
+in meters 
+892.0 
+21 PDOP 
+Positional  dilution of 
+precision 
+2.36 
+22 HDOP 
+Horizontal  dilution of 
+precision 
+1.25 
+23 
+Network 
+Operator Name 
+Name of Network  Operator Airtel 
+24 Ignition Status 
+1= Ignition On, 0 = Ignition 
+Off 
+1 
+25 
+Main Power 
+Status 
+0=Vehicle Battery 
+disconnected 
+1=Vehicle Battery 
+reconnected 
+1 
+26 
+Main Input 
+Voltage 
+Indicator showing  source 
+Voltage in Volts. 
+(Up to One Decimal Value) 
+12.3 
+27 
+Internal Battery 
+Voltage 
+Indicates the level of 
+battery 
+Charge Remains. 
+(Up to One Decimal Value) 
+3.9 
+
+ 
+25 
+ 
+TS101 Plus – 4G Yantra Protocol Manual 1.0v 
+Document Classif ication: Restricted 
+Version1.0 
+Doc. Number: 
+IIQMS/DOC/PMO/PM/4G/001 
+Date  Prepared: 
+01/02/2024 
+Note: This inf ormation is property of  
+iTriangle  Inf otech Private Limited 
+Prepared  By: PMO                   
+Verif ied By: PDO 
+Approved By: Kiran AR 
+28 
+Emergency 
+Status 
+1= ON, 0 = OFF 0 
+29 
+Tamper Alert 
+(Optional) 
+C = Cover Closed 
+O= Cover Opened 
+O 
+30 
+GSM Signal 
+Strength 
+Value Ranging from 0 – 31 22 
+31 MCC (Serving) 
+Mobile Country Code of 
+serving Cell 
+404 
+32 MNC(Serving) 
+Mobile Network Code of 
+serving cell 
+45 
+33 LAC (Serving) 
+Location Area Code of 
+serving Cell 
+2044 
+34 Cell ID (Serving) 
+GSM Cell ID of the serving 
+cell 
+2bf620c 
+35 
+GSM Signal 
+Strength 
+(NMR 1
+st
+ Neighbor) 
+Signal Strength of 1
+st
+ 
+Neighbor 
+161 
+36 
+LAC 
+(NMR 1stNeighbor) 
+LAC of 1
+st
+ Neighbor 2044 
+37 
+Cell ID 
+(NMR 1stNeighbor) 
+Cell ID of 1
+st
+ Neighbor cell 12d2a 
+38 
+GSM Signal 
+Strength 
+(NMR 2ndNeighbor) 
+Signal Strength of 2
+nd
+ 
+Neighbor 
+0 
+39 
+LAC 
+(NMR 2ndNeighbor) 
+LAC of 2
+nd
+ Neighbor 0 
+40 
+Cell ID 
+(NMR 2ndNeighbor) 
+Cell ID of 2
+nd
+Neighbor cell 0 
+41 
+GSM Signal 
+Strength 
+(NMR 3rdNeighbor) 
+Signal Strength of 3
+rd
+ 
+Neighbor 
+0 
+42 
+LAC 
+(NMR 3
+rd
+ Neighbor) 
+LAC of 3
+rd
+ Neighbor 0 
+43 
+Cell ID 
+(NMR 3
+rd
+ Neighbor) 
+Cell ID of 3
+rd
+ Neighbor  cell 0 
+44 
+GSM Signal 
+Strength 
+(NMR 4
+th
+ Neighbor) 
+Signal Strength of 4
+th
+ 
+Neighbor 
+0 
+45 
+LAC 
+(NMR 4
+th
+ Neighbor) 
+LAC of 4
+th
+ Neighbor 0 
+46 
+Cell ID 
+(NMR 4
+th
+ Neighbor) 
+Cell ID of 4
+th
+ Neighbor  cell 0 
+
+ 
+26 
+ 
+TS101 Plus – 4G Yantra Protocol Manual 1.0v 
+Document Classif ication: Restricted 
+Version1.0 
+Doc. Number: 
+IIQMS/DOC/PMO/PM/4G/001 
+Date  Prepared: 
+01/02/2024 
+Note: This inf ormation is property of  
+iTriangle  Inf otech Private Limited 
+Prepared  By: PMO                   
+Verif ied By: PDO 
+Approved By: Kiran AR 
+47 
+Digital Input 
+Status 
+4 digital input status 
+DIN1, DIN2(Panic),  DIN3, 
+DIN4 (0=OFF;1=ON) 
+0000 
+48 
+Digital Output 
+Status 
+4 external  digital outputs 
+Status DOUT1, DOUT2, 
+DOUT3, DOUT4 
+(0=Disable, 1=Enable) 
+0100 
+49 Frame Number 
+Sequence  Number of the 
+Messages  (000001 to 
+999999) 
+000013 
+50 Analog Input 1 
+Analog input 1 voltage in 
+volts 
+0.000 
+51 Analog Input 2 
+Analog input 2 voltage in 
+volts 
+0.000 
+53 Delta Distance Distance in meters 0.000 
+54 OTA Response 
+Information  of the 
+command 
+Execution. 
+() 
+55 RS485 Status  Flag 98304 
+56 RS485 Bit  Bit 1 
+57 Fuel Sensor RS485 Data Payload 3E01061C72068D09D3 
+58 End Character Indicated End of the frame * 
+59 Checksum 
+Ensures No error in 
+transmission. 
+(optimal) 
+33 
+ 
+9.6 CAN Data Packet Format 
+This section provides a comprehensive  overview of the CAN-related packet types, their recording 
+mechanisms,  and  the dynamic configuration  options available  for specifying  intervals  and event 
+triggers.  The  integration  with  vehicle ECU  parameters and  continuous  monitoring measures 
+contribute  to a robust and reliable CAN data. 
+9.6.1 CAN Data Sample Packet 
+$Header,iTriangle1,010013,NR,2000,L,868886061660604,KA1234,1,03032023,000001,28.601
+019,N,76.920967,E,38.0,80,26,196.0,1.10,0.52,Airtel,1,1,25.9,3.9,0,C,20,404,10,8ff,94ef535,00
+00,0000,000626,0.000,0.000,10,00,2|18FF0027:00387F001CFFFF00|18FEF117:FF001AFFFF
+FFFFFF|18FF5117:86D206F0FFFFFFFF|18FE4E21:F2FFFFFFFFFFFFFF|18FEF111:000000
+0000000000|18FFA011:0000000000000000|18FF0032:0000000000000000|18FFA111:000000
+0000000000|18FEC111:0000000000000000*3A 
+ 
+ 
+
+ 
+27 
+ 
+TS101 Plus – 4G Yantra Protocol Manual 1.0v 
+Document Classif ication: Restricted 
+Version1.0 
+Doc. Number: 
+IIQMS/DOC/PMO/PM/4G/001 
+Date  Prepared: 
+01/02/2024 
+Note: This inf ormation is property of  
+iTriangle  Inf otech Private Limited 
+Prepared  By: PMO                   
+Verif ied By: PDO 
+Approved By: Kiran AR 
+CAN Filter Message Format 
+Sl. 
+No 
+Field Description Sample Data 
+1 Start Character Start character $ 
+2 Header The header of the packet Header 
+3 Vendor ID Vendor identification  header iTriangle1 
+4 
+Firmware 
+Version 
+Actual Firmware Version  of the 
+device 
+010013 
+5 Packet Type 
+Specify the packet type. 
+NR   = Normal 
+NR 
+6 Message ID Always 2000 for CAN Related  Data 2000 
+7 Packet Status L=Live or H= History L 
+8 IMEI 
+The 15-digit unique IMEI number of 
+the device 
+868886061660604 
+9 Vehicle Reg. No Mapped vehicle registration  number KA1234 
+10 GPS Fix 
+1 = GPS fix Valid 
+0 = GPS fix Invalid 
+1 
+11 Date 
+Date value per GPS date time 
+(DDMMYYYY) 
+03032023 
+12 Time 
+Time value as per GPS date time 
+In UTC format (HHMMSS) 
+000001 
+13 Latitude 
+Latitude value in decimal Degrees. 
+Minimum 6 Decimal Places 
+28.601019 
+14 Latitude Dir Latitude Direction N 
+15 Longitude 
+Longitude  value in decimal Degrees. 
+Minimum 6 Decimal Places 
+76.920967 
+16 Longitude  Dir Longitude  Direction E 
+17 Speed 
+Vehicle speed is calculated by 
+GPS module in km/hrs. 
+(Up to One Decimal Value) 
+38.0 
+
+ 
+28 
+ 
+TS101 Plus – 4G Yantra Protocol Manual 1.0v 
+Document Classif ication: Restricted 
+Version1.0 
+Doc. Number: 
+IIQMS/DOC/PMO/PM/4G/001 
+Date  Prepared: 
+01/02/2024 
+Note: This inf ormation is property of  
+iTriangle  Inf otech Private Limited 
+Prepared  By: PMO                   
+Verif ied By: PDO 
+Approved By: Kiran AR 
+18 Heading Course over the ground  in degrees 80 
+19 No of Satellites 
+Number of satellites available 
+for fix 
+26 
+20 Altitude The altitude of the device in meters 196.0 
+21 PDOP Positional  dilution of precision 1.10 
+22 HDOP Horizontal  dilution of precision 0.52 
+23 
+Network Operator 
+Name 
+Name of Network  Operator Airtel 
+24 Ignition Status 1= Ignition On, 0 = Ignition Off 1 
+25 
+Main Power 
+Status 
+0=Vehicle Battery disconnected 
+1=Vehicle Battery reconnected 
+1 
+26 
+Main Input 
+Voltage 
+Indicator showing  source 
+Voltage in Volts. 
+(Up to One Decimal Value) 
+25.9 
+27 
+Internal Battery 
+Voltage 
+Indicates the level of battery 
+Charge Remains. 
+(Up to One Decimal Value) 
+3.9 
+28 
+Emergency 
+Status 
+1= ON, 0 = OFF 0 
+29 
+Tamper Alert 
+(Optional) 
+C = Cover Closed 
+O= Cover Opened 
+C 
+30 
+GSM Signal 
+Strength 
+Value Ranging from 0 – 31 20 
+31 MCC (Serving) 
+Mobile Country Code of serving 
+Cell 
+404 
+32 MNC(Serving) 
+Mobile Network Code of 
+serving cell 
+10 
+33 LAC (Serving) 
+Location Area Code of serving 
+Cell 
+8ff 
+34 Cell ID (Serving) GSM Cell ID of serving cell 94ef535 
+35 
+Digital Input 
+Status 
+     4 digital input status 
+DIN1, DIN2(Panic),  DIN3, DIN4 
+(0=OFF;1=ON) 
+0000 
+36 
+Digital Output 
+Status 
+4 external  outputs 
+Status DOUT1, DOUT2,  DOUT3, 
+DOUT4 
+(0=Disable, 1=Enable) 
+0000 
+37 Frame Number 
+Sequence  Number of the 
+Messages  (000001 to 999999) 
+000626 
+38 Analog Input 1 Analog input 1 voltage in volts 0.000 
+39 Analog Input 2 Analog input 2 voltage in volts 0.000 
+
+ 
+29 
+ 
+TS101 Plus – 4G Yantra Protocol Manual 1.0v 
+Document Classif ication: Restricted 
+Version1.0 
+Doc. Number: 
+IIQMS/DOC/PMO/PM/4G/001 
+Date  Prepared: 
+01/02/2024 
+Note: This inf ormation is property of  
+iTriangle  Inf otech Private Limited 
+Prepared  By: PMO                   
+Verif ied By: PDO 
+Approved By: Kiran AR 
+40 Delta Distance Distance in meters 10 
+41 Data Type Indicator 
+Data Type Indicator  
+00: Normal Data 
+01: Event Data 
+00 
+42 CAN Data 
+OBD RAW Data / CAN Filtering  Data 
+/ VIN / DTC / CAN Pattern Matching 
+ 
+2 
+ 
+End Character Indicated End of the frame * 
+35 Checksum 
+Ensures No error in transmission. 
+(optimal) 
+3A 
+ 
+9.7 CAN Filtering Data 
+Below section provides  the details of the CAN Data of CAN filtering packet format.  
+a. In CAN filtering data both CAN ID and Data will be sent in ASCII converted HEX format. 
+b. The number of CAN Id and Value pairs in this section of the data will be purely based on the 
+number of CAN Ids that are enabled in the configuration. 
+c. Each CAN data in this packet format is separated by “|”. 
+d. EACH CAN ID and Value will be separated by “:”. 
+9.7.1 Sample Packet 
+2|18FF0027:00387F001CFFFF00|18FEF117:FF001AFFFFFFFFFF|18FF5117:86D206F0FFFF
+FFFF|18FE4E21:F2FFFFFFFFFFFFFF|18FEF111:0000000000000000|18FFA011:0000000000
+000000|18FF0032:0000000000000000|18FFA111:0000000000000000|18FEC111:0000000000
+000000*3A 
+CAN Filtering Message Format 
+Sl No Field Description Sample Data 
+1 CAN Type Identifier 
+01: OBD 
+02: CAN Filtering 
+03: OBD Decoded 
+04: Standard SPN 
+05: Custom SPN 
+06: VIN 
+07: DTC 
+08: Pattern Matching 
+09: PGN Filtering 
+10: BAM 
+11:DM Start 
+12:DM Interval 
+13:DM End 
+2 
+2 Event Key CAN ID 18FF0027 
+3 Event Value CAN Value 00387F001CFFFF00 
+
+ 
+30 
+ 
+TS101 Plus – 4G Yantra Protocol Manual 1.0v 
+Document Classif ication: Restricted 
+Version1.0 
+Doc. Number: 
+IIQMS/DOC/PMO/PM/4G/001 
+Date  Prepared: 
+01/02/2024 
+Note: This inf ormation is property of  
+iTriangle  Inf otech Private Limited 
+Prepared  By: PMO                   
+Verif ied By: PDO 
+Approved By: Kiran AR 
+4 1
+st
+ Enabled  CAN ID CAN ID 18FEF117 
+5 
+1
+st
+ Enabled  CAN 
+Value 
+CAN Value FF001AFFFFFFFFFF 
+6 2
+nd
+ Enabled CAN ID CAN ID 18FF5117 
+7 
+2
+nd
+ Enabled CAN 
+Value 
+CAN Value 86D206F0FFFFFFFF 
+8 3
+RD
+ Enabled CAN ID CAN ID 18FE4E21 
+9 
+3
+RD
+ Enabled CAN 
+Value 
+CAN Value F2FFFFFFFFFFFFFF 
+10 4
+TH
+Enabled CAN ID CAN ID 18FEF111 
+11 
+4
+TH
+Enabled CAN 
+Value 
+CAN Value 0000000000000000 
+12 5
+TH
+Enabled CAN ID CAN ID 18FFA011 
+13 
+5
+TH
+Enabled CAN 
+Value 
+CAN Value 0000000000000000 
+14 6
+TH
+Enabled CAN ID CAN ID 18FF0032 
+15 
+6
+TH
+Enabled CAN 
+Value 
+CAN Value 0000000000000000 
+16 6
+TH
+Enabled CAN ID CAN ID 18FFA111 
+17 
+6
+TH
+Enabled CAN 
+Value 
+CAN Value 0000000000000000 
+N-1th 
+Data 
+64
+th
+ CAN ID CAN ID 18FEC111 
+Nth Data 64
+th
+ CAN Value CAN Value 0000000000000000 
+ 
+9.8 OBD RAW Data 
+This  section  provides  a  comprehensive   overview  of  the  OBD-related  packet  details,  their 
+recording  mechanisms,  and  the dynamic  configuration  options  available  for specifying  intervals 
+and  event  triggers.  The  integration  with  the  vehicle's  OBD  parameters,  continuous  monitoring, 
+and security measures contribute  to a robust and reliable  OBD data recording  system. 
+9.8.1 Sample Packet 
+$Header,iTriangle1,010013,NR,2000,L,868886061660604,KA1234,1,03032023,000001,28.601
+019,N,76.920967,E,38.0,80,26,196.0,1.10,0.52,Airtel,1,1,25.9,3.9,0,C,20,404,10,8ff,94ef535,00
+00,0000,000626,0.000,0.000,10,00,01|00:00|01FD:|0101:FFFFFFFF|0104:FFFFFFFF|0105:FF
+FFFFFF|010B:FFFFFFFF|010C:FFFFFFFF|010D:FFFFFFFF|010F:FFFFFFFF|0110:FFFFFFF
+F|0111:FFFFFFFF|011C:FFFFFFFF|0121:FFFFFFFF|0123:FFFFFFFF|0130:FFFFFFFF|0131:
+FFFFFFFF|0101:FFFFFFFF|0104:FFFFFFFF|0105:FFFFFFFF|010B:FFFFFFFF|010C:FFFFFF
+FF|010D:FFFFFFFF|010F:FFFFFFFF|0110:FFFFFFFF|0111:FFFFFFFF|011C:FFFFFFFF|0121
+
+ 
+31 
+ 
+TS101 Plus – 4G Yantra Protocol Manual 1.0v 
+Document Classif ication: Restricted 
+Version1.0 
+Doc. Number: 
+IIQMS/DOC/PMO/PM/4G/001 
+Date  Prepared: 
+01/02/2024 
+Note: This inf ormation is property of  
+iTriangle  Inf otech Private Limited 
+Prepared  By: PMO                   
+Verif ied By: PDO 
+Approved By: Kiran AR 
+:FFFFFFFF|0123:FFFFFFFF|0130:FFFFFFFF|0131:FFFFFFFF|010B:FFFFFFFF|0121:FFFFFF
+FF|0123:FFFFFFFF|0130:FFFFFFFF *33 
+- Below section provides  the details of the CAN Data of OBD frame format.  
+ 
+a. In OBD data both PID and Data will be sent in ASCII converted HEX format. 
+b. The number of PID and Value pairs in this section of the data will be purely based on the 
+number of PIDs that are enabled in the configuration. 
+c. Each OBD data in this packet format is separated by “|”. 
+d. Each PID and Value will be separated by “:”. 
+OBD RAW Data Format 
+SL.No Field Description Sample Data 
+1 CAN Type Identifier 
+01: OBDII 
+02: CAN Filtering 
+03: OBD Decoded 
+04: Standard SPN 
+05: Custom SPN 
+06: VIN 
+07: DTC 
+08: Pattern Matching 
+09: PGN Filtering 
+10: BAM 
+11:DM Start 
+12:DM Interval 
+13:DM End 
+01 
+2 Event Data  00:00 
+3 Event Key PID 01FD 
+4 Event Value PID Value 
+ 
+5 1
+st
+ Enabled  PID PID 0101 
+6 1
+st
+ Enabled  PID Value PID Value FFFFFFFF 
+5 2
+nd
+ Enabled PID PID 0104 
+6 2
+nd
+ Enabled PID Value PID Value FFFFFFFF 
+7 3
+rd
+ Enabled PID PID 0105 
+8 3
+rd
+ Enabled PID Value PID Value FFFFFFFF 
+9 4
+th
+ Enabled PID PID 010B 
+10 4
+th
+ Enabled PID Value PID Value FFFFFFFF 
+11 5
+th
+Enabled PID PID 010C 
+12 5
+th
+Enabled PID Value PID Value FFFFFFFF 
+
+ 
+32 
+ 
+TS101 Plus – 4G Yantra Protocol Manual 1.0v 
+Document Classif ication: Restricted 
+Version1.0 
+Doc. Number: 
+IIQMS/DOC/PMO/PM/4G/001 
+Date  Prepared: 
+01/02/2024 
+Note: This inf ormation is property of  
+iTriangle  Inf otech Private Limited 
+Prepared  By: PMO                   
+Verif ied By: PDO 
+Approved By: Kiran AR 
+13 6
+th
+Enabled PID PID 010D 
+14 6
+th
+Enabled PID Value PID Value FFFFFFFF 
+15 7
+TH
+Enabled PID PID 010F 
+16 7
+th
+Enabled PID Value PID Value FFFFFFFF 
+17 8
+TH
+Enabled PID PID 0110 
+18 8
+TH
+Enabled PID Value PID Value FFFFFFFF 
+19 9
+TH
+Enabled PID PID 0111 
+20 9
+TH
+Enabled PID Value PID Value FFFFFFFF 
+21 10
+TH
+Enabled PID PID 011C 
+22 10
+TH
+Enabled PID Value PID Value FFFFFFFF 
+23 11
+TH
+Enabled PID PID 0121 
+24 11
+TH
+Enabled PID Value PID Value FFFFFFFF 
+25 12
+TH
+Enabled PID PID 0123 
+26 12
+TH
+Enabled PID Value PID Value FFFFFFFF 
+27 13
+TH
+Enabled PID PID 0130 
+28 13
+TH
+Enabled PID Value PID Value FFFFFFFF 
+29 14
+th
+ Enabled  PID PID 0101 
+30 14
+th
+ Enabled  PID Value PID Value FFFFFFFF 
+31 15
+th
+ Enabled  PID PID 0104 
+32 15
+th
+ Enabled  PID Value PID Value FFFFFFFF 
+33 16
+th
+ Enabled  PID PID 0105 
+34 16
+th
+ Enabled  PID Value PID Value FFFFFFFF 
+35 17
+th
+ Enabled  PID PID 010B 
+36 17
+th
+ Enabled  PID Value PID Value FFFFFFFF 
+37 18
+th
+ Enabled  PID PID 010C 
+38 18
+th
+ Enabled  PID Value PID Value FFFFFFFF 
+39 19
+th
+ Enabled  PID PID 010D 
+40 19
+th
+ Enabled  PID Value PID Value FFFFFFFF 
+41 20
+th
+ Enabled  PID PID 010F 
+42 20
+th
+ Enabled  PID Value PID Value FFFFFFFF 
+43 21
+st
+ Enabled PID PID 0110 
+44 21
+st
+ Enabled PID Value PID Value FFFFFFFF 
+
+ 
+33 
+ 
+TS101 Plus – 4G Yantra Protocol Manual 1.0v 
+Document Classif ication: Restricted 
+Version1.0 
+Doc. Number: 
+IIQMS/DOC/PMO/PM/4G/001 
+Date  Prepared: 
+01/02/2024 
+Note: This inf ormation is property of  
+iTriangle  Inf otech Private Limited 
+Prepared  By: PMO                   
+Verif ied By: PDO 
+Approved By: Kiran AR 
+45 22
+nd
+ Enabled PID PID 0111 
+46 22
+nd
+ Enabled PID Value PID Value FFFFFFFF 
+47 23
+rd
+ Enabled PID PID 011C 
+48 23
+rd
+ Enabled PID Value PID Value FFFFFFFF 
+49 24
+th
+ Enabled  PID PID 0121 
+50 24
+th
+ Enabled  PID Value PID Value FFFFFFFF 
+51 25
+th
+ Enabled  PID PID 0123 
+52 25
+th
+ Enabled  PID Value PID Value FFFFFFFF 
+53 26
+th
+ Enabled  PID PID 0130 
+54 26
+th
+ Enabled  PID Value PID Value FFFFFFFF 
+55 27
+th
+ Enabled  PID PID 0121 
+56 27
+th
+ Enabled  PID Value PID Value FFFFFFFF 
+57 28
+th
+ Enabled  PID PID 0123 
+58 28
+th
+ Enabled  PID Value PID Value FFFFFFFF 
+59 29
+th
+ Enabled  PID PID 0130 
+60 29
+th
+ Enabled  PID Value PID Value FFFFFFFF 
+N-1th 
+Data 
+Nth PID ID PID 0131 
+Nth 
+Data 
+Nth PID Value PID Value FFFFFFFF 
+ 
+9.9 VIN Packet Format 
+By  having  a  dedicated  packet  format  for  CAN  Data  of  VIN,  device  can  efficiently  capture  and 
+transmit essential vehicle identification information to the server. The integration with the vehicle's 
+CAN  bus,  continuous  monitoring,  and  security  measures  contribute  to  a  reliable  and  secure 
+method of obtaining and transmitting  VIN data to server. 
+9.9.1 Sample Packet 
+$Header,iTriangle1,010013,NR,2000,L,868886061660604,KA1234,1,03032023,000001,28.601
+019,N,76.920967,E,38.0,80,26,196.0,1.10,0.52,Airtel,1,1,25.9,3.9,0,C,20,404,10,8ff,94ef535,00
+00,0000,000626,0.000,0.000,10,00,06|VIN:1A1JC5444R7252367*58 
+Below section provides  the details of the CAN Data of VIN packet format. 
+a. In VIN packet VIN data will be in ASCII format. 
+b. There will be only one parameter  in the VIN packet. 
+c. VIN and Value is separated by “:”. 
+VIN Data Packet Format 
+SL.No Field Description Sample Data 
+
+ 
+34 
+ 
+TS101 Plus – 4G Yantra Protocol Manual 1.0v 
+Document Classif ication: Restricted 
+Version1.0 
+Doc. Number: 
+IIQMS/DOC/PMO/PM/4G/001 
+Date  Prepared: 
+01/02/2024 
+Note: This inf ormation is property of  
+iTriangle  Inf otech Private Limited 
+Prepared  By: PMO                   
+Verif ied By: PDO 
+Approved By: Kiran AR 
+1 CAN Type Identifier 
+01: OBD 
+02: CAN Filtering 
+03: OBD Decoded 
+04: Standard SPN 
+05: Custom SPN 
+06: VIN 
+07: DTC 
+08: Pattern Matching 
+09: PGN Filtering 
+10: BAM 
+11:DM Start 
+12:DM Interval 
+13:DM End 
+06 
+2 VIN VIN VIN 
+3 VIN Value VIN Data 1A1JC5444R7252367 
+ 
+9.10 DTC Packet Format 
+By  having  a  dedicated  packet  format  for  CAN  Data  of  DTC,  device  can  efficiently  capture  and 
+transmit  essential  diagnostic  trouble  code  information  to  the  server.  The  integration  with  the 
+vehicle's  CAN  bus,  continuous  monitoring,  and  security  measures  contribute  to  a  reliable  and 
+secure method of obtaining and transmitting  DTC data to server. 
+9.10.1 DTC Sample Packet 
+$Header,iTriangle1,010013,NR,2000,L,868886061660604,KA1234,1,03032023,000001,28.601
+019,N,76.920967,E,38.0,80,26,196.0,1.10,0.52,Airtel,1,1,25.9,3.9,0,C,20,404,10,8ff,94ef535,00
+00,0000,000626,0.000,0.000,10,00,07|0113|0114|0115*1B 
+Below points provides the details of the CAN Data of DTC packet format. 
+a. In DTC packet DTC data will be in ASCII converted  Hex format. 
+b. Individual DTCs are separated by “|”. 
+c. There is no separate DTC Identifier for each DTC. 
+DTC Data Format 
+SL.No Field Description Sample Data 
+1 CAN Type Identifier 
+01: OBD 
+02: CAN Filtering 
+03: OBD Decoded 
+04: Standard SPN 
+05: Custom SPN 
+06: VIN 
+07: DTC 
+08: Pattern Matching 
+09: PGN Filtering 
+10: BAM 
+11:DM Start 
+12:DM Interval 
+07 
+
+ 
+35 
+ 
+TS101 Plus – 4G Yantra Protocol Manual 1.0v 
+Document Classif ication: Restricted 
+Version1.0 
+Doc. Number: 
+IIQMS/DOC/PMO/PM/4G/001 
+Date  Prepared: 
+01/02/2024 
+Note: This inf ormation is property of  
+iTriangle  Inf otech Private Limited 
+Prepared  By: PMO                   
+Verif ied By: PDO 
+Approved By: Kiran AR 
+13:DM End 
+2 DTC1 DTC1 0113 
+3 DTC2 DTC2 0114 
+N DTCN DTCN 0115 
+ 
+ 
+  
+
+ 
+36 
+ 
+TS101 Plus – 4G Yantra Protocol Manual 1.0v 
+Document Classif ication: Restricted 
+Version1.0 
+Doc. Number: 
+IIQMS/DOC/PMO/PM/4G/001 
+Date  Prepared: 
+01/02/2024 
+Note: This inf ormation is property of  
+iTriangle  Inf otech Private Limited 
+Prepared  By: PMO                   
+Verif ied By: PDO 
+Approved By: Kiran AR 
+10  General Diagnostic Commands 
+By  implementing  a  diagnostic  command  for  general  status  information  over  SMS,  users  can 
+easily retrieve details about the device's  health and performance.  The command's  simplicity and 
+the comprehensive  of the status report contribute to effective device troubleshooting. 
+10.1 General Device Diagnostic Information 
+By  providing  a  diagnostic  command  option  for  retrieving  general  device  information,  users  can 
+quickly  assess the  health and configuration  of the device.  This feature  is very useful  for system 
+administrators  and users seeking insights into the device's  overall status and settings. 
+- Diag-100 
+Syntax:  
+$<random_number>,<IMEI>,<password>,diag,100* 
+Example:  
+$123,860906040263136,aquila123,diag,100*  
+ 
+Response: 
+$diag|861557068969267|100|iTriangle|BH4GIC03_010022|taisysnet|210.7.74.189|5555|210.7.
+74.185|5551|210.7.74.187|6666|0|4|0.000000|0|+919606982913|10|60|5|60|4|4|4*71 
+- Diag-101 
+Syntax:  
+$<random_number>,<IMEI>,<password>,diag,101* 
+Example:  
+$123,861557068969267,aquila123,diag,101* 
+ 
+Response: 
+$diag|861557068969267|101|http://maps.google.com/maps?q=12.976374,77.549721*49 
+ 
+- Diag-102 
+Syntax:  
+$<random_number>,<IMEI>,<password>,diag,102* 
+Example:  
+$123,861557068969267,aquila123,diag,102* 
+Response: 
+$diag|861557068969267|102|1|0|0|0|0|0|1|0|0|0|1|24348|3903|0|0|1|06092023123540|0|0|0|0|0|
+0|0*06 
+- Diag-103 
+Syntax:  
+$<random_number>,<IMEI>,<password>,diag,103* 
+
+ 
+37 
+ 
+TS101 Plus – 4G Yantra Protocol Manual 1.0v 
+Document Classif ication: Restricted 
+Version1.0 
+Doc. Number: 
+IIQMS/DOC/PMO/PM/4G/001 
+Date  Prepared: 
+01/02/2024 
+Note: This inf ormation is property of  
+iTriangle  Inf otech Private Limited 
+Prepared  By: PMO                   
+Verif ied By: PDO 
+Approved By: Kiran AR 
+Example:  
+$123,861557068969267,aquila123,diag,103* 
+ 
+Response:  
+$diag|861557068969267|103|0|  N58-R08-STD-OE_V20_ITRI-003|BH4GIC03_010022|020A07| 
+000000*0D 
+ 
+-  Diag-104 
+Syntax:  
+$<random_number>,<IMEI>,<password>,diag,104* 
+Example:  
+$123,861557068969267,aquila123,diag,104* 
+Response: 
+$diag|861557068969267|104|1|1|1|12.976487|77.549728|0|917|52|0.80|1.56|12|0|7|19|38|17*3A 
+-  Diag-105 
+Syntax:  
+$<random_number>,<IMEI>,<password>,diag,105* 
+Example:  
+$123,861557068969267,aquila123,diag,105* 
+Response:                                                                                 
+$diag|861557068969267|105|1|1|CellOne|  8991102305846482992F|  404345200071805|5|5|17 
+|00000|1|1|1|0|06092023124220|06092023124220|0|*52 
+- Deviceinfo 
+Syntax:  
+Deviceinfo (This command  need to be send while device is connected to PC via USB port). 
+Response:                                                                                
+$INFO|861557068969267|30|31071993|TS101Plus-4G|BH4GIC03_010022*33 
+11   Message ID Table 
+Alert 
+ID 
+Message  & Alerts Remarks TS101-Plus 4G 
+1 Location Update 
+Default alert ID coming for each live 
+tracking packets 
+Yes 
+2 Location Update  (history) 
+Would be sent for the stored normal 
+tracking packets,  if GPRS is not available 
+at the time of sending the message in 
+protocol format. 
+Yes 
+3 
+Alert – Disconnected  from 
+the main battery 
+Alert Indication when the device is 
+disconnected  from the vehicle  battery 
+and running on its internal battery 
+Yes 
+
+ 
+38 
+ 
+TS101 Plus – 4G Yantra Protocol Manual 1.0v 
+Document Classif ication: Restricted 
+Version1.0 
+Doc. Number: 
+IIQMS/DOC/PMO/PM/4G/001 
+Date  Prepared: 
+01/02/2024 
+Note: This inf ormation is property of  
+iTriangle  Inf otech Private Limited 
+Prepared  By: PMO                   
+Verif ied By: PDO 
+Approved By: Kiran AR 
+4 Alert – Low battery 
+Alert Indication when the device internal 
+battery has fallen below the defined 
+threshold (Below  40 percentage) 
+Yes 
+5 
+Alert – Low battery 
+removed 
+Alert Indication when the device internal 
+battery is charged  above the threshold 
+(Low Battery to Normalized/Above  40%) 
+Yes 
+6 
+Alert – Connected  back to 
+the main battery 
+Alert Indication when the device is 
+connected  back to the main battery 
+Yes 
+7 Alert – Ignition ON 
+Alert Indication when the Vehicle’s 
+Ignition is switched ON 
+Yes 
+8 Alert – Ignition OFF 
+Alert Indication when the Vehicle’s 
+Ignition is switched OFF 
+Yes 
+9 
+Alert – GPS box opened 
+(Optional) 
+An optional message would be 
+generated  indicating GPS box opened 
+(O-Opened/C-Closed) 
+Yes 
+10 
+Alert ON* - emergency 
+state  
+Alert Indication when any of the 
+emergency  button is pressed 
+Yes 
+11 
+Alert OFF* - emergency 
+state  
+Alert Indication when the emergency 
+state of the vehicle is removed 
+Yes 
+12 Alert Over the air 
+When any parameter is changed over the 
+AIR. Shall include Command Source, 
+Parameter  Name and the status (1-
+success/0-Failure) 
+Yes 
+13 Harsh Braking Alert Indication for Harsh Braking. Yes 
+14 Harsh Acceleration Alert Indication for Harsh Acceleration. Yes 
+15 Rash Turning Alert Indication for Rash Turning Yes 
+16 
+Emergency  button 
+Tampered 
+Indicating  for Emergency  button wire 
+disconnected/wire  cut etc. 
+Yes 
+20 
+Serial Communication 
+Data 
+Whenever  the Serial data Yes 
+22 Over Speed Start Over Speed Start Event Yes 
+30 Command  Response Event code when command response  . Yes 
+50 IO Expander  Init Fail IO Expander  in it fail after many retries. Yes 
+51 Tilt Alert indication for tilt Yes 
+52 Tow Start Alert indication for starting for the towing Yes 
+53 Tow Stop Alert indication for Stopping for Towing Yes 
+54 GNSS Sleep Start 
+Alert indication for Starting of GNSS 
+sleep 
+No 
+55 GNSS Sleep Exit 
+Alert indication for the exit of GNSS 
+sleep 
+No 
+56 Online Sleep Start 
+Alert indication for Starting of Online 
+sleep 
+No 
+57 Online Sleep exit 
+Alert indication for the exit of GNSS 
+sleep 
+No 
+58 Nap Start Alert indication for Starting of NAP sleep Yes 
+
+ 
+39 
+ 
+TS101 Plus – 4G Yantra Protocol Manual 1.0v 
+Document Classif ication: Restricted 
+Version1.0 
+Doc. Number: 
+IIQMS/DOC/PMO/PM/4G/001 
+Date  Prepared: 
+01/02/2024 
+Note: This inf ormation is property of  
+iTriangle  Inf otech Private Limited 
+Prepared  By: PMO                   
+Verif ied By: PDO 
+Approved By: Kiran AR 
+59 Nap Exit Alert indication for the exit of NAP sleep Yes 
+60 All Stored  Data Cleared 
+When all the stored data is cleared from 
+the memory for a particular storage 
+Yes 
+61 Deep Sleep Exit Alert indication for the exit of Deep sleep Yes 
+62 Heading Record 
+Alert indication for Heading Based 
+Record 
+Yes 
+63 Distance Record 
+Alert indication for Distance-Based 
+Record 
+Yes 
+64 AIN1> High Threshold  Alert indication for AIN1> High Threshold  Yes 
+65 AIN1< High Threshold Alert indication for AIN1< High Threshold Yes 
+66 AIN1>Low Threshold Alert indication for AIN1>Low Threshold Yes 
+67 AIN1<Low threshold Alert indication for AIN1<Low threshold Yes 
+68 AIN2> High Threshold  Alert indication for AIN2> High Threshold  Yes 
+69 AIN2< High Threshold Alert indication for AIN2< High Threshold Yes 
+70 AIN2>Low Threshold Alert indication for AIN2>Low Threshold Yes 
+71 AIN2<Low threshold Alert indication for AIN2<Low threshold Yes 
+72 
+Watchdog  Reset of 
+Controller 
+When the watchdog reset of the 
+controller is done. 
+Yes 
+73 
+Watchdog  Reset of the 
+Module 
+When the watchdog reset of the TT02 
+Module is done. 
+Yes 
+74 
+Time Synchronised  using 
+NITZ 
+When the time is synchronized  using 
+NITZ 
+Yes 
+75 
+Time Synchronised  using 
+GNSS 
+When the time is synchronized  using 
+GNSS 
+Yes 
+76 
+Time Synchronised  using 
+NTP 
+When the time is synchronized  using 
+NTP 
+Yes 
+77 
+Sleep exit Due to Ignition 
+Interrupt 
+When the sleep mode exits due to 
+interrupt from the ignition. 
+Yes 
+78 
+Sleep exit Due to Panic 
+Interrupt 
+When the sleep mode exits due to 
+interrupt from the panic button. 
+Yes 
+79 
+Sleep exit Due to 
+Accelerometer  Interrupt 
+When the sleep mode exits due to 
+interrupt from the accelerometer  wakeup. 
+Yes 
+81 Version Mismatch 
+When the versions stitching is 
+mismatched. 
+Yes 
+82 Accident Event Detected When the accident event is detected. Yes 
+83 Deep Sleep Start Alert indication for Starting of Deep sleep Yes 
+84 Over speed End Event When the Movement is Detected Yes 
+85 Movement  Stopped When the Movement is Stopped Yes 
+86 
+Sleep Exit Due to Due to 
+Main Power 
+Disconnection/Connection 
+When the sleep mode exits due to 
+interrupt from Main power 
+connection/disconnection 
+Yes 
+87 
+Sleep Exit due to CASE 
+detection change 
+Sleep Exit due to CASE detection 
+change 
+Yes 
+
+ 
+40 
+ 
+TS101 Plus – 4G Yantra Protocol Manual 1.0v 
+Document Classif ication: Restricted 
+Version1.0 
+Doc. Number: 
+IIQMS/DOC/PMO/PM/4G/001 
+Date  Prepared: 
+01/02/2024 
+Note: This inf ormation is property of  
+iTriangle  Inf otech Private Limited 
+Prepared  By: PMO                   
+Verif ied By: PDO 
+Approved By: Kiran AR 
+90 Hard Restart When the device is Hard Restarted Yes 
+91 Soft Restart When the device Soft Restarted Yes 
+92 Maintenance  Restart Maintenance  Restart Yes 
+93 
+Forced Maintenance 
+Restart 
+When the maintenance  restart is done 
+forcefully. 
+Yes 
+94 GNSS Restart When the GNSS module is restarted Yes 
+95 Controller  Restart When the controller is restarted Yes 
+1025 
+RTC Synchronization 
+using Power Controller 
+Whenever  the RTC of Module  Gets 
+synchronized  with Time from Power 
+Controller. 
+Yes 
+1027 
+Normal Maintenance 
+Connect 
+When the device connects to the 
+maintenance  server without restart 
+Yes 
+1028 
+Power Controller  FOTA 
+Failure 
+Power Controller  FOTA Failure Yes 
+1029 RS485 Data 
+When the RS485 data is received and 
+processed. 
+Yes 
+1030 
+Maintenance  Connect 
+Due to FOTA 
+Maintenance  Connect happens  when the 
+FOTA is completed. 
+Yes 
+1050 2nd Over speed Start 
+When the second over speed alert is 
+generated. 
+Yes 
+1051 2nd Over speed End 
+When the second over speed alert has 
+ended 
+Yes 
+1101 
+Firmware update  failed 
+due to no data connection 
+ 
+Yes 
+1102 
+Firmware update  failed 
+due server access fail 
+ 
+Yes 
+1103 
+Firmware update  failed 
+due file access fail 
+ 
+Yes 
+1104 Initial File Check  Fail 
+  
+2000 CAN Packets 
+ 
+Yes 
+12   Inbound Communication  
+The  inbound  communication  will happen  from  the  outside  world  to  the device.  In this  category, 
+only GPRS command will be sent from the server to device. 
+The command  can be executed  with a single  key in place or multiple  keys in a single  command 
+structure.  
+ 
+12.1 Single Key Config Parameters 
+The  single  key  can  be  sent  to  the  device  to  configure  as  per  the  requirement.  The  command 
+should  be  pushed  on  the  same  socket  on  which  the  device  is  sending  the  data  to  the  server. 
+Please refer to the User manual to build the packet as per the requirement.  
+12.2 Sample Packet  
+$1234,358250330001255,aquila123,set,114:ms1.aquilatrack.com*43  
+ 
+
+ 
+41 
+ 
+TS101 Plus – 4G Yantra Protocol Manual 1.0v 
+Document Classif ication: Restricted 
+Version1.0 
+Doc. Number: 
+IIQMS/DOC/PMO/PM/4G/001 
+Date  Prepared: 
+01/02/2024 
+Note: This inf ormation is property of  
+iTriangle  Inf otech Private Limited 
+Prepared  By: PMO                   
+Verif ied By: PDO 
+Approved By: Kiran AR 
+Single Key Config Data Format 
+SL.NO Field Description Sample Data 
+1 Start Character Header Information $1234 
+2 IMEI 
+15-digit unique IMEI number 
+of the GPS device 
+864495034476850 
+3 Password  key Command  Pass key aquila123 
+4 Operation  Type set Set 
+5 Command  Key Command  Key 114 
+6 Parameter  Details Set Parameter Details ms1.aquilatrack.com 
+7 Checksum  Separator * * 
+8 Checksum 
+Ensures No error in transmission. 
+(optimal) 
+43 
+ 
+12.3 Multiple  Key Config Parameters 
+The multiple keys can be sent to the device to configure  as per the requirement.  Maximum up to 
+18 keys can be sent in a single command to configure the device. Please refer to the user manual 
+to build the packet as per the requirement.  
+12.4 Sample Packet.  
+$1234,358250330001255,aquila123,set,2025:1,201:8000,2026:1,202:3000,2027:1,203:8000,2
+028:1,204:3000,2047:1,267:8000*42 
+ 
+Multiple  Key Config Data Format 
+SL.NO Field Description Sample Data 
+1 Start Character Header Information $1234 
+2 IMEI 
+15-digit unique IMEI number 
+of the GPS device 
+864495034476850 
+3 Password  key Command  Pass key aquila123 
+4 Operation  Type set set 
+5 Command  Key Command  Key 2025 
+6 Parameter  Details Set Parameter Details 1 
+
+ 
+42 
+ 
+TS101 Plus – 4G Yantra Protocol Manual 1.0v 
+Document Classif ication: Restricted 
+Version1.0 
+Doc. Number: 
+IIQMS/DOC/PMO/PM/4G/001 
+Date  Prepared: 
+01/02/2024 
+Note: This inf ormation is property of  
+iTriangle  Inf otech Private Limited 
+Prepared  By: PMO                   
+Verif ied By: PDO 
+Approved By: Kiran AR 
+7 Command  Key Command  Key 201 
+8 Parameter  Details Set Parameter Details 8000 
+9 Command  Key Command  Key 2026 
+10 Parameter  Details Set Parameter Details 1 
+11 Command  Key Command  Key 202 
+12 Parameter  Details Set Parameter Details 3000 
+13 Command  Key Command  Key 2027 
+14 Parameter  Details Set Parameter Details 1 
+15 Command  Key Command  Key 203 
+16 Parameter  Details Set Parameter Details 8000 
+17 Command  Key Command  Key 2028 
+18 Parameter  Details Set Parameter Details 1 
+19 Command  Key Command  Key 204 
+20 Parameter  Details Set Parameter Details 3000 
+21 Command  Key Command  Key 2047 
+22 Parameter  Details Set Parameter Details 1 
+23 Command  Key Command  Key 267 
+24 Parameter  Details Set Parameter Details 8000 
+25 Checksum  Separator * * 
+26 Checksum 
+Ensures No error in transmission. 
+(optimal) 
+42 
+ 

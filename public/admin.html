@@ -1,0 +1,169 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard - Fleetly</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body style="background: var(--bg-main); overflow-y: auto;">
+    <div class="admin-layout" style="padding: 2rem; max-width: 1400px; margin: 0 auto; min-height: 100vh;">
+        
+        <!-- Header -->
+        <div class="admin-header glass-panel" style="padding: 1.5rem 2rem; border-radius: var(--radius-lg); margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center;">
+            <div style="display: flex; align-items: center; gap: 1rem;">
+                <div style="font-size: 2rem; color: var(--primary);"><i class="fa-solid fa-shield-halved"></i></div>
+                <div>
+                    <h2 style="font-size: 1.5rem; font-weight: 700;">Admin Portal</h2>
+                    <p style="color: var(--text-secondary); font-size: 0.9rem;">SaaS Subscription Management</p>
+                </div>
+            </div>
+            <div style="display: flex; gap: 1rem;">
+                <a href="/api/export/devices?role=admin" class="btn btn-outline" style="text-decoration: none;">
+                    <i class="fa-solid fa-file-excel"></i> Export All
+                </a>
+                <button class="btn btn-primary" onclick="logout()"><i class="fa-solid fa-power-off"></i> Logout</button>
+            </div>
+        </div>
+        
+        <!-- At A Glance Stats -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
+            <div class="glass-panel" style="padding: 1.5rem; border-radius: var(--radius-lg); display: flex; align-items: center; gap: 1.5rem;">
+                <div style="width: 50px; height: 50px; border-radius: 50%; background: var(--primary-glow); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
+                    <i class="fa-solid fa-users"></i>
+                </div>
+                <div>
+                    <div style="color: var(--text-secondary); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Customers</div>
+                    <div id="statTotalCustomers" style="font-size: 1.8rem; font-weight: 700;">0</div>
+                </div>
+            </div>
+            
+            <div class="glass-panel" style="padding: 1.5rem; border-radius: var(--radius-lg); display: flex; align-items: center; gap: 1.5rem;">
+                <div style="width: 50px; height: 50px; border-radius: 50%; background: rgba(16, 185, 129, 0.2); color: var(--success); display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
+                    <i class="fa-solid fa-satellite-dish"></i>
+                </div>
+                <div>
+                    <div style="color: var(--text-secondary); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Active Trackers</div>
+                    <div id="statTotalDevices" style="font-size: 1.8rem; font-weight: 700;">0</div>
+                </div>
+            </div>
+
+            <div class="glass-panel" style="padding: 1.5rem; border-radius: var(--radius-lg); display: flex; align-items: center; gap: 1.5rem;">
+                <div style="width: 50px; height: 50px; border-radius: 50%; background: var(--danger-glow); color: var(--danger); display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
+                    <i class="fa-solid fa-lock"></i>
+                </div>
+                <div>
+                    <div style="color: var(--text-secondary); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Expired Accounts</div>
+                    <div id="statExpired" style="font-size: 1.8rem; font-weight: 700;">0</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="admin-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
+            <!-- Customers Panel -->
+            <div class="glass-panel" style="padding: 1.5rem; border-radius: var(--radius-lg); overflow: hidden;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <h3 style="font-size: 1.2rem;"><i class="fa-solid fa-wallet" style="color: var(--accent); margin-right: 8px;"></i> Billing & Subscriptions</h3>
+                    <button class="btn btn-primary" style="width: auto; padding: 0.5rem 1rem;" onclick="showAddCustomerModal()"><i class="fa-solid fa-user-plus"></i> New User</button>
+                </div>
+                
+                <div class="table-container" style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="border-bottom: 1px solid var(--border-light); color: var(--text-secondary); font-size: 0.85rem;">
+                                <th style="padding: 1rem; text-align: left;">Username</th>
+                                <th style="padding: 1rem; text-align: center;">Validity Left</th>
+                                <th style="padding: 1rem; text-align: right;">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="customerTableBody">
+                            <!-- Injected by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            
+            <!-- Device Requests Panel -->
+            <div class="glass-panel" style="padding: 1.5rem; border-radius: var(--radius-lg); overflow: hidden;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
+                    <h3 style="font-size: 1.2rem;"><i class="fa-solid fa-microchip" style="color: var(--primary); margin-right: 8px;"></i> Device Requests</h3>
+                </div>
+                
+                <div class="table-container" style="overflow-x: auto;">
+                    <table style="width: 100%; border-collapse: collapse;">
+                        <thead>
+                            <tr style="border-bottom: 1px solid var(--border-light); color: var(--text-secondary); font-size: 0.85rem;">
+                                <th style="padding: 1rem; text-align: left;">Hardware IMEI</th>
+                                <th style="padding: 1rem; text-align: left;">Customer</th>
+                                <th style="padding: 1rem; text-align: left;">TCP Status</th>
+                                <th style="padding: 1rem; text-align: right;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="requestTableBody">
+                            <!-- Injected by JS -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Customer Modal -->
+    <div class="modal-overlay" id="addCustomerModal">
+        <div class="modal glass-panel">
+            <div class="modal-header">
+                <h2>Create Customer</h2>
+                <button class="modal-close" onclick="closeAddCustomerModal()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div class="form-group">
+                <input type="text" id="newUsername" class="form-control" placeholder=" " required>
+                <label for="newUsername" style="position: absolute; top: 12px; left: 20px; pointer-events: none; opacity: 0; transition: all 0.2s;">Username</label>
+            </div>
+            <div class="form-group">
+                <input type="password" id="newPassword" class="form-control" placeholder=" " required>
+                <label for="newPassword" style="position: absolute; top: 12px; left: 20px; pointer-events: none; opacity: 0; transition: all 0.2s;">Password</label>
+            </div>
+            <button class="btn btn-primary" onclick="submitCustomer()" style="margin-top: 1rem;">Create Account</button>
+        </div>
+    </div>
+
+    <!-- Update Validity Modal -->
+    <div class="modal-overlay" id="validityModal">
+        <div class="modal glass-panel">
+            <div class="modal-header">
+                <h2>Recharge Account</h2>
+                <button class="modal-close" onclick="closeValidityModal()"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.9rem;">Add days to this customer's subscription. This will instantly unlock their dashboard if they are expired.</p>
+            <input type="hidden" id="valUserId">
+            <div class="form-group">
+                <input type="number" id="addDays" class="form-control" value="30" placeholder=" " required>
+                <label for="addDays" style="position: absolute; top: 12px; left: 20px; pointer-events: none; opacity: 0; transition: all 0.2s;">Add Days</label>
+            </div>
+            <button class="btn btn-primary" onclick="submitValidity()" style="margin-top: 1rem;"><i class="fa-solid fa-bolt"></i> Recharge Account</button>
+        </div>
+    </div>
+
+    <!-- Script to handle floating labels -->
+    <script>
+        document.querySelectorAll('.form-control').forEach(input => {
+            const label = input.nextElementSibling;
+            if(label) {
+                input.placeholder = label.innerText;
+                input.addEventListener('focus', () => {
+                    input.placeholder = '';
+                    label.style.opacity = '1'; label.style.top = '-20px'; label.style.left = '0'; label.style.fontSize = '0.8rem';
+                });
+                input.addEventListener('blur', () => {
+                    if(input.value === '') {
+                        input.placeholder = label.innerText;
+                        label.style.opacity = '0'; label.style.top = '12px'; label.style.left = '20px';
+                    }
+                });
+            }
+        });
+    </script>
+    <script src="js/admin.js"></script>
+</body>
+</html>
