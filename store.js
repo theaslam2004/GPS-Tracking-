@@ -12,8 +12,33 @@ const defaultData = {
     requests: [], // { id: string, imei: string, userId: string, status: 'pending'|'approved'|'rejected', timestamp: string }
     subscriptions: [], // { userId: string, validityDays: number, expirationDate: string }
     deviceLastSeen: {}, // Transient data, not strictly needed in JSON, but good for persistence { imei: { timestamp, lat, lng } }
-    deviceHistory: {} // { imei: [points] }
+    deviceHistory: {}, // { imei: [points] }
+    geofences: [] // { id, userId, name, type: 'polygon'|'circle', points: [[lat,lng]], radius: number }
 };
+
+// Spatial Calculation Helpers
+function getDistance(lat1, lon1, lat2, lon2) {
+    const R = 6371e3; // metres
+    const p1 = lat1 * Math.PI/180;
+    const p2 = lat2 * Math.PI/180;
+    const dp = (lat2-lat1) * Math.PI/180;
+    const dl = (lon2-lon1) * Math.PI/180;
+    const a = Math.sin(dp/2) * Math.sin(dp/2) + Math.cos(p1) * Math.cos(p2) * Math.sin(dl/2) * Math.sin(dl/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+}
+
+function isPointInPolygon(point, vs) {
+    let x = point[0], y = point[1];
+    let inside = false;
+    for (let i = 0, j = vs.length - 1; i < vs.length; j = i++) {
+        let xi = vs[i][0], yi = vs[i][1];
+        let xj = vs[j][0], yj = vs[j][1];
+        let intersect = ((yi > y) != (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
+        if (intersect) inside = !inside;
+    }
+    return inside;
+}
 
 function readData() {
     try {
@@ -86,6 +111,7 @@ module.exports = {
 
     // Devices & Requests
     requestDevice: (userId, imei) => {
+        imei = imei.trim();
         const data = readData();
         // Check if already owned
         if (data.devices.find(d => d.imei === imei)) return { error: 'Device already registered.' };
@@ -127,11 +153,22 @@ module.exports = {
         writeData(data);
         return true;
     },
+    rejectRequest: (requestId) => {
+        const data = readData();
+        const initialLength = data.requests.length;
+        data.requests = data.requests.filter(r => r.id !== requestId);
+        if (data.requests.length < initialLength) {
+            writeData(data);
+            return true;
+        }
+        return false;
+    },
     getCustomerDevices: (userId) => {
         const data = readData();
         return data.devices.filter(d => d.ownerId === userId);
     },
     togglePinDevice: (userId, imei) => {
+        imei = imei.trim();
         const data = readData();
         const device = data.devices.find(d => d.ownerId === userId && d.imei === imei);
         if (device) {
@@ -157,6 +194,44 @@ module.exports = {
         const data = readData();
         if (!data.deviceLastSeen) data.deviceLastSeen = {};
         if (!data.deviceHistory) data.deviceHistory = {};
+        if (!data.geofences) data.geofences = [];
+        
+        // Geofence Checking
+        const ownerId = data.devices.find(d => d.imei === imei)?.ownerId;
+        const alerts = [];
+        
+        if (ownerId && locationData.latitude && locationData.longitude) {
+            const userGeofences = data.geofences.filter(g => g.userId === ownerId);
+            const pt = [locationData.latitude, locationData.longitude];
+            
+            const previousPoint = data.deviceLastSeen[imei];
+            
+            userGeofences.forEach(gf => {
+                let isCurrentlyInside = false;
+                if (gf.type === 'circle') {
+                    isCurrentlyInside = getDistance(pt[0], pt[1], gf.points[0][0], gf.points[0][1]) <= gf.radius;
+                } else if (gf.type === 'polygon') {
+                    isCurrentlyInside = isPointInPolygon(pt, gf.points);
+                }
+                
+                // If we have previous data, check for entry/exit
+                if (previousPoint) {
+                    let wasInside = false;
+                    const prevPt = [previousPoint.latitude, previousPoint.longitude];
+                    if (gf.type === 'circle') {
+                        wasInside = getDistance(prevPt[0], prevPt[1], gf.points[0][0], gf.points[0][1]) <= gf.radius;
+                    } else if (gf.type === 'polygon') {
+                        wasInside = isPointInPolygon(prevPt, gf.points);
+                    }
+                    
+                    if (isCurrentlyInside && !wasInside) {
+                        alerts.push({ type: 'geofence_enter', geofenceName: gf.name });
+                    } else if (!isCurrentlyInside && wasInside) {
+                        alerts.push({ type: 'geofence_exit', geofenceName: gf.name });
+                    }
+                }
+            });
+        }
         
         const point = {
             timestamp: locationData.timestamp,
@@ -174,10 +249,44 @@ module.exports = {
         if(data.deviceHistory[imei].length > 500) data.deviceHistory[imei].shift();
         
         writeData(data);
+        return alerts;
     },
     getHistory: (imei) => {
         const data = readData();
         return data.deviceHistory ? data.deviceHistory[imei] || [] : [];
+    },
+    
+    // Geofences
+    getGeofences: (userId) => {
+        const data = readData();
+        return (data.geofences || []).filter(g => g.userId === userId);
+    },
+    addGeofence: (geofence) => {
+        const data = readData();
+        if (!data.geofences) data.geofences = [];
+        geofence.id = Date.now().toString();
+        data.geofences.push(geofence);
+        writeData(data);
+        return geofence;
+    },
+    deleteGeofence: (id) => {
+        const data = readData();
+        if (!data.geofences) return false;
+        const initialLength = data.geofences.length;
+        data.geofences = data.geofences.filter(g => g.id !== id);
+        writeData(data);
+        return data.geofences.length < initialLength;
+    },
+    updateGeofence: (id, updates) => {
+        const data = readData();
+        if (!data.geofences) return false;
+        const gf = data.geofences.find(g => g.id === id);
+        if (gf) {
+            Object.assign(gf, updates);
+            writeData(data);
+            return true;
+        }
+        return false;
     },
     
     updateSubscriptionValidity: (userId, extraDays) => {

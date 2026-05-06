@@ -20,10 +20,13 @@ app.use(express.json());
 // API: Login
 app.post('/api/login', (req, res) => {
     const { username, password } = req.body;
+    console.log(`[HTTP] Login attempt for user: ${username}`);
     const user = store.getUser(username, password);
     if (user) {
+        console.log(`[HTTP] Login successful for: ${username}`);
         res.json({ success: true, user: { id: user.id, username: user.username, role: user.role } });
     } else {
+        console.log(`[HTTP] Login failed for: ${username}`);
         res.json({ success: false, error: 'Invalid credentials' });
     }
 });
@@ -58,6 +61,13 @@ app.post('/api/admin/approve-device', (req, res) => {
     res.json({ success });
 });
 
+app.post('/api/admin/reject-device', (req, res) => {
+    const { requestId } = req.body;
+    const success = store.rejectRequest(requestId);
+    if(success) io.emit('admin_update');
+    res.json({ success });
+});
+
 // API: Customer endpoints
 app.post('/api/customer/request-device', (req, res) => {
     const { userId, imei } = req.body;
@@ -89,6 +99,25 @@ app.get('/api/customer/history', (req, res) => {
     res.json({
         history: store.getHistory(imei)
     });
+});
+
+// API: Geofences
+app.get('/api/customer/geofences', (req, res) => {
+    const userId = req.query.userId;
+    console.log(`[HTTP] Fetching geofences for user: ${userId}`);
+    res.json(store.getGeofences(userId));
+});
+app.post('/api/customer/geofence', (req, res) => {
+    console.log(`[HTTP] Adding new geofence: ${req.body.name}`);
+    res.json(store.addGeofence(req.body));
+});
+app.post('/api/customer/geofence/update/:id', (req, res) => {
+    console.log(`[HTTP] Updating geofence ID: ${req.params.id} with Name: ${req.body.name}`);
+    res.json({ success: store.updateGeofence(req.params.id, req.body) });
+});
+app.delete('/api/customer/geofence/:id', (req, res) => {
+    console.log(`[HTTP] Deleting geofence ID: ${req.params.id}`);
+    res.json({ success: store.deleteGeofence(req.params.id) });
 });
 
 // API: Export Excel / CSV
@@ -142,8 +171,8 @@ const tcpServer = net.createServer((socket) => {
         if (parsedData) {
             console.log(`[TCP] Parsed Data:`, parsedData);
             
-            // Update last seen in store
-            store.updateDeviceLastSeen(parsedData.imei, parsedData);
+            // Update last seen in store and check geofences
+            const alerts = store.updateDeviceLastSeen(parsedData.imei, parsedData);
             
             // Identify owner
             const devices = store.getData().devices;
@@ -163,6 +192,32 @@ const tcpServer = net.createServer((socket) => {
 
             // Broadcast the parsed data to all connected web clients
             io.emit('device_data', parsedData);
+            
+            // Broadcast Geofence Alerts
+            if (alerts && alerts.length > 0) {
+                alerts.forEach(alert => {
+                    io.emit('geofence_alert', {
+                        ownerId: parsedData.ownerId,
+                        imei: parsedData.imei,
+                        deviceName: (device && device.name) ? device.name : parsedData.imei,
+                        type: alert.type,
+                        geofenceName: alert.geofenceName
+                    });
+                });
+            }
+
+            // --- PANIC BUTTON INTEGRATION ---
+            if (parsedData.packetType === 'EA' || parsedData.event === 'Emergency Alert') {
+                console.log(`[ALARM] PANIC BUTTON PRESSED on device: ${parsedData.imei}`);
+                io.emit('panic_alert', {
+                    ownerId: parsedData.ownerId,
+                    imei: parsedData.imei,
+                    deviceName: (device && device.name) ? device.name : parsedData.imei,
+                    lat: parsedData.latitude,
+                    lng: parsedData.longitude,
+                    time: parsedData.timestamp
+                });
+            }
             
             // Send live log to admin
             io.emit('admin_live_log', {

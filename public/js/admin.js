@@ -95,10 +95,14 @@ function renderRequests(requests) {
                        <div style="font-size: 0.7rem; color: var(--text-secondary); max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; margin-top: 4px;">${packetStr}</div>` 
                     : `<span style="color:var(--warning); font-size: 0.85rem; font-weight:600;"><i class="fa-solid fa-clock-rotate-left fa-spin"></i> Pending</span>`}
             </td>
-            <td style="padding: 1rem; text-align: right;">
+            <td style="padding: 1rem; text-align: right; display: flex; gap: 8px; justify-content: flex-end;">
                 <button class="btn btn-primary" style="padding: 0.4rem 0.8rem; font-size: 0.85rem;" 
                         onclick="approveDevice('${r.id}')" ${!hasData ? 'disabled style="opacity:0.5; cursor:not-allowed;"' : ''}>
                     Approve
+                </button>
+                <button class="btn btn-outline" style="padding: 0.4rem 0.8rem; font-size: 0.85rem; border-color: var(--danger); color: var(--danger);" 
+                        onclick="rejectDevice('${r.id}')">
+                    Remove
                 </button>
             </td>
         </tr>
@@ -142,6 +146,17 @@ async function submitValidity() {
 
 async function approveDevice(requestId) {
     const res = await fetch('/api/admin/approve-device', {
+        method: 'POST',
+        headers:{'Content-Type': 'application/json'},
+        body: JSON.stringify({requestId})
+    });
+    await res.json();
+    loadDashboard();
+}
+
+async function rejectDevice(requestId) {
+    if(!confirm('Are you sure you want to remove this request?')) return;
+    const res = await fetch('/api/admin/reject-device', {
         method: 'POST',
         headers:{'Content-Type': 'application/json'},
         body: JSON.stringify({requestId})

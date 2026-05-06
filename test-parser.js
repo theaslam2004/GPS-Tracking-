@@ -1,3 +1,10 @@
 const parse = require('./parser');
-const raw1 = '$$Header,iTriangle,VC4.40,NR,1,L,863674078893755,,KA1234,1,19042026,055900,12.9793,N,77.5910,E,0.0,280,19,1630.0,0.00,0.94,airtel,1,1,12.0,4.3,0,C,22,404,3,4fe,b53c904,186,ffff,161,0,0,0,0,0,0,0,0,0,0001,11,040365,0.0,0.0,0,()*45';
-console.log(parse(Buffer.from(raw1)));
+
+const loginRaw = '$KA1234,868886061660604,010013,0100,28.601093,N,76.921288,E*10';
+const trackRaw = '$Header,iTriangle1,010013,NR,1,L,868886061660604,KA1234,1,12042023,013615,28.675840,N,77.062378,E,21.0,212,20,206.0,1.26,0.68,Airtel,1,1,26.0,3.9,0,C,21,404,10,8ab,975e416,45,ab,de74335,38,8ab,e09c934,43,8ab,951a834,0,0,0,0000,0100,019053,0.000,0.000,18,()*78';
+
+console.log("Login Packet:");
+console.log(parse(Buffer.from(loginRaw)));
+
+console.log("\nTracking Packet:");
+console.log(parse(Buffer.from(trackRaw)));

@@ -1,5 +1,16 @@
+// Global Error Catcher for Debugging
+window.onerror = function(message, source, lineno, colno, error) {
+    console.error('GLOBAL ERROR:', message, 'at', source, ':', lineno);
+    if(typeof showToast === 'function') {
+        showToast("🚨 System Error", `${message} (Line: ${lineno})`, "danger");
+    }
+    return false;
+};
+
 const user = JSON.parse(localStorage.getItem('user'));
+console.log('[Auth Check] User:', user);
 if (!user || user.role !== 'customer') {
+    console.warn('[Auth Check] Access Denied. Redirecting to login...');
     window.location.href = 'index.html';
 }
 
@@ -12,6 +23,42 @@ let myDevices = [];
 let latestData = {}; // Store latest telemetry for panel
 let activeImei = null;
 
+// ==========================================
+// Toast Notification Logic
+// ==========================================
+function showToast(title, message, type = 'info') {
+    const container = document.getElementById('toastContainer');
+    if (!container) return;
+
+    const toast = document.createElement('div');
+    toast.className = `toast-alert ${type}`;
+    
+    let iconClass = 'fa-circle-info';
+    if (type === 'danger') iconClass = 'fa-triangle-exclamation';
+    if (type === 'warning') iconClass = 'fa-bolt';
+
+    toast.innerHTML = `
+        <i class="fa-solid ${iconClass} toast-icon"></i>
+        <div class="toast-content">
+            <div class="toast-title">${title}</div>
+            <div class="toast-message">${message}</div>
+        </div>
+        <button class="toast-close" onclick="this.parentElement.classList.add('toast-hiding'); setTimeout(() => this.parentElement.remove(), 400);"><i class="fa-solid fa-xmark"></i></button>
+    `;
+
+    container.appendChild(toast);
+
+    // Auto remove after 5 seconds
+    setTimeout(() => {
+        if(toast.parentElement) {
+            toast.classList.add('toast-hiding');
+            setTimeout(() => {
+                if(toast.parentElement) toast.remove();
+            }, 400);
+        }
+    }, 5000);
+}
+
 // Map Layers
 const mapLayers = {
     standard: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' }),
@@ -20,9 +67,64 @@ const mapLayers = {
 };
 let currentLayerName = 'standard';
 
+let drawnItems;
+let drawControl;
+
 function initMap() {
     map = L.map('map').setView([20.5937, 78.9629], 5);
     mapLayers.standard.addTo(map);
+    
+    // Geofence Drawing Layer
+    drawnItems = new L.FeatureGroup();
+    map.addLayer(drawnItems);
+    
+    // We handle drawing programmatically via the new horizontal toolbar
+    
+    map.on(L.Draw.Event.CREATED, async function (e) {
+        const type = e.layerType;
+        const layer = e.layer;
+        console.log('[Geofence] Shape Created:', type);
+        
+        // Use a default name to avoid blocking browser prompts
+        const gfName = `Zone ${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}`;
+        let gfData = { userId: user.id, name: gfName };
+        
+        if (type === 'circle') {
+            gfData.type = 'circle';
+            const latlng = layer.getLatLng();
+            gfData.points = [[latlng.lat, latlng.lng]];
+            gfData.radius = layer.getRadius();
+        } else if (type === 'polygon') {
+            gfData.type = 'polygon';
+            const latlngs = layer.getLatLngs()[0]; // outer ring
+            gfData.points = latlngs.map(ll => [ll.lat, ll.lng]);
+        }
+        
+        console.log('[Geofence] Sending to server:', gfData);
+        
+        try {
+            const res = await fetch('/api/customer/geofence', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify(gfData)
+            });
+            const saved = await res.json();
+            
+            if(saved.id) {
+                showToast("✅ Saved", `Geofence '${gfName}' created successfully.`, "success");
+                layer.gfId = saved.id;
+                drawnItems.addLayer(layer);
+                loadGeofences(); // refresh list
+            } else {
+                showToast("❌ Error", "Server failed to save geofence.", "danger");
+            }
+        } catch (err) {
+            console.error('[Geofence] Save Error:', err);
+            showToast("❌ Error", "Could not connect to server.", "danger");
+        }
+        
+        exitGeofenceMode(); // Go back to normal UI
+    });
 }
 
 function toggleMapStyle() {
@@ -40,6 +142,30 @@ function logout() {
 
 function showAddDeviceModal() { document.getElementById('addDeviceModal').classList.add('active'); }
 function closeAddDeviceModal() { document.getElementById('addDeviceModal').classList.remove('active'); }
+
+function showPanicAlert(data) {
+    const modal = document.getElementById('panicModal');
+    const msg = document.getElementById('panicMessage');
+    const trackBtn = document.getElementById('panicTrackBtn');
+    
+    msg.innerHTML = `Emergency signal received from <b>${data.deviceName}</b>.<br>Time: ${new Date(data.time).toLocaleTimeString()}`;
+    document.body.classList.add('panic-active');
+    modal.classList.add('active');
+    
+    // Play alert sound
+    const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/951/951-preview.mp3');
+    audio.play().catch(e => console.warn('Audio playback blocked by browser'));
+
+    trackBtn.onclick = () => {
+        map.flyTo([data.lat, data.lng], 18, { animate: true, duration: 2 });
+        closePanic();
+    };
+}
+
+function closePanic() {
+    document.getElementById('panicModal').classList.remove('active');
+    document.body.classList.remove('panic-active');
+}
 
 async function submitDeviceRequest() {
     const imei = document.getElementById('newImei').value;
@@ -64,6 +190,7 @@ async function loadData() {
     const data = await res.json();
     
     myDevices = data.devices;
+    loadGeofences();
     
     if (data.subscription) {
         const expDate = new Date(data.subscription.expirationDate);
@@ -77,6 +204,220 @@ async function loadData() {
     }
     
     renderDeviceList();
+}
+
+async function loadGeofences() {
+    const res = await fetch(`/api/customer/geofences?userId=${user.id}`);
+    const geofences = await res.json();
+    
+    const list = document.getElementById('geofenceItems');
+    if(!list) return;
+    list.innerHTML = '';
+    drawnItems.clearLayers();
+    
+    geofences.forEach(gf => {
+        // Draw on map
+        let layer;
+        if (gf.type === 'circle') {
+            layer = L.circle(gf.points[0], { radius: gf.radius, color: 'var(--primary)', weight: 2, fillOpacity: 0.1 });
+        } else if (gf.type === 'polygon') {
+            layer = L.polygon(gf.points, { color: 'var(--primary)', weight: 2, fillOpacity: 0.1 });
+        }
+        if(layer) {
+            layer.gfId = gf.id;
+            layer.bindPopup(`<b>${gf.name}</b>`);
+            drawnItems.addLayer(layer);
+        }
+        
+        // Add to sidebar list
+        list.innerHTML += `
+            <div class="geofence-item">
+                <div class="geofence-info" onclick="focusGeofence('${gf.id}')">
+                    <i class="fa-solid fa-draw-polygon"></i>
+                    <span>${gf.name}</span>
+                </div>
+                <div class="geofence-actions">
+                    <button onclick="openEditModal('${gf.id}', '${gf.name}')" title="Rename"><i class="fa-solid fa-pencil"></i></button>
+                    <button onclick="deleteGeofence('${gf.id}')" title="Delete" class="delete-btn"><i class="fa-solid fa-trash"></i></button>
+                </div>
+            </div>
+        `;
+    });
+}
+
+function focusGeofence(id) {
+    const layer = drawnItems.getLayers().find(l => l.gfId === id);
+    if(layer) {
+        if(layer.getBounds) map.fitBounds(layer.getBounds());
+        else if(layer.getLatLng) map.setView(layer.getLatLng(), 16);
+        layer.openPopup();
+    }
+}
+
+function openEditModal(id, name) {
+    document.getElementById('editGfId').value = id;
+    document.getElementById('editGfName').value = name;
+    document.getElementById('editGeofenceModal').classList.add('active');
+}
+
+function closeEditGeofenceModal() { document.getElementById('editGeofenceModal').classList.remove('active'); }
+
+async function submitEditGeofence() {
+    const idField = document.getElementById('editGfId');
+    const nameField = document.getElementById('editGfName');
+    
+    if(!idField || !nameField) {
+        return showToast("❌ Error", "UI Elements missing.", "danger");
+    }
+
+    const id = idField.value;
+    const newName = nameField.value;
+    
+    if(!newName) return showToast("⚠️ Warning", "Please enter a name.", "warning");
+    
+    try {
+        const res = await fetch('/api/customer/geofence/update/' + id, { 
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name: newName })
+        });
+        
+        if(!res.ok) throw new Error('Server returned ' + res.status);
+        
+        const result = await res.json();
+        
+        if(result.success) {
+            showToast("✅ Success", `Zone renamed to '${newName}'`, "success");
+            closeEditGeofenceModal();
+            loadGeofences(); // Refresh the list
+        } else {
+            showToast("❌ Error", "Could not save the new name.", "danger");
+        }
+    } catch (err) {
+        console.error('[Geofence] Rename Error:', err);
+        showToast("❌ Error", "Connection failed. Please try again.", "danger");
+    }
+}
+
+async function deleteGeofence(id) {
+    // Silent delete for smoother experience, or we could use a custom modal
+    // For now, let's just do it directly to ensure it works for you
+    try {
+        const res = await fetch(`/api/customer/geofence/${id}`, { method: 'DELETE' });
+        if(res.ok) {
+            showToast("🗑️ Deleted", "Geofence removed.", "info");
+            loadGeofences();
+        }
+    } catch (e) {
+        console.error('Delete failed', e);
+    }
+}
+
+let geofenceMode = false;
+function toggleGeofenceMode() {
+    geofenceMode = !geofenceMode;
+    const btn = document.getElementById('geofenceToggleBtn');
+    const panel = document.getElementById('geofenceList');
+    
+    if (geofenceMode) {
+        btn.classList.add('active');
+        btn.style.background = 'var(--primary)';
+        btn.style.color = '#fff';
+        panel.style.display = 'block';
+    } else {
+        btn.classList.remove('active');
+        btn.style.background = 'transparent';
+        btn.style.color = 'var(--text-primary)';
+        panel.style.display = 'none';
+        exitGeofenceMode();
+    }
+}
+
+function startPolygonDraw() {
+    new L.Draw.Polygon(map).enable();
+    document.body.classList.add('in-geofence-mode');
+    document.getElementById('geofenceHeader').querySelector('span').innerText = "Click on the map to start drawing your area.";
+}
+
+function startCircleDraw() {
+    new L.Draw.Circle(map).enable();
+    document.body.classList.add('in-geofence-mode');
+    document.getElementById('geofenceHeader').querySelector('span').innerText = "Click and drag on the map to define the circle radius.";
+}
+
+function centerOnUser() {
+    if (navigator.geolocation) {
+        showToast("📍 Location Access", "Fetching your location...", "info");
+        navigator.geolocation.getCurrentPosition(
+            (pos) => {
+                const lat = pos.coords.latitude;
+                const lng = pos.coords.longitude;
+                map.flyTo([lat, lng], 16, { animate: true, duration: 1.5 });
+                
+                const hereMarker = L.marker([lat, lng], {
+                    icon: L.divIcon({
+                        className: 'user-location-beacon',
+                        iconSize: [14, 14],
+                        iconAnchor: [7, 7]
+                    })
+                }).addTo(map);
+                
+                hereMarker.bindPopup('<b style="font-family:Outfit, sans-serif; letter-spacing: 0.5px;">📍 You are here</b>', {
+                    offset: [0, -10],
+                    className: 'premium-tooltip'
+                }).openPopup();
+                
+                setTimeout(() => map.removeLayer(hereMarker), 8000);
+            },
+            (err) => showToast("❌ Failed", "Could not get location.", "danger")
+        );
+    }
+}
+
+function showManualGeofenceModal() { document.getElementById('manualGeofenceModal').classList.add('active'); }
+function closeManualGeofenceModal() { document.getElementById('manualGeofenceModal').classList.remove('active'); }
+
+async function submitManualGeofence() {
+    const name = document.getElementById('manualGfName').value;
+    const lat = parseFloat(document.getElementById('manualLat').value);
+    const lng = parseFloat(document.getElementById('manualLng').value);
+    const radius = parseFloat(document.getElementById('manualRadius').value);
+    
+    if(!name || isNaN(lat) || isNaN(lng)) return alert('Please fill all required fields');
+    
+    const gfData = {
+        userId: user.id,
+        name: name,
+        type: 'circle',
+        points: [[lat, lng]],
+        radius: radius
+    };
+    
+    const res = await fetch('/api/customer/geofence', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(gfData)
+    });
+    
+    if(res.ok) {
+        showToast("✅ Success", `Zone '${name}' created manually.`, "success");
+        closeManualGeofenceModal();
+        loadGeofences();
+        map.flyTo([lat, lng], 15);
+    }
+}
+
+function startDrawingGeofence() {
+    // This is now replaced by startPolygonDraw and startCircleDraw
+    if(!geofenceMode) toggleGeofenceMode();
+}
+
+function exitGeofenceMode() {
+    document.body.classList.remove('in-geofence-mode');
+    if (window.tempHereMarker) {
+        map.removeLayer(window.tempHereMarker);
+        window.tempHereMarker = null;
+    }
 }
 
 async function togglePin(imei, event) {
@@ -130,6 +471,43 @@ function renderDeviceList() {
     `).join('');
     
     document.getElementById('countAll').innerText = myDevices.length;
+    updateFleetCounts();
+}
+
+function updateFleetCounts() {
+    let active = 0;
+    let idle = 0;
+    let offline = 0;
+    
+    // Scan all devices for current status
+    myDevices.forEach(device => {
+        const data = latestData[device.imei];
+        if (data) {
+            // Check if data is "Fresh" (within last 30 seconds)
+            const isStale = (Date.now() - new Date(data.timestamp)) > 30000;
+            
+            if (isStale) {
+                offline++;
+            } else if (data.speed > 5) {
+                active++;
+            } else {
+                idle++;
+            }
+        } else {
+            // No data received at all this session
+            offline++;
+        }
+    });
+
+    const activeEl = document.getElementById('countActive');
+    const idleEl = document.getElementById('countIdle');
+    const offlineEl = document.getElementById('countOffline');
+    const allEl = document.getElementById('countAll');
+    
+    if(activeEl) activeEl.innerText = active;
+    if(idleEl) idleEl.innerText = idle;
+    if(offlineEl) offlineEl.innerText = offline;
+    if(allEl) allEl.innerText = myDevices.length;
 }
 
 function closeVehiclePanel() {
@@ -321,9 +699,33 @@ socket.on('subscription_expired', (data) => {
     }
 });
 
+socket.on('panic_alert', (data) => {
+    if (data.ownerId === user.id) {
+        showPanicAlert(data);
+    }
+});
+
+socket.on('geofence_alert', (data) => {
+    if (data.ownerId !== user.id) return;
+    
+    const isEnter = data.type === 'geofence_enter';
+    const title = `🚨 Geofence Alert: ${data.deviceName}`;
+    const msg = `Vehicle has ${isEnter ? 'ENTERED' : 'EXITED'} geofence: ${data.geofenceName}`;
+    const alertType = isEnter ? 'info' : 'warning';
+    
+    // Debounce to prevent rapid-fire identical alerts
+    const eventKey = `${data.imei}_${data.type}_${data.geofenceName}`;
+    const lastEventTime = window[`last_${eventKey}`] || 0;
+    const now = Date.now();
+    if (now - lastEventTime > 30000) { // Only show once every 30 seconds per geofence crossing type
+        showToast(title, msg, alertType);
+        window[`last_${eventKey}`] = now;
+    }
+});
+
 socket.on('device_data', (data) => {
     // Only process if this device belongs to this user
-    if (data.ownerId !== user.id) return;
+    if (data.ownerId != user.id) return;
     
     const { imei, latitude, longitude, speed, timestamp } = data;
     latestData[imei] = data; // Store latest for panel
@@ -333,6 +735,25 @@ socket.on('device_data', (data) => {
     const device = myDevices.find(d => d.imei === imei);
     const deviceName = device ? device.name : imei;
     const popupHTML = buildTelemetryHTML(data, deviceName);
+    
+    // Check for Harsh Driving Events
+    if (data.event) {
+        let type = 'info';
+        if (data.event.includes('Harsh') || data.event.includes('Rash') || data.event.includes('Emergency')) {
+            type = 'danger';
+        } else if (data.event.includes('Tamper') || data.event.includes('Disconnected')) {
+            type = 'warning';
+        }
+        
+        // Prevent spamming the same event every second (debouncing)
+        const eventKey = `${imei}_${data.event}`;
+        const lastEventTime = window[`last_${eventKey}`] || 0;
+        const now = Date.now();
+        if (now - lastEventTime > 10000) { // Only show once every 10 seconds per event type per device
+            showToast(`⚠️ Alert: ${deviceName}`, `Event Detected: ${data.event}`, type);
+            window[`last_${eventKey}`] = now;
+        }
+    }
     
     // Update Map
     if(markers[imei]) {
@@ -386,6 +807,8 @@ socket.on('device_data', (data) => {
             updatePanelData(data, deviceName);
         }
     }
+    
+    updateFleetCounts();
 });
 
 initMap();

@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Customer Dashboard - Fleetly GPS</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
     <link rel="stylesheet" href="css/main.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
 </head>
@@ -19,8 +20,17 @@
         <div class="map-container">
             <div id="map"></div>
             
-            <!-- Map Layer Controls -->
-            <div class="map-layer-control glass-panel" title="Toggle Map Style" onclick="toggleMapStyle()">
+            <!-- Geofence Mode Top Bar (Hidden by default) -->
+            <div id="geofenceHeader" class="glass-panel" style="position: absolute; top: -100px; left: 50%; transform: translateX(-50%); z-index: 1000; padding: 1rem 1.5rem; border-radius: var(--radius-full); display: flex; justify-content: space-between; align-items: center; width: 90%; max-width: 600px; transition: top 0.4s ease; border: 1px solid var(--primary);">
+                <div>
+                    <h3 style="margin: 0; color: var(--primary); font-size: 1.1rem;"><i class="fa-solid fa-draw-polygon"></i> Geofence Mode</h3>
+                    <span style="font-size: 0.8rem; color: var(--text-secondary);">Use the drawing tools on the right to mark an area.</span>
+                </div>
+                <button class="btn btn-outline" onclick="exitGeofenceMode()" style="border-radius: var(--radius-full); padding: 0.4rem 1rem; border-color: rgba(255,255,255,0.2);">Cancel</button>
+            </div>
+            
+            <!-- Map Layer Controls (Moved to a cleaner spot later or integrated) -->
+            <div class="map-layer-control glass-panel" title="Toggle Map Style" onclick="toggleMapStyle()" style="top: 20px; right: 20px;">
                 <i class="fa-solid fa-layer-group"></i>
             </div>
 
@@ -32,12 +42,16 @@
                     <span class="label">FLEET</span>
                 </div>
                 <div class="filter-pill filter-running" onclick="setFilter('running')">
-                    <span class="count" id="countRunning" style="font-family: 'Outfit', monospace; color: var(--primary);">0</span>
+                    <span class="count" id="countActive" style="font-family: 'Outfit', monospace; color: var(--success);">0</span>
                     <span class="label">ACTIVE</span>
                 </div>
-                <div class="filter-pill filter-halted" onclick="setFilter('halted')">
-                    <span class="count" id="countHalt" style="font-family: 'Outfit', monospace; color: var(--accent);">0</span>
+                <div class="filter-pill filter-idle" onclick="setFilter('idle')">
+                    <span class="count" id="countIdle" style="font-family: 'Outfit', monospace; color: var(--warning);">0</span>
                     <span class="label">IDLE</span>
+                </div>
+                <div class="filter-pill filter-offline" onclick="setFilter('offline')">
+                    <span class="count" id="countOffline" style="font-family: 'Outfit', monospace; color: var(--danger);">0</span>
+                    <span class="label">OFFLINE</span>
                 </div>
             </div>
             
@@ -74,9 +88,42 @@
                 </div>
                 
                 <div class="sidebar-controls">
-                    <button class="btn btn-primary" onclick="showAddDeviceModal()" style="font-size: 0.9rem; padding: 0.75rem;">
-                        <i class="fa-solid fa-plus"></i> Add Tracker
-                    </button>
+                    <div style="display: flex; gap: 0.5rem;">
+                        <button class="btn btn-primary" onclick="showAddDeviceModal()" style="font-size: 0.9rem; padding: 0.75rem; flex: 1;">
+                            <i class="fa-solid fa-plus"></i> Add Tracker
+                        </button>
+                        <button class="btn btn-outline" id="geofenceToggleBtn" onclick="toggleGeofenceMode()" style="font-size: 0.9rem; padding: 0.75rem; width: 45px; flex-shrink: 0;" title="Manage Geofences">
+                            <i class="fa-solid fa-draw-polygon"></i>
+                        </button>
+                    </div>
+                    <div id="geofenceList" style="display: none; margin-top: 1rem; padding: 1rem; background: rgba(0,0,0,0.2); border-radius: var(--radius-md); border: 1px solid var(--border-light);">
+                        <h4 style="font-size: 0.75rem; text-transform: uppercase; margin: 0 0 1rem 0; color: var(--primary); letter-spacing: 1px;">Geofence Tools</h4>
+                        
+                        <!-- Horizontal Tool Strip -->
+                        <div class="geofence-tool-strip">
+                            <button class="tool-btn" onclick="startPolygonDraw()" title="Draw Polygon">
+                                <i class="fa-solid fa-draw-polygon"></i>
+                                <span>Polygon</span>
+                            </button>
+                            <button class="tool-btn" onclick="startCircleDraw()" title="Draw Circle">
+                                <i class="fa-solid fa-circle-dot"></i>
+                                <span>Circle</span>
+                            </button>
+                            <button class="tool-btn" onclick="showManualGeofenceModal()" title="Manual Input">
+                                <i class="fa-solid fa-keyboard"></i>
+                                <span>Manual</span>
+                            </button>
+                            <button class="tool-btn" onclick="centerOnUser()" title="Find My Location">
+                                <i class="fa-solid fa-location-crosshairs"></i>
+                                <span>Locate</span>
+                            </button>
+                        </div>
+
+                        <div style="display: flex; justify-content: space-between; align-items: center; margin: 1.5rem 0 0.5rem 0; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1rem;">
+                            <h4 style="font-size: 0.75rem; text-transform: uppercase; margin: 0; color: var(--text-secondary);">Saved Zones</h4>
+                        </div>
+                        <div id="geofenceItems" style="max-height: 200px; overflow-y: auto; font-size: 0.8rem;"></div>
+                    </div>
                     <div style="margin-top: 1.5rem; display: flex; justify-content: space-between; align-items: center; padding-bottom: 0.5rem; border-bottom: 1px solid var(--border-light);">
                         <h3 style="font-size: 0.8rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 700; letter-spacing: 1px;">My Vehicles</h3>
                         <a href="#" id="exportBtn" style="font-size: 0.8rem; color: var(--text-primary); text-decoration: none; display: flex; align-items: center; gap: 4px; transition: color 0.2s;">
@@ -131,8 +178,61 @@
         </div>
     </div>
 
-    <!-- Vehicle 360 Sliding Panel -->
+    <!-- Manual Geofence Modal -->
+    <div class="modal-overlay" id="manualGeofenceModal">
+        <div class="modal glass-panel">
+            <div class="modal-header">
+                <h2>Manual Geofence</h2>
+                <button class="modal-close" onclick="closeManualGeofenceModal()">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="form-group" style="margin-bottom: 1.5rem; position: relative;">
+                <input type="text" id="manualGfName" class="form-control" placeholder=" ">
+                <label for="manualGfName" style="position: absolute; top: -20px; left: 0; font-size: 0.8rem; color: var(--primary);">Zone Name</label>
+            </div>
+            <div style="display: flex; gap: 1rem; margin-bottom: 1.5rem;">
+                <div class="form-group" style="flex: 1; position: relative;">
+                    <input type="number" id="manualLat" class="form-control" step="any" placeholder=" ">
+                    <label for="manualLat" style="position: absolute; top: -20px; left: 0; font-size: 0.8rem; color: var(--primary);">Latitude</label>
+                </div>
+                <div class="form-group" style="flex: 1; position: relative;">
+                    <input type="number" id="manualLng" class="form-control" step="any" placeholder=" ">
+                    <label for="manualLng" style="position: absolute; top: -20px; left: 0; font-size: 0.8rem; color: var(--primary);">Longitude</label>
+                </div>
+            </div>
+            <div class="form-group" style="margin-bottom: 1.5rem; position: relative;">
+                <input type="number" id="manualRadius" class="form-control" value="200">
+                <label for="manualRadius" style="position: absolute; top: -20px; left: 0; font-size: 0.8rem; color: var(--primary);">Radius (meters)</label>
+            </div>
+            <button class="btn btn-primary" onclick="submitManualGeofence()" style="margin-top: 1rem; width: 100%;">
+                <i class="fa-solid fa-check"></i> Create Zone
+            </button>
+        </div>
+    </div>
+
+    <!-- Edit Geofence Modal -->
+    <div class="modal-overlay" id="editGeofenceModal">
+        <div class="modal glass-panel">
+            <div class="modal-header">
+                <h2>Rename Zone</h2>
+                <button class="modal-close" onclick="closeEditGeofenceModal()">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="form-group" style="margin-bottom: 1.5rem; position: relative;">
+                <input type="hidden" id="editGfId">
+                <input type="text" id="editGfName" class="form-control" placeholder=" ">
+                <label for="editGfName" style="position: absolute; top: -20px; left: 0; font-size: 0.8rem; color: var(--primary);">New Zone Name</label>
+            </div>
+            <button class="btn btn-primary" onclick="submitEditGeofence()" style="width: 100%;">
+                <i class="fa-solid fa-save"></i> Save Changes
+            </button>
+        </div>
+    </div>
+
     <div class="vehicle-details-panel glass-panel" id="vehiclePanel">
+
         <button class="panel-close" onclick="closeVehiclePanel()"><i class="fa-solid fa-xmark"></i></button>
         
         <div class="panel-header">
@@ -201,7 +301,25 @@
         </div>
     </div>
 
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Panic Alert Modal (Crisis Mode) -->
+    <div class="modal-overlay" id="panicModal" style="z-index: 9999;">
+        <div class="modal panic-modal glass-panel">
+            <div style="font-size: 4rem; margin-bottom: 1rem;">🚨</div>
+            <h1 style="font-size: 2rem; font-weight: 800; margin-bottom: 0.5rem; letter-spacing: 2px;">PANIC ALERT!</h1>
+            <p id="panicMessage" style="font-size: 1.1rem; margin-bottom: 2rem; opacity: 0.9;">Emergency signal received from Vehicle.</p>
+            
+            <div style="display: flex; gap: 1rem; justify-content: center;">
+                <button class="btn btn-outline" onclick="closePanic()" style="border-radius: var(--radius-full); padding: 0.8rem 2rem;">Dismiss</button>
+                <button class="btn btn-primary" id="panicTrackBtn" style="background: white; color: #ff3d00; border: none; border-radius: var(--radius-full); padding: 0.8rem 2rem; font-weight: 700;">TRACK NOW</button>
+            </div>
+        </div>
+    </div>
+
     <!-- UI Interaction Scripts -->
+
     <script>
         function setFilter(type) {
             document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
@@ -217,6 +335,7 @@
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
     <script src="js/customer.js"></script>
 </body>
 </html>
