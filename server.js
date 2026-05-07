@@ -5,6 +5,8 @@ const { Server } = require('socket.io');
 const path = require('path');
 const parseDeviceData = require('./parser');
 const store = require('./store');
+const emailService = require('./emailService');
+const smsService = require('./smsService');
 
 const TCP_PORT = 8080;
 const HTTP_PORT = 3000;
@@ -31,43 +33,6 @@ app.post('/api/login', (req, res) => {
     }
 });
 
-// API: Admin endpoints
-app.get('/api/admin/dashboard', (req, res) => {
-    res.json({
-        customers: store.getAllCustomers(),
-        requests: store.getPendingRequests(),
-        allDevices: store.getData().devices,
-        lastSeen: store.getData().deviceLastSeen
-    });
-});
-
-app.post('/api/admin/create-customer', (req, res) => {
-    const { username, password } = req.body;
-    const user = store.createUser(username, password);
-    if (user) res.json({ success: true, user });
-    else res.json({ success: false, error: 'Username already exists' });
-});
-
-app.post('/api/admin/update-validity', (req, res) => {
-    const { userId, days } = req.body;
-    const success = store.updateSubscriptionValidity(userId, days);
-    res.json({ success });
-});
-
-app.post('/api/admin/approve-device', (req, res) => {
-    const { requestId } = req.body;
-    const success = store.approveRequest(requestId);
-    if(success) io.emit('admin_update'); // notify admin to reload table
-    res.json({ success });
-});
-
-app.post('/api/admin/reject-device', (req, res) => {
-    const { requestId } = req.body;
-    const success = store.rejectRequest(requestId);
-    if(success) io.emit('admin_update');
-    res.json({ success });
-});
-
 // API: Customer endpoints
 app.post('/api/customer/request-device', (req, res) => {
     const { userId, imei } = req.body;
@@ -75,7 +40,7 @@ app.post('/api/customer/request-device', (req, res) => {
     if (result.error) {
         res.json({ success: false, error: result.error });
     } else {
-        io.emit('admin_update'); // notify admin to reload table
+        io.emit('admin_update');
         res.json({ success: true, request: result });
     }
 });
@@ -99,6 +64,15 @@ app.get('/api/customer/history', (req, res) => {
     res.json({
         history: store.getHistory(imei)
     });
+});
+app.get('/api/customer/settings', (req, res) => {
+    const userId = req.query.userId;
+    const devices = store.getCustomerDevices(userId);
+    const settingsMap = {};
+    devices.forEach(d => {
+        settingsMap[d.imei] = store.getDeviceSettings(d.imei);
+    });
+    res.json(settingsMap);
 });
 
 // API: Geofences
@@ -145,8 +119,103 @@ app.get('/api/export/devices', (req, res) => {
     res.send(csv);
 });
 
+app.get('/api/export/history/:imei', (req, res) => {
+    const imei = req.params.imei;
+    const history = store.getHistory(imei);
+    
+    let csv = "Timestamp,Latitude,Longitude,Speed,Odometer,RawData\n";
+    history.forEach(pt => {
+        csv += `${pt.timestamp},${pt.latitude},${pt.longitude},${pt.speed},${pt.odometer},"${pt.rawHex}"\n`;
+    });
+    
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="history_${imei}.csv"`);
+    res.send(csv);
+});
+
+// -----------------------------------------------------------------------
+// ADMIN API ENDPOINTS
+// -----------------------------------------------------------------------
+app.get('/api/admin/dashboard', (req, res) => {
+    const data = store.getData();
+    res.json({
+        customers: store.getAllCustomers(),
+        allDevices: data.devices,
+        requests: data.deviceRequests
+    });
+});
+
+app.post('/api/admin/approve-request', (req, res) => {
+    const { imei, ownerId } = req.body;
+    const success = store.approveDeviceRequest(imei, ownerId);
+    if (success) {
+        io.emit('admin_update');
+        io.emit('customer_update', { userId: ownerId });
+    }
+    res.json({ success });
+});
+
+app.delete('/api/admin/delete-customer/:userId', (req, res) => {
+    const success = store.deleteCustomer(req.params.userId);
+    if (success) io.emit('admin_update');
+    res.json({ success });
+});
+
+app.post('/api/admin/update-contact', (req, res) => {
+    const { userId, phone, email } = req.body;
+    const success = store.updateContact(userId, phone, email);
+    if (success) io.emit('admin_update');
+    res.json({ success });
+});
+
+app.post('/api/admin/update-validity', (req, res) => {
+    const { userId, days } = req.body;
+    const success = store.addSubscriptionDays(userId, parseInt(days));
+    if (success) io.emit('admin_update');
+    res.json({ success });
+});
+
+app.get('/api/admin/customer-settings/:userId', (req, res) => {
+    // This is a bulk action helper - returns settings for the user (or default if no global user settings)
+    const settings = store.getUserSettings(req.params.userId);
+    res.json(settings);
+});
+
+app.post('/api/admin/update-customer-settings', (req, res) => {
+    const { userId, settings } = req.body;
+    // Bulk update all devices for this user
+    const devices = store.getCustomerDevices(userId);
+    devices.forEach(d => {
+        store.updateDeviceSettings(d.imei, settings);
+        io.emit('settings_updated', { imei: d.imei, settings, userId });
+    });
+    io.emit('admin_update');
+    res.json({ success: true });
+});
+
+app.get('/api/admin/device-settings/:imei', (req, res) => {
+    const settings = store.getDeviceSettings(req.params.imei);
+    res.json(settings);
+});
+
+app.post('/api/admin/update-device-settings', (req, res) => {
+    const { imei, settings } = req.body;
+    const success = store.updateDeviceSettings(imei, settings);
+    if (success) {
+        const data = store.getData();
+        const device = data.devices.find(d => d.imei === imei);
+        io.emit('admin_update');
+        if (device) {
+            io.emit('settings_updated', { imei, settings, userId: device.ownerId });
+        }
+    }
+    res.json({ success });
+});
+
+
 // Socket.io for Real-time communication with the web frontend
 io.on('connection', (socket) => {
+
     console.log('[Web] A client connected');
     socket.on('disconnect', () => {
         console.log('[Web] Client disconnected');
@@ -196,28 +265,91 @@ const tcpServer = net.createServer((socket) => {
             // Broadcast Geofence Alerts
             if (alerts && alerts.length > 0) {
                 alerts.forEach(alert => {
+                    const geoDeviceName = (device && device.name) ? device.name : parsedData.imei;
                     io.emit('geofence_alert', {
                         ownerId: parsedData.ownerId,
                         imei: parsedData.imei,
-                        deviceName: (device && device.name) ? device.name : parsedData.imei,
+                        deviceName: geoDeviceName,
                         type: alert.type,
                         geofenceName: alert.geofenceName
                     });
+
+                    const contact = store.getCustomerContact(parsedData.ownerId);
+                    if (contact) {
+                        // Email
+                        if (contact.email) {
+                            emailService.sendGeofenceAlert({
+                                email: contact.email,
+                                customerName: contact.username,
+                                deviceName: geoDeviceName,
+                                imei: parsedData.imei,
+                                type: alert.type,
+                                geofenceName: alert.geofenceName,
+                                timestamp: parsedData.timestamp
+                            });
+                        }
+                        // SMS (New Production Calls)
+                        if (contact.phone) {
+                            if (alert.type === 'geofence_enter') {
+                                smsService.sendGeofenceEnter(contact.phone, geoDeviceName, alert.geofenceName);
+                            } else {
+                                smsService.sendGeofenceExit(contact.phone, geoDeviceName, alert.geofenceName);
+                            }
+                        }
+                    }
                 });
             }
 
             // --- PANIC BUTTON INTEGRATION ---
             if (parsedData.packetType === 'EA' || parsedData.event === 'Emergency Alert') {
                 console.log(`[ALARM] PANIC BUTTON PRESSED on device: ${parsedData.imei}`);
+                const deviceName = (device && device.name) ? device.name : parsedData.imei;
                 io.emit('panic_alert', {
                     ownerId: parsedData.ownerId,
                     imei: parsedData.imei,
-                    deviceName: (device && device.name) ? device.name : parsedData.imei,
+                    deviceName,
                     lat: parsedData.latitude,
                     lng: parsedData.longitude,
                     time: parsedData.timestamp
                 });
+
+                const contact = store.getCustomerContact(parsedData.ownerId);
+                if (contact) {
+                    // Email
+                    if (contact.email) {
+                        emailService.sendPanicAlert({
+                            email: contact.email,
+                            customerName: contact.username,
+                            deviceName,
+                            imei: parsedData.imei,
+                            lat: parsedData.latitude,
+                            lng: parsedData.longitude,
+                            timestamp: parsedData.timestamp
+                        });
+                    }
+                    // SMS (Production Call)
+                    if (contact.phone) {
+                        smsService.sendPanic(contact.phone, deviceName);
+                    }
+                }
             }
+
+            // --- DRIVING BEHAVIOUR EVENTS (HB, HA, RT, TA, BD) ---
+            const drivingContact = store.getCustomerContact(parsedData.ownerId);
+            const drivingDeviceName = (device && device.name) ? device.name : parsedData.imei;
+            if (drivingContact && drivingContact.phone) {
+                switch (parsedData.packetType) {
+                    case 'HB':
+                    case 'HA':
+                    case 'RT':
+                        smsService.sendSafetyAlert(drivingContact.phone, drivingDeviceName, parsedData.packetType);
+                        break;
+                    case 'TA':
+                        smsService.sendTamperAlert(drivingContact.phone, drivingDeviceName);
+                        break;
+                }
+            }
+
             
             // Send live log to admin
             io.emit('admin_live_log', {

@@ -1,184 +1,592 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Admin Dashboard - Fleetly</title>
-    <link rel="stylesheet" href="css/main.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fleetly Admin Command</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #080c10;
+    --surface: #0d1318;
+    --surface-2: #111820;
+    --border: rgba(255,255,255,0.06);
+    --border-hover: rgba(0,220,180,0.25);
+    --text: #e8edf2;
+    --muted: #5a6a7a;
+    --accent: #00dcb4;
+    --accent-dim: rgba(0,220,180,0.12);
+    --accent-glow: rgba(0,220,180,0.3);
+    --red: #ff4d5a;
+    --red-dim: rgba(255,77,90,0.12);
+    --amber: #ffb547;
+    --amber-dim: rgba(255,181,71,0.12);
+    --font-display: 'Syne', sans-serif;
+    --font-body: 'DM Sans', sans-serif;
+    --r: 12px;
+  }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-body);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Ambient background */
+  body::before {
+    content: '';
+    position: fixed;
+    top: -200px; left: -200px;
+    width: 600px; height: 600px;
+    background: radial-gradient(circle, rgba(0,220,180,0.04) 0%, transparent 70%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .shell { position: relative; z-index: 1; max-width: 1400px; margin: 0 auto; padding: 0 28px 40px; }
+
+  /* ── NAV ── */
+  nav {
+    display: flex; align-items: center; gap: 20px;
+    padding: 18px 0 24px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 32px;
+  }
+  .logo-wrap { display: flex; align-items: center; gap: 12px; }
+  .logo-icon {
+    width: 38px; height: 38px;
+    background: linear-gradient(135deg, #00dcb4, #0057ff);
+    border-radius: 10px;
+    display: grid; place-items: center;
+  }
+  .logo-text { font-family: var(--font-display); }
+  .logo-text h1 { font-size: 16px; font-weight: 800; letter-spacing: -0.3px; }
+  .logo-text span { font-size: 10px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase; }
+
+  /* ── SEARCH ── */
+  .search-wrap {
+    flex: 1; max-width: 380px; margin-left: 32px;
+    position: relative; z-index: 1000;
+  }
+  .search {
+    display: flex; align-items: center; gap: 10px;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 8px; padding: 0 14px; height: 38px;
+    transition: all .2s;
+  }
+  .search:focus-within { border-color: var(--accent); box-shadow: 0 0 15px var(--accent-dim); }
+  .search i { color: var(--muted); font-size: 13px; }
+  .search input {
+    background: none; border: none; outline: none;
+    color: var(--text); font-family: var(--font-body); font-size: 13px; width: 100%;
+  }
+
+  /* Search Dropdown Logic */
+  .search-results-dropdown {
+    position: absolute; top: calc(100% + 8px); left: 0; right: 0;
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: 10px; overflow: hidden;
+    box-shadow: 0 16px 40px rgba(0,0,0,0.5);
+    display: none; z-index: 9999;
+  }
+  .search-results-dropdown.active { display: block; }
+  
+  .search-result-item {
+    padding: 10px 14px; border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 12px; cursor: pointer;
+  }
+  .search-result-item:hover { background: var(--surface-2); }
+  .result-icon { width: 30px; height: 30px; background: var(--accent-dim); color: var(--accent); border-radius: 6px; display: grid; place-items: center; }
+  .result-title { font-size: 13px; font-weight: 600; }
+  .result-subtitle { font-size: 11px; color: var(--muted); }
+  .result-tag { font-size: 9px; padding: 2px 6px; background: rgba(255,255,255,0.05); border-radius: 4px; margin-left: 6px; }
+
+  nav .spacer { flex: 1; }
+
+  .status-pill {
+    display: flex; align-items: center; gap: 7px;
+    background: var(--accent-dim); border: 1px solid var(--accent-glow);
+    border-radius: 20px; padding: 6px 14px;
+    font-size: 12px; font-weight: 500; color: var(--accent);
+    font-family: var(--font-display);
+  }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent); animation: pulse 2s infinite; }
+
+  .btn-logout {
+    width: 36px; height: 36px; border-radius: 8px;
+    background: var(--red-dim); border: 1px solid rgba(255,77,90,0.3);
+    display: grid; place-items: center; cursor: pointer; color: var(--red);
+  }
+
+  /* ── KPI CARDS ── */
+  .kpi-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+    margin-bottom: 28px;
+  }
+  .kpi {
+    background: var(--surface); border: 1px solid var(--border);
+    border-radius: var(--r); padding: 22px 24px;
+    display: flex; align-items: center; gap: 18px;
+  }
+  .kpi-icon { width: 46px; height: 46px; border-radius: 10px; display: grid; place-items: center; }
+  .kpi-icon.green  { background: var(--accent-dim); color: var(--accent); }
+  .kpi-icon.teal   { background: rgba(0,180,255,0.1); color: #00b4ff; }
+  .kpi-icon.red    { background: var(--red-dim); color: var(--red); }
+  .kpi-body label { font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); display: block; margin-bottom: 4px; }
+  .kpi-body .val  { font-family: var(--font-display); font-size: 36px; font-weight: 800; line-height: 1; }
+
+  /* ── MAIN CONTENT ── */
+  .main-grid { display: grid; grid-template-columns: 1fr 420px; gap: 20px; }
+  .panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
+  .panel-head { display: flex; align-items: center; justify-content: space-between; padding: 18px 22px; border-bottom: 1px solid var(--border); }
+  .panel-title { display: flex; align-items: center; gap: 10px; font-family: var(--font-display); font-size: 15px; font-weight: 700; }
+  
+  .btn-new {
+    background: linear-gradient(135deg, #00dcb4, #00a87e);
+    border: none; border-radius: 7px; padding: 8px 16px;
+    color: #021a14; font-family: var(--font-display); font-size: 12px; font-weight: 700;
+    cursor: pointer; display: flex; align-items: center; gap: 7px;
+  }
+
+  /* ── TABLES ── */
+  .table-wrap { overflow-x: auto; }
+  .actions-cell { display: flex; align-items: center; gap: 8px; }
+  .icon-btn {
+    width: 32px; height: 32px; border-radius: 8px;
+    background: rgba(255,255,255,0.03); border: 1px solid var(--border);
+    display: grid; place-items: center; cursor: pointer;
+    font-size: 13px; color: var(--muted);
+    transition: all .2s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+  .icon-btn:hover {
+    background: var(--surface-2); border-color: var(--accent); color: var(--accent);
+    transform: translateY(-2px); box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  }
+  .icon-btn[title="Delete"]:hover { border-color: var(--red); color: var(--red); }
+  .icon-btn[title="Recharge"]:hover { border-color: var(--amber); color: var(--amber); }
+
+  /* ── TABLE ── */
+  table { width: 100%; border-collapse: collapse; }
+  thead th { padding: 12px 18px; text-align: left; font-size: 10px; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); background: var(--surface-2); border-bottom: 1px solid var(--border); }
+  tbody td { padding: 14px 18px; font-size: 13px; border-bottom: 1px solid var(--border); }
+  
+  .user-info { display: flex; align-items: center; gap: 12px; }
+  .user-avatar { width: 34px; height: 34px; background: var(--accent-dim); color: var(--accent); border-radius: 8px; display: grid; place-items: center; font-weight: 800; font-family: var(--font-display); }
+  .user-id { font-size: 10px; color: var(--muted); margin-top: 2px; font-family: monospace; }
+
+  .contact-chips { display: flex; flex-direction: column; gap: 4px; }
+  .chip { font-size: 11px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .chip.active { color: var(--text); }
+  .chip i { width: 12px; font-size: 10px; }
+
+  .badge.green  { background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(0,220,180,0.2); }
+  .badge.amber  { background: var(--amber-dim); color: var(--amber); border: 1px solid rgba(255,181,71,0.25); }
+  .badge.red    { background: var(--red-dim); color: var(--red); border: 1px solid rgba(255,77,90,0.25); }
+
+  .actions-cell { 
+    display: flex !important; 
+    flex-direction: row !important; 
+    align-items: center; 
+    justify-content: flex-end;
+    gap: 8px; 
+  }
+  .icon-btn { 
+    width: 32px; height: 32px; border-radius: 8px; 
+    border: 1px solid var(--border); background: var(--surface-2); 
+    color: var(--muted); cursor: pointer; transition: all .2s;
+    display: grid; place-items: center;
+  }
+  .icon-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); transform: translateY(-2px); }
+
+  /* ── TERMINAL ── */
+  .terminal { margin-top: 20px; background: #060a0d; border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
+  .terminal-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; background: var(--surface); border-bottom: 1px solid var(--border); }
+  .terminal-title { display: flex; align-items: center; gap: 10px; font-family: var(--font-display); font-size: 14px; font-weight: 700; }
+  .terminal-body { padding: 18px 22px; height: 220px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 12.5px; }
+  .log-entry { margin-bottom: 6px; }
+  .log-time { color: var(--muted); margin-right: 10px; }
+
+  /* ── MODALS ── */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.8); backdrop-filter: blur(8px); display: none; place-items: center; z-index: 10000; }
+  .modal-overlay.active { display: grid; }
+  .modal { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 32px; width: 450px; }
+  .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; }
+  .form-group { margin-bottom: 16px; }
+  .form-group label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 6px; text-transform: uppercase; }
+  .form-control { width: 100%; background: var(--surface-2); border: 1px solid var(--border); border-radius: 8px; padding: 12px; color: var(--text); outline: none; }
+  .form-control:focus { border-color: var(--accent); }
+  .modal-btn { width: 100%; background: var(--accent); color: #000; border: none; padding: 14px; border-radius: 10px; font-weight: 700; cursor: pointer; }
+
+  @keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.6;transform:scale(.85)} }
+
+  /* Deep Dive Styles */
+  .kpi-mini-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px; }
+  .kpi-mini { background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 15px; text-align: center; }
+  .kpi-mini label { font-size: 10px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; display: block; margin-bottom: 5px; }
+  .kpi-mini .val { font-family: var(--font-display); font-size: 20px; font-weight: 800; }
+  .detail-card { background: var(--surface-2); border-radius: 10px; padding: 10px; border: 1px solid var(--border); font-size: 11px; }
+  .detail-row { display: flex; justify-content: space-between; margin-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.03); padding-bottom: 2px; }
+  .detail-row span:first-child { color: var(--muted); }
+  .detail-row span:last-child { color: var(--text); font-family: monospace; }
+</style>
 </head>
-<body style="background: var(--bg-main); overflow-y: auto;">
-    <div class="admin-layout" style="padding: 2rem; max-width: 1400px; margin: 0 auto; min-height: 100vh;">
-        
-        <!-- Header -->
-        <div class="admin-header glass-panel" style="padding: 1.5rem 2rem; border-radius: var(--radius-lg); margin-bottom: 2rem; display: flex; justify-content: space-between; align-items: center;">
-            <div style="display: flex; align-items: center; gap: 1rem;">
-                <div style="font-size: 2rem; color: var(--primary);"><i class="fa-solid fa-shield-halved"></i></div>
-                <div>
-                    <h2 style="font-size: 1.5rem; font-weight: 700;">Admin Portal</h2>
-                    <p style="color: var(--text-secondary); font-size: 0.9rem;">SaaS Subscription Management</p>
+<body>
+
+<div class="shell">
+  <!-- NAV -->
+  <nav>
+    <div class="logo-wrap">
+      <div class="logo-icon" style="background:none; width:auto; height:auto;">
+          <i class="fa-solid fa-shield-halved" style="font-size: 28px; color: var(--accent);"></i>
+      </div>
+      <div class="logo-text">
+        <h1>Fleetly Admin Command</h1>
+        <span>SAAS INFRASTRUCTURE MANAGEMENT</span>
+      </div>
+    </div>
+
+    <div class="search-wrap">
+      <div class="search">
+        <i class="fa-solid fa-magnifying-glass"></i>
+        <input type="text" id="globalSearch" placeholder="Search IMEI, Customer, or Phone…" onkeyup="handleGlobalSearch(event)">
+      </div>
+      <div id="searchResults" class="search-results-dropdown"></div>
+    </div>
+
+    <div class="spacer"></div>
+
+    <div class="status-pill">
+      <span class="status-dot"></span>
+      System Online
+    </div>
+
+    <button class="btn-logout" onclick="logout()">
+      <i class="fa-solid fa-power-off"></i>
+    </button>
+  </nav>
+
+  <!-- KPI CARDS -->
+  <div class="kpi-grid">
+    <div class="kpi">
+      <div class="kpi-icon green"><i class="fa-solid fa-users"></i></div>
+      <div class="kpi-body">
+        <label>Total Customers</label>
+        <div id="statTotalCustomers" class="val" style="color:var(--accent)">0</div>
+      </div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-icon teal"><i class="fa-solid fa-satellite-dish"></i></div>
+      <div class="kpi-body">
+        <label>Active Trackers</label>
+        <div id="statTotalDevices" class="val" style="color:#00b4ff">0</div>
+      </div>
+    </div>
+    <div class="kpi">
+      <div class="kpi-icon red"><i class="fa-solid fa-lock"></i></div>
+      <div class="kpi-body">
+        <label>Expired Accounts</label>
+        <div id="statExpired" class="val" style="color:var(--red)">0</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MAIN GRID -->
+  <div class="main-grid" id="mainDashboardGrid">
+    
+    <!-- MAIN LIST VIEW (Customers + Requests) -->
+    <div id="mainListView" style="display: contents;">
+        <!-- Customers -->
+        <div class="panel">
+          <div class="panel-head">
+            <div class="panel-title"><i class="fa-solid fa-credit-card"></i> Billing & Subscriptions</div>
+            <button class="btn-new" onclick="showAddCustomerModal()">
+              <i class="fa-solid fa-plus"></i> New User
+            </button>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Customer</th>
+                  <th>Contact Info</th>
+                  <th style="text-align:center">Validity</th>
+                  <th style="text-align:right">Actions</th>
+                </tr>
+              </thead>
+              <tbody id="customerTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <!-- Requests -->
+        <div class="panel">
+          <div class="panel-head">
+            <div class="panel-title"><i class="fa-solid fa-microchip"></i> Device Requests</div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>IMEI</th>
+                  <th>Status</th>
+                  <th style="text-align:right">Action</th>
+                </tr>
+              </thead>
+              <tbody id="requestTableBody"></tbody>
+            </table>
+          </div>
+        </div>
+    </div>
+
+    <!-- CUSTOMER DEEP-DIVE VIEW (Hidden by default) -->
+    <div id="customerDetailView" class="panel" style="display:none; grid-column: span 2;">
+        <div class="panel-head">
+          <div class="panel-title">
+            <button onclick="closeCustomerDetail()" class="icon-btn" style="margin-right:12px; height: 30px; width: 30px;"><i class="fa-solid fa-arrow-left"></i></button>
+            <span id="detailCustomerName">Customer Fleet</span>
+          </div>
+          <div class="status-pill" style="font-size: 10px; padding: 4px 12px;"><span class="status-dot"></span> LIVE DATA</div>
+        </div>
+
+        <div style="padding: 20px;">
+            <div class="kpi-mini-grid">
+                <div class="kpi-mini">
+                    <label>Active (Moving)</label>
+                    <div id="countActive" class="val" style="color:var(--accent)">0</div>
+                </div>
+                <div class="kpi-mini">
+                    <label>Idle (Stationary)</label>
+                    <div id="countIdle" class="val" style="color:var(--amber)">0</div>
+                </div>
+                <div class="kpi-mini">
+                    <label>Halt (Offline)</label>
+                    <div id="countHalt" class="val" style="color:var(--red)">0</div>
                 </div>
             </div>
-            <div style="display: flex; gap: 1rem;">
-                <a href="/api/export/devices?role=admin" class="btn btn-outline" style="text-decoration: none;">
-                    <i class="fa-solid fa-file-excel"></i> Export All
-                </a>
-                <button class="btn btn-primary" onclick="logout()"><i class="fa-solid fa-power-off"></i> Logout</button>
+
+            <div class="table-wrap">
+              <table style="width: 100%;">
+                <thead>
+                  <tr>
+                    <th>Device Details</th>
+                    <th>Status</th>
+                    <th>Last Update</th>
+                    <th>Technical Telemetry</th>
+                    <th style="text-align:right">Feature Control</th>
+                  </tr>
+                </thead>
+                <tbody id="deviceDetailTableBody"></tbody>
+              </table>
             </div>
         </div>
+    </div>
+
+  </div>
+
+  <!-- TERMINAL -->
+  <div class="terminal">
+    <div class="terminal-head">
+      <div class="terminal-title">
+        <span style="color:var(--accent); font-weight:800; font-family:monospace">>_</span>
+        System Terminal
+      </div>
+      <div style="font-family:monospace; font-size:12px; color:var(--accent)">
+        <span class="status-dot" style="display:inline-block; margin-right:5px"></span>
+        TCP:8080 Active
+      </div>
+    </div>
+    <div id="liveLogs" class="terminal-body">
+      <div class="log-entry"><span class="log-time">[SYSTEM]</span> Initialized. Awaiting streams...</div>
+    </div>
+  </div>
+</div>
+
+<!-- MODALS -->
+<div class="modal-overlay" id="addCustomerModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h2>Create Customer</h2>
+            <button onclick="closeAddCustomerModal()" style="background:none; border:none; color:var(--muted); cursor:pointer"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="form-group"><label>Username</label><input type="text" id="newUsername" class="form-control"></div>
+        <div class="form-group"><label>Password</label><input type="password" id="newPassword" class="form-control"></div>
+        <div class="form-group"><label>Phone</label><input type="text" id="newPhone" class="form-control"></div>
+        <div class="form-group"><label>Email</label><input type="text" id="newEmail" class="form-control"></div>
+        <button class="modal-btn" onclick="submitCustomer()">Create Account</button>
+    </div>
+</div>
+
+<div class="modal-overlay" id="validityModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h2>Extend Validity</h2>
+            <button onclick="closeValidityModal()" style="background:none; border:none; color:var(--muted); cursor:pointer"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <input type="hidden" id="valUserId">
+        <div class="form-group"><label>Days to Add</label><input type="number" id="addDays" class="form-control" value="30"></div>
+        <button class="modal-btn" onclick="submitValidity()">Apply Recharge</button>
+    </div>
+</div>
+
+<div class="modal-overlay" id="contactModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h2>Edit Contact</h2>
+            <button onclick="closeContactModal()" style="background:none; border:none; color:var(--muted); cursor:pointer"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <input type="hidden" id="contactUserId">
+        <div class="form-group"><label>Phone</label><input type="text" id="editPhone" class="form-control"></div>
+        <div class="form-group"><label>Email</label><input type="text" id="editEmail" class="form-control"></div>
+        <button class="modal-btn" onclick="submitContact()">Save Changes</button>
+    </div>
+</div>
+
+<div class="modal-overlay" id="featuresModal">
+    <div class="modal" style="width: 500px; max-height: 90vh; overflow-y: auto;">
+        <div class="modal-header">
+            <div>
+                <h2 style="font-family: var(--font-display);">Feature Management</h2>
+                <span style="font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px;">Toggle protocol data points</span>
+            </div>
+            <button onclick="closeFeaturesModal()" style="background:none; border:none; color:var(--muted); cursor:pointer"><i class="fa-solid fa-xmark"></i></button>
+        </div>
         
-        <!-- At A Glance Stats -->
-        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 1.5rem; margin-bottom: 2rem;">
-            <div class="glass-panel" style="padding: 1.5rem; border-radius: var(--radius-lg); display: flex; align-items: center; gap: 1.5rem;">
-                <div style="width: 50px; height: 50px; border-radius: 50%; background: var(--primary-glow); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
-                    <i class="fa-solid fa-users"></i>
+        <input type="hidden" id="featuresUserId">
+        <input type="hidden" id="featuresImei">
+        
+        <div class="features-grid" style="display: grid; gap: 12px; margin-bottom: 24px;">
+            <div class="feature-item" style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: var(--surface-2); border-radius: 10px; border: 1px solid var(--border);">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <i class="fa-solid fa-road" style="color: var(--accent); width: 16px;"></i>
+                    <div>
+                        <div style="font-size: 13px; font-weight: 600;">Odometer</div>
+                        <div style="font-size: 10px; color: var(--muted);">Track total distance traveled</div>
+                    </div>
                 </div>
-                <div>
-                    <div style="color: var(--text-secondary); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Customers</div>
-                    <div id="statTotalCustomers" style="font-size: 1.8rem; font-weight: 700;">0</div>
-                </div>
+                <label class="switch"><input type="checkbox" id="f-odometer"><span class="slider"></span></label>
             </div>
             
-            <div class="glass-panel" style="padding: 1.5rem; border-radius: var(--radius-lg); display: flex; align-items: center; gap: 1.5rem;">
-                <div style="width: 50px; height: 50px; border-radius: 50%; background: rgba(16, 185, 129, 0.2); color: var(--success); display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
-                    <i class="fa-solid fa-satellite-dish"></i>
+            <div class="feature-item" style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: var(--surface-2); border-radius: 10px; border: 1px solid var(--border);">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <i class="fa-solid fa-gauge-high" style="color: var(--amber); width: 16px;"></i>
+                    <div>
+                        <div style="font-size: 13px; font-weight: 600;">Speeding Alerts</div>
+                        <div style="font-size: 10px; color: var(--muted);">Real-time overspeed notifications</div>
+                    </div>
                 </div>
-                <div>
-                    <div style="color: var(--text-secondary); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Active Trackers</div>
-                    <div id="statTotalDevices" style="font-size: 1.8rem; font-weight: 700;">0</div>
-                </div>
+                <label class="switch"><input type="checkbox" id="f-speedAlert"><span class="slider"></span></label>
             </div>
 
-            <div class="glass-panel" style="padding: 1.5rem; border-radius: var(--radius-lg); display: flex; align-items: center; gap: 1.5rem;">
-                <div style="width: 50px; height: 50px; border-radius: 50%; background: var(--danger-glow); color: var(--danger); display: flex; align-items: center; justify-content: center; font-size: 1.5rem;">
-                    <i class="fa-solid fa-lock"></i>
+            <div class="feature-item" style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: var(--surface-2); border-radius: 10px; border: 1px solid var(--border);">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <i class="fa-solid fa-key" style="color: var(--accent); width: 16px;"></i>
+                    <div>
+                        <div style="font-size: 13px; font-weight: 600;">Ignition Status</div>
+                        <div style="font-size: 10px; color: var(--muted);">Engine ON/OFF detection</div>
+                    </div>
                 </div>
-                <div>
-                    <div style="color: var(--text-secondary); font-size: 0.85rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 600;">Expired Accounts</div>
-                    <div id="statExpired" style="font-size: 1.8rem; font-weight: 700;">0</div>
+                <label class="switch"><input type="checkbox" id="f-ignitionAlert"><span class="slider"></span></label>
+            </div>
+
+            <div class="feature-item" style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: var(--surface-2); border-radius: 10px; border: 1px solid var(--border);">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <i class="fa-solid fa-draw-polygon" style="color: #00b4ff; width: 16px;"></i>
+                    <div>
+                        <div style="font-size: 13px; font-weight: 600;">Geofencing</div>
+                        <div style="font-size: 10px; color: var(--muted);">Zone entry/exit monitoring</div>
+                    </div>
                 </div>
+                <label class="switch"><input type="checkbox" id="f-geofenceAlert"><span class="slider"></span></label>
+            </div>
+
+            <div class="feature-item" style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: var(--surface-2); border-radius: 10px; border: 1px solid var(--border);">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <i class="fa-solid fa-plug" style="color: var(--red); width: 16px;"></i>
+                    <div>
+                        <div style="font-size: 13px; font-weight: 600;">Power Alerts</div>
+                        <div style="font-size: 10px; color: var(--muted);">External power disconnection</div>
+                    </div>
+                </div>
+                <label class="switch"><input type="checkbox" id="f-powerAlert"><span class="slider"></span></label>
+            </div>
+
+            <div class="feature-item" style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: var(--surface-2); border-radius: 10px; border: 1px solid var(--border);">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <i class="fa-solid fa-battery-half" style="color: var(--amber); width: 16px;"></i>
+                    <div>
+                        <div style="font-size: 13px; font-weight: 600;">Low Battery</div>
+                        <div style="font-size: 10px; color: var(--muted);">Internal battery backup alerts</div>
+                    </div>
+                </div>
+                <label class="switch"><input type="checkbox" id="f-lowBatteryAlert"><span class="slider"></span></label>
+            </div>
+
+            <div class="feature-item" style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: var(--surface-2); border-radius: 10px; border: 1px solid var(--border);">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <i class="fa-solid fa-triangle-exclamation" style="color: var(--red); width: 16px;"></i>
+                    <div>
+                        <div style="font-size: 13px; font-weight: 600;">Panic Mode</div>
+                        <div style="font-size: 10px; color: var(--muted);">SOS emergency button features</div>
+                    </div>
+                </div>
+                <label class="switch"><input type="checkbox" id="f-panicAlert"><span class="slider"></span></label>
+            </div>
+
+            <div class="feature-item" style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: var(--surface-2); border-radius: 10px; border: 1px solid var(--border);">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <i class="fa-solid fa-heart-pulse" style="color: var(--accent); width: 16px;"></i>
+                    <div>
+                        <div style="font-size: 13px; font-weight: 600;">Health Monitoring</div>
+                        <div style="font-size: 10px; color: var(--muted);">System diagnostics & uptime</div>
+                    </div>
+                </div>
+                <label class="switch"><input type="checkbox" id="f-healthStats"><span class="slider"></span></label>
+            </div>
+
+            <div class="feature-item" style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: var(--surface-2); border-radius: 10px; border: 1px solid var(--border);">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <i class="fa-solid fa-microchip" style="color: #8b9bb4; width: 16px;"></i>
+                    <div>
+                        <div style="font-size: 13px; font-weight: 600;">Advanced CAN/OBD</div>
+                        <div style="font-size: 10px; color: var(--muted);">Vehicle ECU data extraction</div>
+                    </div>
+                </div>
+                <label class="switch"><input type="checkbox" id="f-canData"><span class="slider"></span></label>
+            </div>
+
+            <div class="feature-item" style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: var(--surface-2); border-radius: 10px; border: 1px solid var(--border);">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <i class="fa-brands fa-bluetooth" style="color: #0057ff; width: 16px;"></i>
+                    <div>
+                        <div style="font-size: 13px; font-weight: 600;">Bluetooth BLE</div>
+                        <div style="font-size: 10px; color: var(--muted);">Wireless sensor integration</div>
+                    </div>
+                </div>
+                <label class="switch"><input type="checkbox" id="f-bleData"><span class="slider"></span></label>
             </div>
         </div>
         
-        <div class="admin-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 2rem;">
-            <!-- Customers Panel -->
-            <div class="glass-panel" style="padding: 1.5rem; border-radius: var(--radius-lg); overflow: hidden;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                    <h3 style="font-size: 1.2rem;"><i class="fa-solid fa-wallet" style="color: var(--accent); margin-right: 8px;"></i> Billing & Subscriptions</h3>
-                    <button class="btn btn-primary" style="width: auto; padding: 0.5rem 1rem;" onclick="showAddCustomerModal()"><i class="fa-solid fa-user-plus"></i> New User</button>
-                </div>
-                
-                <div class="table-container" style="overflow-x: auto;">
-                    <table style="width: 100%; border-collapse: collapse;">
-                        <thead>
-                            <tr style="border-bottom: 1px solid var(--border-light); color: var(--text-secondary); font-size: 0.85rem;">
-                                <th style="padding: 1rem; text-align: left;">Username</th>
-                                <th style="padding: 1rem; text-align: center;">Validity Left</th>
-                                <th style="padding: 1rem; text-align: right;">Actions</th>
-                            </tr>
-                        </thead>
-                        <tbody id="customerTableBody">
-                            <!-- Injected by JS -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-            
-            <!-- Device Requests Panel -->
-            <div class="glass-panel" style="padding: 1.5rem; border-radius: var(--radius-lg); overflow: hidden;">
-                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                    <h3 style="font-size: 1.2rem;"><i class="fa-solid fa-microchip" style="color: var(--primary); margin-right: 8px;"></i> Device Requests</h3>
-                </div>
-                
-                <div class="table-container" style="overflow-x: auto;">
-                    <table style="width: 100%; border-collapse: collapse;">
-                        <thead>
-                            <tr style="border-bottom: 1px solid var(--border-light); color: var(--text-secondary); font-size: 0.85rem;">
-                                <th style="padding: 1rem; text-align: left;">Hardware IMEI</th>
-                                <th style="padding: 1rem; text-align: left;">Customer</th>
-                                <th style="padding: 1rem; text-align: left;">TCP Status</th>
-                                <th style="padding: 1rem; text-align: right;">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="requestTableBody">
-                            <!-- Injected by JS -->
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-        
-        <!-- Live System Logs -->
-        <div class="glass-panel" style="margin-top: 2rem; padding: 1.5rem; border-radius: var(--radius-lg); overflow: hidden;">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem;">
-                <h3 style="font-size: 1.2rem;"><i class="fa-solid fa-terminal" style="color: var(--success); margin-right: 8px;"></i> Live System Logs</h3>
-                <span style="font-size: 0.8rem; color: var(--success); display: flex; align-items: center; gap: 6px;">
-                    <i class="fa-solid fa-circle fa-fade"></i> TCP Server Active
-                </span>
-            </div>
-            <div id="liveLogs" style="background: rgba(0,0,0,0.4); border: 1px solid rgba(255,255,255,0.05); padding: 1rem; border-radius: 8px; font-family: 'Courier New', monospace; font-size: 0.85rem; color: var(--success); height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px;">
-                <!-- Logs will appear here -->
-                <div style="color: var(--text-secondary);">[System] Initialized. Waiting for incoming TCP connections on port 8080...</div>
-            </div>
-        </div>
+        <button class="modal-btn" onclick="submitFeatures()">Apply Configuration</button>
     </div>
+</div>
 
-    <!-- Add Customer Modal -->
-    <div class="modal-overlay" id="addCustomerModal">
-        <div class="modal glass-panel">
-            <div class="modal-header">
-                <h2>Create Customer</h2>
-                <button class="modal-close" onclick="closeAddCustomerModal()"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-            <div class="form-group">
-                <input type="text" id="newUsername" class="form-control" placeholder=" " required>
-                <label for="newUsername" style="position: absolute; top: 12px; left: 20px; pointer-events: none; opacity: 0; transition: all 0.2s;">Username</label>
-            </div>
-            <div class="form-group">
-                <input type="password" id="newPassword" class="form-control" placeholder=" " required>
-                <label for="newPassword" style="position: absolute; top: 12px; left: 20px; pointer-events: none; opacity: 0; transition: all 0.2s;">Password</label>
-            </div>
-            <button class="btn btn-primary" onclick="submitCustomer()" style="margin-top: 1rem;">Create Account</button>
-        </div>
-    </div>
+<style>
+/* iOS Style Toggle Switches */
+.switch { position: relative; display: inline-block; width: 34px; height: 20px; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255,255,255,0.1); transition: .4s; border-radius: 20px; }
+.slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+input:checked + .slider { background-color: var(--accent); }
+input:checked + .slider:before { transform: translateX(14px); }
+</style>
 
-    <!-- Update Validity Modal -->
-    <div class="modal-overlay" id="validityModal">
-        <div class="modal glass-panel">
-            <div class="modal-header">
-                <h2>Recharge Account</h2>
-                <button class="modal-close" onclick="closeValidityModal()"><i class="fa-solid fa-xmark"></i></button>
-            </div>
-            <p style="color: var(--text-secondary); margin-bottom: 1.5rem; font-size: 0.9rem;">Add days to this customer's subscription. This will instantly unlock their dashboard if they are expired.</p>
-            <input type="hidden" id="valUserId">
-            <div class="form-group">
-                <input type="number" id="addDays" class="form-control" value="30" placeholder=" " required>
-                <label for="addDays" style="position: absolute; top: 12px; left: 20px; pointer-events: none; opacity: 0; transition: all 0.2s;">Add Days</label>
-            </div>
-            <button class="btn btn-primary" onclick="submitValidity()" style="margin-top: 1rem;"><i class="fa-solid fa-bolt"></i> Recharge Account</button>
-        </div>
-    </div>
 
-    <!-- Script to handle floating labels -->
-    <script>
-        document.querySelectorAll('.form-control').forEach(input => {
-            const label = input.nextElementSibling;
-            if(label) {
-                input.placeholder = label.innerText;
-                input.addEventListener('focus', () => {
-                    input.placeholder = '';
-                    label.style.opacity = '1'; label.style.top = '-20px'; label.style.left = '0'; label.style.fontSize = '0.8rem';
-                });
-                input.addEventListener('blur', () => {
-                    if(input.value === '') {
-                        input.placeholder = label.innerText;
-                        label.style.opacity = '0'; label.style.top = '12px'; label.style.left = '20px';
-                    }
-                });
-            }
-        });
-    </script>
-    <script src="/socket.io/socket.io.js"></script>
-    <script src="js/admin.js"></script>
+<script src="/socket.io/socket.io.js"></script>
+<script src="js/admin.js"></script>
 </body>
 </html>

@@ -22,6 +22,13 @@ const markers = {};
 let myDevices = [];
 let latestData = {}; // Store latest telemetry for panel
 let activeImei = null;
+let userSettings = {};
+
+function isFeatureEnabled(imei, feature) {
+    if (!imei) return true;
+    const settings = userSettings[imei] || {};
+    return settings[feature] !== false;
+}
 
 // ==========================================
 // Toast Notification Logic
@@ -190,6 +197,12 @@ async function loadData() {
     const data = await res.json();
     
     myDevices = data.devices;
+    
+    // Fetch Per-Device Settings
+    const settingsRes = await fetch(`/api/customer/settings?userId=${user.id}`);
+    userSettings = await settingsRes.json();
+    console.log('[Settings] Loaded Map:', userSettings);
+
     loadGeofences();
     
     if (data.subscription) {
@@ -204,6 +217,13 @@ async function loadData() {
     }
     
     renderDeviceList();
+    
+    // Global Feature Visibility
+    const anyGeofenceEnabled = myDevices.some(d => isFeatureEnabled(d.imei, 'geofenceAlert'));
+    const geofenceBtn = document.getElementById('geofenceToggleBtn');
+    if (geofenceBtn) {
+        geofenceBtn.style.display = anyGeofenceEnabled ? 'block' : 'none';
+    }
 }
 
 async function loadGeofences() {
@@ -453,22 +473,27 @@ function renderDeviceList() {
         return String(a.name || a.imei).localeCompare(String(b.name || b.imei));
     });
     
-    container.innerHTML = sortedDevices.map(d => `
-        <div class="device-card" id="card-${d.imei}" onclick="focusDevice('${d.imei}')">
-            <div class="device-header">
-                <div class="device-title">
-                    <i class="fa-solid fa-star" style="color: ${d.pinned ? 'var(--warning)' : 'var(--text-secondary)'}; opacity: ${d.pinned ? '1' : '0.5'}; cursor: pointer; margin-right: 6px; transition: all 0.2s;" onclick="togglePin('${d.imei}', event)" title="${d.pinned ? 'Unpin' : 'Pin to top'}"></i>
-                    <i class="fa-solid fa-truck"></i> ${d.name || d.imei}
+    container.innerHTML = sortedDevices.map(d => {
+        const odoHidden = !isFeatureEnabled(d.imei, 'odometer') ? 'display:none' : '';
+        const speedHidden = !isFeatureEnabled(d.imei, 'speedAlert') ? 'display:none' : '';
+        
+        return `
+            <div class="device-card" id="card-${d.imei}" onclick="focusDevice('${d.imei}')">
+                <div class="device-header">
+                    <div class="device-title">
+                        <i class="fa-solid fa-star" style="color: ${d.pinned ? 'var(--warning)' : 'var(--text-secondary)'}; opacity: ${d.pinned ? '1' : '0.5'}; cursor: pointer; margin-right: 6px; transition: all 0.2s;" onclick="togglePin('${d.imei}', event)" title="${d.pinned ? 'Unpin' : 'Pin to top'}"></i>
+                        <i class="fa-solid fa-truck"></i> ${d.name || d.imei}
+                    </div>
+                    <div style="font-weight: 700; font-size: 0.8rem; color: var(--text-secondary);" id="status-${d.imei}">Offline</div>
                 </div>
-                <div style="font-weight: 700; font-size: 0.8rem; color: var(--text-secondary);" id="status-${d.imei}">Offline</div>
+                <div class="device-stats" style="display: flex; justify-content: space-between; font-size: 0.75rem; padding-top: 8px;">
+                    <div class="stat-item" style="${speedHidden}"><i class="fa-solid fa-gauge-high"></i> <span id="speed-${d.imei}">0</span> km/h</div>
+                    <div class="stat-item" style="${odoHidden}"><i class="fa-solid fa-road"></i> <span id="odo-${d.imei}">${d.odometer || 0}</span> km</div>
+                    <div class="stat-item"><i class="fa-regular fa-clock"></i> <span id="time-${d.imei}">--</span></div>
+                </div>
             </div>
-            <div class="device-stats" style="grid-template-columns: 1fr 1fr 1fr; font-size: 0.75rem;">
-                <div class="stat-item"><i class="fa-solid fa-gauge-high"></i> <span id="speed-${d.imei}">0</span> km/h</div>
-                <div class="stat-item"><i class="fa-solid fa-road"></i> <span id="odo-${d.imei}">${d.odometer || 0}</span> km</div>
-                <div class="stat-item"><i class="fa-regular fa-clock"></i> <span id="time-${d.imei}">--</span></div>
-            </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
     
     document.getElementById('countAll').innerText = myDevices.length;
     updateFleetCounts();
@@ -580,6 +605,7 @@ function updatePanelData(data, deviceName) {
         });
         
     document.getElementById('panelTime').innerText = new Date(timestamp).toLocaleTimeString();
+    
     if(odometer) document.getElementById('panelOdo').innerText = `${odometer.toFixed(1)} km`;
     
     // Battery & GPS
@@ -615,6 +641,22 @@ function updatePanelData(data, deviceName) {
         document.getElementById('panelIgnition').innerText = 'OFF';
         document.getElementById('panelIgnition').style.color = 'var(--danger)';
     }
+
+    // Toggle Visibility of stat boxes based on Admin settings
+    const boxes = {
+        'panelOdo': isFeatureEnabled(imei, 'odometer'),
+        'panelIgnition': isFeatureEnabled(imei, 'ignitionAlert'),
+        'panelBattery': isFeatureEnabled(imei, 'healthStats'),
+        'panelGps': isFeatureEnabled(imei, 'healthStats')
+    };
+
+    Object.keys(boxes).forEach(id => {
+        const el = document.getElementById(id);
+        if (el) {
+            const box = el.closest('.stat-box');
+            if (box) box.style.display = boxes[id] ? 'flex' : 'none';
+        }
+    });
 }
 
 // Helpers for Telemetry Popup
@@ -664,14 +706,17 @@ function buildTelemetryHTML(data, deviceName) {
         </div>
         
         <div class="telemetry-grid">
+            ${isFeatureEnabled(imei, 'speedAlert') ? `
             <div class="telemetry-item">
                 <span class="telemetry-label"><i class="fa-solid fa-gauge-high"></i> Speed</span>
                 <span class="telemetry-val">${speed} km/h</span>
-            </div>
+            </div>` : ''}
+            ${isFeatureEnabled(imei, 'odometer') ? `
             <div class="telemetry-item">
                 <span class="telemetry-label"><i class="fa-solid fa-road"></i> Odometer</span>
                 <span class="telemetry-val accent">${odometer ? odometer.toFixed(1) + ' km' : 'N/A'}</span>
-            </div>
+            </div>` : ''}
+            ${isFeatureEnabled(imei, 'healthStats') ? `
             <div class="telemetry-item">
                 <span class="telemetry-label"><i class="fa-solid fa-battery-full"></i> Battery</span>
                 <span class="telemetry-val">${batteryPercentage}% <span style="font-size:0.6rem; color:var(--${batColor});"><i class="fa-solid ${batIcon}"></i></span></span>
@@ -679,7 +724,7 @@ function buildTelemetryHTML(data, deviceName) {
             <div class="telemetry-item">
                 <span class="telemetry-label"><i class="fa-solid fa-location-dot"></i> GPS Lock</span>
                 <span class="telemetry-val" style="font-size: 0.8rem;">${fixText} (${satCount})</span>
-            </div>
+            </div>` : ''}
         </div>
         
         <div class="telemetry-footer">
@@ -700,13 +745,37 @@ socket.on('subscription_expired', (data) => {
 });
 
 socket.on('panic_alert', (data) => {
-    if (data.ownerId === user.id) {
+    const settings = userSettings[data.imei] || {};
+    if (data.ownerId === user.id && settings.panicAlert !== false) {
         showPanicAlert(data);
     }
 });
 
+socket.on('settings_updated', (data) => {
+    if (data.userId === user.id) {
+        const { imei, settings } = data;
+        console.log(`[Socket] Settings Updated for ${imei}:`, settings);
+        userSettings[imei] = settings;
+        showToast("⚙️ Configuration Updated", `Device ${imei} settings updated by Admin.`, "info");
+        
+        renderDeviceList(); // Refresh sidebar visibility
+        
+        // Refresh Geofence button visibility
+        const anyGeofenceEnabled = myDevices.some(d => isFeatureEnabled(d.imei, 'geofenceAlert'));
+        const geofenceBtn = document.getElementById('geofenceToggleBtn');
+        if (geofenceBtn) geofenceBtn.style.display = anyGeofenceEnabled ? 'block' : 'none';
+
+        // Re-render current panel if open and it's this device
+        if(activeImei === imei && latestData[imei]) {
+            const device = myDevices.find(d => d.imei === imei);
+            updatePanelData(latestData[imei], device ? device.name : imei);
+        }
+    }
+});
+
 socket.on('geofence_alert', (data) => {
-    if (data.ownerId !== user.id) return;
+    const settings = userSettings[data.imei] || {};
+    if (data.ownerId !== user.id || settings.geofenceAlert === false) return;
     
     const isEnter = data.type === 'geofence_enter';
     const title = `🚨 Geofence Alert: ${data.deviceName}`;
@@ -749,7 +818,15 @@ socket.on('device_data', (data) => {
         const eventKey = `${imei}_${data.event}`;
         const lastEventTime = window[`last_${eventKey}`] || 0;
         const now = Date.now();
-        if (now - lastEventTime > 10000) { // Only show once every 10 seconds per event type per device
+        
+        // Filter based on settings
+        let allowed = true;
+        const settings = userSettings[imei] || {};
+        if (data.event.includes('Harsh') && settings.speedAlert === false) allowed = false;
+        if (data.event.includes('Tamper') && settings.healthStats === false) allowed = false;
+        if (data.event.includes('Emergency') && settings.panicAlert === false) allowed = false;
+
+        if (allowed && now - lastEventTime > 10000) { // Only show once every 10 seconds per event type per device
             showToast(`⚠️ Alert: ${deviceName}`, `Event Detected: ${data.event}`, type);
             window[`last_${eventKey}`] = now;
         }

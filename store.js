@@ -13,7 +13,26 @@ const defaultData = {
     subscriptions: [], // { userId: string, validityDays: number, expirationDate: string }
     deviceLastSeen: {}, // Transient data, not strictly needed in JSON, but good for persistence { imei: { timestamp, lat, lng } }
     deviceHistory: {}, // { imei: [points] }
-    geofences: [] // { id, userId, name, type: 'polygon'|'circle', points: [[lat,lng]], radius: number }
+    geofences: [], // { id, userId, name, type: 'polygon'|'circle', points: [[lat,lng]], radius: number }
+    kycApplications: [], // { id, userId, applicantType, fullName, docType, docNumber, orgName, gstNumber, authSignatory, status, submittedAt, reviewedAt, rejectReason }
+    userSettings: {}, // { userId: { feature: boolean } }
+    deviceSettings: {} // { imei: { feature: boolean } }
+};
+
+const defaultSettings = {
+    odometer: true,
+    speedAlert: true,
+    ignitionAlert: true,
+    geofenceAlert: true,
+    powerAlert: true,
+    lowBatteryAlert: true,
+    panicAlert: true,
+    healthStats: true,
+    telemetryLogs: true,
+    canData: false,
+    rs485Data: false,
+    uartData: false,
+    bleData: false
 };
 
 // Spatial Calculation Helpers
@@ -75,7 +94,7 @@ module.exports = {
         const data = readData();
         return data.users.find(u => u.id === id);
     },
-    createUser: (username, password) => {
+    createUser: (username, password, phone = '', email = '') => {
         const data = readData();
         if (data.users.find(u => u.username === username)) return null; // Exists
         
@@ -83,7 +102,9 @@ module.exports = {
             id: Date.now().toString(),
             username,
             password,
-            role: 'customer'
+            role: 'customer',
+            phone: phone || '',
+            email: email || ''
         };
         data.users.push(newUser);
         
@@ -99,36 +120,84 @@ module.exports = {
         writeData(data);
         return newUser;
     },
+    updateUserContact: (userId, phone, email) => {
+        const data = readData();
+        const user = data.users.find(u => u.id === userId);
+        if (!user) return false;
+        if (phone !== undefined) user.phone = phone;
+        if (email !== undefined) user.email = email;
+        writeData(data);
+        return true;
+    },
+    getCustomerContact: (userId) => {
+        const data = readData();
+        const user = data.users.find(u => u.id === userId);
+        if (!user) return null;
+        return { username: user.username, phone: user.phone || '', email: user.email || '' };
+    },
     getAllCustomers: () => {
         const data = readData();
         const customers = data.users.filter(u => u.role === 'customer').map(u => ({
             id: u.id,
             username: u.username,
+            phone: u.phone || '',
+            email: u.email || '',
             subscription: data.subscriptions.find(s => s.userId === u.id)
         }));
         return customers;
     },
 
-    // Devices & Requests
-    requestDevice: (userId, imei) => {
-        imei = imei.trim();
+    // Admin Management
+    approveDeviceRequest: (imei, userId) => {
         const data = readData();
-        // Check if already owned
-        if (data.devices.find(d => d.imei === imei)) return { error: 'Device already registered.' };
-        // Check if already requested
-        if (data.requests.find(r => r.imei === imei && r.status === 'pending')) return { error: 'Device approval is already pending.' };
-
-        const req = {
-            id: Date.now().toString(),
-            imei,
-            userId,
-            status: 'pending',
-            timestamp: new Date().toISOString()
-        };
-        data.requests.push(req);
+        // Remove from requests
+        data.deviceRequests = (data.deviceRequests || []).filter(r => r.imei !== imei);
+        
+        // Add to devices
+        if (!data.devices.find(d => d.imei === imei)) {
+            data.devices.push({
+                imei,
+                ownerId: userId,
+                name: 'New Asset'
+            });
+        }
         writeData(data);
-        return req;
+        return true;
     },
+    deleteCustomer: (userId) => {
+        const data = readData();
+        data.users = data.users.filter(u => u.id !== userId);
+        data.devices = data.devices.filter(d => d.ownerId !== userId);
+        data.subscriptions = data.subscriptions.filter(s => s.userId !== userId);
+        writeData(data);
+        return true;
+    },
+    updateContact: (userId, phone, email) => {
+        const data = readData();
+        const user = data.users.find(u => u.id === userId);
+        if (user) {
+            user.phone = phone;
+            user.email = email;
+            writeData(data);
+            return true;
+        }
+        return false;
+    },
+    addSubscriptionDays: (userId, days) => {
+        const data = readData();
+        let sub = data.subscriptions.find(s => s.userId === userId);
+        if (!sub) {
+            sub = { userId, expirationDate: new Date().toISOString() };
+            data.subscriptions.push(sub);
+        }
+        const currentExp = new Date(sub.expirationDate);
+        const baseDate = currentExp > new Date() ? currentExp : new Date();
+        baseDate.setDate(baseDate.getDate() + days);
+        sub.expirationDate = baseDate.toISOString();
+        writeData(data);
+        return true;
+    },
+
     getPendingRequests: () => {
         const data = readData();
         const pending = data.requests.filter(r => r.status === 'pending');
@@ -301,5 +370,74 @@ module.exports = {
              return true;
          }
          return false;
+    },
+
+    // KYC Applications
+    createKycApplication: (appData) => {
+        const data = readData();
+        if (!data.kycApplications) data.kycApplications = [];
+        // Replace existing application for same user if pending/rejected
+        data.kycApplications = data.kycApplications.filter(k => !(k.userId === appData.userId && k.status !== 'verified'));
+        const kyc = {
+            id: Date.now().toString(),
+            ...appData,
+            status: 'under_review',
+            submittedAt: new Date().toISOString(),
+            reviewedAt: null,
+            rejectReason: null
+        };
+        data.kycApplications.push(kyc);
+        writeData(data);
+        return kyc;
+    },
+    getKycApplications: () => {
+        const data = readData();
+        if (!data.kycApplications) return [];
+        return data.kycApplications.map(k => ({
+            ...k,
+            username: data.users.find(u => u.id === k.userId)?.username || 'Unknown'
+        }));
+    },
+    getKycByUserId: (userId) => {
+        const data = readData();
+        if (!data.kycApplications) return null;
+        return data.kycApplications.find(k => k.userId === userId) || null;
+    },
+    updateKycStatus: (kycId, status, rejectReason = null) => {
+        const data = readData();
+        if (!data.kycApplications) return false;
+        const kyc = data.kycApplications.find(k => k.id === kycId);
+        if (!kyc) return false;
+        kyc.status = status;
+        kyc.reviewedAt = new Date().toISOString();
+        if (rejectReason) kyc.rejectReason = rejectReason;
+        writeData(data);
+        return true;
+    },
+
+    // Device Settings / Features Toggles (IMEI based)
+    getDeviceSettings: (imei) => {
+        const data = readData();
+        if (!data.deviceSettings) data.deviceSettings = {};
+        if (!data.deviceSettings[imei]) {
+            return defaultSettings;
+        }
+        return { ...defaultSettings, ...data.deviceSettings[imei] };
+    },
+    updateDeviceSettings: (imei, settings) => {
+        const data = readData();
+        if (!data.deviceSettings) data.deviceSettings = {};
+        data.deviceSettings[imei] = { 
+            ...(data.deviceSettings[imei] || defaultSettings),
+            ...settings 
+        };
+        writeData(data);
+        return true;
+    },
+    // Keep userSettings for legacy/global preferences if needed
+    getUserSettings: (userId) => {
+        const data = readData();
+        if (!data.userSettings) data.userSettings = {};
+        return { ...defaultSettings, ...(data.userSettings[userId] || {}) };
     }
 };

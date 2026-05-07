@@ -1,0 +1,34 @@
+{
+    "_comment": "Fleetly GPS — Alert Configuration. Set enabled:true for each service after filling credentials.",
+
+    "email": {
+        "_comment": "Gmail SMTP — Get App Password at https://myaccount.google.com/apppasswords",
+        "enabled": false,
+        "smtp": {
+            "host": "smtp.gmail.com",
+            "port": 587,
+            "secure": false,
+            "user": "your_gmail@gmail.com",
+            "pass": "your_app_password_here"
+        },
+        "from": "Fleetly GPS Alerts <your_gmail@gmail.com>"
+    },
+
+    "sms": {
+        "_comment": "Fast2SMS — Sign up FREE at https://www.fast2sms.com → Dev API section → copy API key",
+        "enabled": false,
+        "provider": "fast2sms",
+        "apiKey": "YOUR_FAST2SMS_API_KEY_HERE",
+
+        "_alerts": "Choose which events trigger SMS (true/false)",
+        "alerts": {
+            "panic":      true,
+            "geofence":   true,
+            "harshBrake": true,
+            "harshAccel": true,
+            "rashTurn":   true,
+            "tamper":     true,
+            "battery":    true
+        }
+    }
+}
