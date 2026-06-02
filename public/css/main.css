@@ -548,6 +548,59 @@ body {
     transition: all 0.3s ease;
 }
 
+/* Custom Vehicle Marker & Beacons */
+.custom-vehicle-marker {
+    background: transparent;
+    border: none;
+}
+
+.vehicle-beacon {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    position: relative;
+}
+
+.heading-arrow {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.9rem;
+}
+
+.heading-arrow i {
+    transform: rotate(-45deg); /* Offset fontawesome's default location-arrow angle */
+}
+
+/* Beacon pulse animation */
+.beacon-pulse::after {
+    content: '';
+    position: absolute;
+    top: -4px;
+    left: -4px;
+    right: -4px;
+    bottom: -4px;
+    border: 2px solid currentColor;
+    border-radius: 50%;
+    animation: beacon-pulse-ring 1.5s infinite ease-out;
+    opacity: 0;
+}
+
+@keyframes beacon-pulse-ring {
+    0% {
+        transform: scale(0.8);
+        opacity: 0.5;
+    }
+    100% {
+        transform: scale(1.6);
+        opacity: 0;
+    }
+}
+
 /* Modals */
 .modal-overlay {
     position: fixed;

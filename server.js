@@ -53,9 +53,18 @@ app.post('/api/customer/pin-device', (req, res) => {
 
 app.get('/api/customer/data', (req, res) => {
     const userId = req.query.userId;
+    const devices = store.getCustomerDevices(userId);
+    const lastSeen = {};
+    const allLastSeen = store.getData().deviceLastSeen || {};
+    devices.forEach(d => {
+        if (allLastSeen[d.imei]) {
+            lastSeen[d.imei] = allLastSeen[d.imei];
+        }
+    });
     res.json({
-        devices: store.getCustomerDevices(userId),
-        subscription: store.getCustomerSubscription(userId)
+        devices,
+        subscription: store.getCustomerSubscription(userId),
+        lastSeen
     });
 });
 
@@ -141,7 +150,8 @@ app.get('/api/admin/dashboard', (req, res) => {
     res.json({
         customers: store.getAllCustomers(),
         allDevices: data.devices,
-        requests: data.deviceRequests
+        requests: data.deviceRequests,
+        lastSeen: data.deviceLastSeen || {}
     });
 });
 
@@ -183,6 +193,10 @@ app.get('/api/admin/customer-settings/:userId', (req, res) => {
 
 app.post('/api/admin/update-customer-settings', (req, res) => {
     const { userId, settings } = req.body;
+    
+    // Save to userSettings so customer-level selections are persisted
+    store.updateUserSettings(userId, settings);
+    
     // Bulk update all devices for this user
     const devices = store.getCustomerDevices(userId);
     devices.forEach(d => {

@@ -1,7 +1,42 @@
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
-const dataFile = path.join(__dirname, 'data.json');
+const dataFile = process.env.DATA_FILE_PATH ? path.resolve(process.env.DATA_FILE_PATH) : path.join(__dirname, 'data.json');
+
+// Encryption Helpers for Password Storage
+const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY || 'fleetly-gps-default-key-change-in-prod-2026';
+const KEY = crypto.createHash('sha256').update(ENCRYPTION_KEY).digest();
+
+function encrypt(text) {
+    if (!text) return '';
+    try {
+        const iv = crypto.randomBytes(16);
+        const cipher = crypto.createCipheriv('aes-256-cbc', KEY, iv);
+        let encrypted = cipher.update(text, 'utf8', 'hex');
+        encrypted += cipher.final('hex');
+        return 'enc:' + iv.toString('hex') + ':' + encrypted;
+    } catch(e) {
+        console.error("[Crypto] Encryption failed:", e.message);
+        return text;
+    }
+}
+
+function decrypt(text) {
+    if (!text || !text.startsWith('enc:')) return text;
+    try {
+        const parts = text.split(':');
+        const iv = Buffer.from(parts[1], 'hex');
+        const encryptedText = parts[2];
+        const decipher = crypto.createDecipheriv('aes-256-cbc', KEY, iv);
+        let decrypted = decipher.update(encryptedText, 'hex', 'utf8');
+        decrypted += decipher.final('utf8');
+        return decrypted;
+    } catch(e) {
+        console.error("[Crypto] Decryption failed:", e.message);
+        return text;
+    }
+}
 
 // Default initial state
 const defaultData = {
@@ -23,11 +58,13 @@ const defaultSettings = {
     odometer: true,
     speedAlert: true,
     ignitionAlert: true,
-    geofenceAlert: true,
-    powerAlert: true,
-    lowBatteryAlert: true,
+    geofenceAlert: false,
+    powerAlert: false,
+    lowBatteryAlert: false,
     panicAlert: true,
-    healthStats: true,
+    harshAlerts: true,
+    towingAlert: true,
+    healthStats: false,
     telemetryLogs: true,
     canData: false,
     rs485Data: false,
@@ -75,7 +112,9 @@ function readData() {
 
 function writeData(data) {
     try {
-        fs.writeFileSync(dataFile, JSON.stringify(data, null, 2));
+        const tempFile = dataFile + '.tmp';
+        fs.writeFileSync(tempFile, JSON.stringify(data, null, 2));
+        fs.renameSync(tempFile, dataFile);
     } catch (e) {
         console.error("Error writing data.json", e);
     }
@@ -88,11 +127,28 @@ module.exports = {
     // Users
     getUser: (username, password) => {
         const data = readData();
-        return data.users.find(u => u.username === username && u.password === password);
+        const user = data.users.find(u => u.username === username && decrypt(u.password) === password);
+        if (user) {
+            return { id: user.id, username: user.username, role: user.role };
+        }
+        return null;
     },
     getUserById: (id) => {
         const data = readData();
-        return data.users.find(u => u.id === id);
+        const user = data.users.find(u => u.id === id);
+        if (user) {
+            return { id: user.id, username: user.username, role: user.role };
+        }
+        return null;
+    },
+    getUserCredentials: (userId) => {
+        const data = readData();
+        const user = data.users.find(u => u.id === userId);
+        if (!user) return null;
+        return {
+            username: user.username,
+            password: decrypt(user.password)
+        };
     },
     createUser: (username, password, phone = '', email = '') => {
         const data = readData();
@@ -101,7 +157,7 @@ module.exports = {
         const newUser = {
             id: Date.now().toString(),
             username,
-            password,
+            password: encrypt(password),
             role: 'customer',
             phone: phone || '',
             email: email || ''
@@ -118,7 +174,7 @@ module.exports = {
         });
 
         writeData(data);
-        return newUser;
+        return { id: newUser.id, username: newUser.username, role: newUser.role, phone: newUser.phone, email: newUser.email };
     },
     updateUserContact: (userId, phone, email) => {
         const data = readData();
@@ -263,50 +319,19 @@ module.exports = {
         const data = readData();
         if (!data.deviceLastSeen) data.deviceLastSeen = {};
         if (!data.deviceHistory) data.deviceHistory = {};
-        if (!data.geofences) data.geofences = [];
-        
-        // Geofence Checking
-        const ownerId = data.devices.find(d => d.imei === imei)?.ownerId;
-        const alerts = [];
-        
-        if (ownerId && locationData.latitude && locationData.longitude) {
-            const userGeofences = data.geofences.filter(g => g.userId === ownerId);
-            const pt = [locationData.latitude, locationData.longitude];
-            
-            const previousPoint = data.deviceLastSeen[imei];
-            
-            userGeofences.forEach(gf => {
-                let isCurrentlyInside = false;
-                if (gf.type === 'circle') {
-                    isCurrentlyInside = getDistance(pt[0], pt[1], gf.points[0][0], gf.points[0][1]) <= gf.radius;
-                } else if (gf.type === 'polygon') {
-                    isCurrentlyInside = isPointInPolygon(pt, gf.points);
-                }
-                
-                // If we have previous data, check for entry/exit
-                if (previousPoint) {
-                    let wasInside = false;
-                    const prevPt = [previousPoint.latitude, previousPoint.longitude];
-                    if (gf.type === 'circle') {
-                        wasInside = getDistance(prevPt[0], prevPt[1], gf.points[0][0], gf.points[0][1]) <= gf.radius;
-                    } else if (gf.type === 'polygon') {
-                        wasInside = isPointInPolygon(prevPt, gf.points);
-                    }
-                    
-                    if (isCurrentlyInside && !wasInside) {
-                        alerts.push({ type: 'geofence_enter', geofenceName: gf.name });
-                    } else if (!isCurrentlyInside && wasInside) {
-                        alerts.push({ type: 'geofence_exit', geofenceName: gf.name });
-                    }
-                }
-            });
-        }
         
         const point = {
             timestamp: locationData.timestamp,
             latitude: locationData.latitude,
             longitude: locationData.longitude,
             speed: locationData.speed,
+            heading: locationData.heading,
+            satellites: locationData.satellites,
+            gpsValid: locationData.gpsValid,
+            battery: locationData.battery,
+            ignition: locationData.ignition,
+            packetType: locationData.packetType,
+            event: locationData.event,
             odometer: locationData.odometer || 0,
             rawHex: locationData.rawHex || ''
         };
@@ -318,7 +343,7 @@ module.exports = {
         if(data.deviceHistory[imei].length > 500) data.deviceHistory[imei].shift();
         
         writeData(data);
-        return alerts;
+        return []; // No alerts generated
     },
     getHistory: (imei) => {
         const data = readData();
@@ -439,5 +464,25 @@ module.exports = {
         const data = readData();
         if (!data.userSettings) data.userSettings = {};
         return { ...defaultSettings, ...(data.userSettings[userId] || {}) };
+    },
+    updateUserSettings: (userId, settings) => {
+        const data = readData();
+        if (!data.userSettings) data.userSettings = {};
+        data.userSettings[userId] = {
+            ...(data.userSettings[userId] || defaultSettings),
+            ...settings
+        };
+        writeData(data);
+        return true;
+    },
+
+    // Reset / update password
+    resetPassword: (userId, newPassword) => {
+        const data = readData();
+        const user = data.users.find(u => u.id === userId);
+        if (!user) return false;
+        user.password = encrypt(newPassword);
+        writeData(data);
+        return true;
     }
 };

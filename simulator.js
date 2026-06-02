@@ -6,17 +6,44 @@ const SERVER_HOST = '127.0.0.1';
 const SERVER_PORT = 8080;
 const DATA_FILE = path.join(__dirname, 'data.json');
 
-function generatePacket(imei, speed, lat, lng, isPanic = false) {
+function generatePacket(imei, speed, lat, lng, eventType = 'NR') {
     const now = new Date();
     const dateStr = now.toLocaleDateString('en-GB').replace(/\//g, ''); // DDMMYYYY
     const timeStr = now.toLocaleTimeString('en-GB').replace(/:/g, ''); // HHMMSS
     
-    // Packet Type: NR (Normal), EA (Emergency/Panic)
-    const type = isPanic ? 'EA' : 'NR';
-    const ign = speed > 0 ? '1' : '0';
+    // Ignition is 1 if speed > 0 or if eventType is IN (Ignition On), except during Towing
+    let ign = (speed > 0 && eventType !== 'TS' && eventType !== 'TE' || eventType === 'IN') ? '1' : '0';
+    if (eventType === 'IF') ign = '0';
     
-    // Mock Bharat-101 Packet
-    return `$Header,iTriangle1,010013,${type},1,L,${imei},KA01GPS,${ign},${dateStr},${timeStr},${lat},N,${lng},E,${speed}.0,180.0,12,1,1,14.2,4.10,0,0,0,1,${(Math.random()*5000).toFixed(2)}*FF\r\n`;
+    const isPanic = (eventType === 'EA');
+    const isTamper = (eventType === 'TA' || eventType === 'DT');
+    const mainPower = (eventType === 'BD') ? '0' : '1';
+    
+    // Internal battery voltage: low battery if BL event, else normal
+    const batVolt = (eventType === 'BL') ? '3.45' : '4.12';
+    
+    // Determine Alert ID dynamically matching the iTriangle spec
+    let alertId = 1;
+    switch (eventType) {
+        case 'NR': alertId = 1; break;
+        case 'EA': alertId = 10; break;
+        case 'TA': alertId = 9; break;
+        case 'HP': alertId = 1; break;
+        case 'IN': alertId = 7; break;
+        case 'IF': alertId = 8; break;
+        case 'BD': alertId = 3; break;
+        case 'BR': alertId = 6; break;
+        case 'BL': alertId = 4; break;
+        case 'HB': alertId = 13; break;
+        case 'HA': alertId = 14; break;
+        case 'RT': alertId = 15; break;
+        case 'TS': alertId = 52; break;
+        case 'TE': alertId = 53; break;
+        case 'DT': alertId = 16; break;
+    }
+    
+    // Standard Bharat-101 Packet structure (indices align with real manual)
+    return `$Header,iTriangle1,010013,${eventType},${alertId},L,${imei},KA01GPS,1,${dateStr},${timeStr},${lat},N,${lng},E,${speed}.0,180.0,12,206.0,1.26,0.68,Airtel,${ign},${mainPower},12.4,${batVolt},${isPanic ? '1' : '0'},${isTamper ? 'O' : 'C'},31,404,10,8ab,975e416,45,ab,de74335,38,8ab,e09c934,43,8ab,951a834,0000,0001,008273,0.0,0.0,${(Math.random()*5000).toFixed(2)}*FF\r\n`;
 }
 
 async function startSimulation() {
@@ -42,28 +69,91 @@ async function startSimulation() {
         // Starting position near Bangalore
         let lat = 12.9716 + (index * 0.01);
         let lng = 77.5946 + (index * 0.01);
+        let prevSpeed = 0;
+        let isTowed = false;
+        let towingTicks = 0;
 
         client.connect(SERVER_PORT, SERVER_HOST, () => {
             console.log(`✅ [${device.imei}] Linked to server.`);
             
             setInterval(() => {
-                // Simulate driving behavior
-                const speed = Math.random() > 0.3 ? Math.floor(Math.random() * 110) : 0;
+                let speed = 0;
+                let eventType = 'NR';
                 
-                // Panic simulation (1% chance)
-                const isPanic = Math.random() < 0.01;
+                if (isTowed) {
+                    towingTicks--;
+                    if (towingTicks <= 0) {
+                        isTowed = false;
+                        speed = 0;
+                        eventType = 'TE'; // Towing Stopped (Alert ID 53)
+                    } else {
+                        speed = Math.floor(Math.random() * 15) + 15; // 15-30 km/h towing speed
+                        eventType = 'NR';
+                    }
+                } else {
+                    // 75% chance vehicle is moving normally
+                    if (Math.random() > 0.25) {
+                        speed = Math.floor(Math.random() * 85) + 15;
+                        
+                        // Harsh Braking (speed drops suddenly by more than 35)
+                        if (prevSpeed - speed > 35) {
+                            eventType = 'HB';
+                        }
+                        // Harsh Acceleration (speed jumps suddenly by more than 35)
+                        else if (speed - prevSpeed > 35) {
+                            eventType = 'HA';
+                        }
+                        // Rash Turning (10% chance when moving)
+                        else if (Math.random() < 0.1) {
+                            eventType = 'RT';
+                        }
+                    } else {
+                        speed = 0;
+                        if (prevSpeed > 0 && Math.random() < 0.5) {
+                            eventType = 'IF'; // Ignition Off
+                        } else if (prevSpeed === 0 && Math.random() < 0.015) {
+                            // 1.5% chance to start being towed when stationary with ignition OFF
+                            isTowed = true;
+                            towingTicks = Math.floor(Math.random() * 4) + 3; // 3 to 6 ticks
+                            speed = Math.floor(Math.random() * 15) + 15;
+                            eventType = 'TS'; // Towing Started (Alert ID 52)
+                        }
+                    }
+                    
+                    // Ignition On if stationary to moving normally
+                    if (!isTowed && prevSpeed === 0 && speed > 0) {
+                        eventType = 'IN';
+                    }
+                }
                 
-                // Move the vehicle slightly
+                prevSpeed = speed;
+                
+                // Random Alert Packets simulation (only if not towed)
+                if (!isTowed && eventType === 'NR') {
+                    const r = Math.random();
+                    if (r < 0.006) {
+                        eventType = 'EA'; // Panic Alert (Emergency)
+                    } else if (r < 0.012 && r >= 0.006) {
+                        eventType = 'TA'; // Tamper Alert
+                    } else if (r < 0.018 && r >= 0.012) {
+                        eventType = 'BD'; // Main Battery Disconnect
+                    } else if (r < 0.024 && r >= 0.018) {
+                        eventType = 'BL'; // Internal Battery Low
+                    }
+                }
+
                 if (speed > 0) {
                     lat += (Math.random() - 0.5) * 0.001;
                     lng += (Math.random() - 0.5) * 0.001;
                 }
 
-                const packet = generatePacket(device.imei, speed, lat.toFixed(6), lng.toFixed(6), isPanic);
+                const packet = generatePacket(device.imei, speed, lat.toFixed(6), lng.toFixed(6), eventType);
                 client.write(packet);
                 
-                if (isPanic) console.log(`🚨 [${device.imei}] PANIC ALERT SENT!`);
-            }, 3000 + (index * 500)); // Staggered updates
+                if (eventType !== 'NR') {
+                    console.log(`🚨 [${device.imei}] Sent Event Packet: ${eventType} (Speed: ${speed} km/h)`);
+                }
+            }, 3000 + (index * 500));
         });
 
         client.on('error', (err) => {

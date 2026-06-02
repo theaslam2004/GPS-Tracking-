@@ -304,9 +304,14 @@
         <div class="panel">
           <div class="panel-head">
             <div class="panel-title"><i class="fa-solid fa-credit-card"></i> Billing & Subscriptions</div>
-            <button class="btn-new" onclick="showAddCustomerModal()">
-              <i class="fa-solid fa-plus"></i> New User
-            </button>
+            <div style="display:flex;gap:8px;">
+              <button class="btn-new" style="background:linear-gradient(135deg,#0057ff,#003bb5);" onclick="exportAllCustomers()">
+                <i class="fa-solid fa-file-csv"></i> Export
+              </button>
+              <button class="btn-new" onclick="showAddCustomerModal()">
+                <i class="fa-solid fa-plus"></i> New User
+              </button>
+            </div>
           </div>
           <div class="table-wrap">
             <table>
@@ -314,6 +319,7 @@
                 <tr>
                   <th>Customer</th>
                   <th>Contact Info</th>
+                  <th>Password</th>
                   <th style="text-align:center">Validity</th>
                   <th style="text-align:right">Actions</th>
                 </tr>
@@ -451,7 +457,7 @@
         <div class="modal-header">
             <div>
                 <h2 style="font-family: var(--font-display);">Feature Management</h2>
-                <span style="font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px;">Toggle protocol data points</span>
+                <span style="font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px;">Toggle client data widgets</span>
             </div>
             <button onclick="closeFeaturesModal()" style="background:none; border:none; color:var(--muted); cursor:pointer"><i class="fa-solid fa-xmark"></i></button>
         </div>
@@ -475,13 +481,13 @@
                 <div style="display: flex; align-items: center; gap: 12px;">
                     <i class="fa-solid fa-gauge-high" style="color: var(--amber); width: 16px;"></i>
                     <div>
-                        <div style="font-size: 13px; font-weight: 600;">Speeding Alerts</div>
-                        <div style="font-size: 10px; color: var(--muted);">Real-time overspeed notifications</div>
+                        <div style="font-size: 13px; font-weight: 600;">Speed Monitoring</div>
+                        <div style="font-size: 10px; color: var(--muted);">Real-time speed and gauge indicator</div>
                     </div>
                 </div>
                 <label class="switch"><input type="checkbox" id="f-speedAlert"><span class="slider"></span></label>
             </div>
-
+ 
             <div class="feature-item" style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: var(--surface-2); border-radius: 10px; border: 1px solid var(--border);">
                 <div style="display: flex; align-items: center; gap: 12px;">
                     <i class="fa-solid fa-key" style="color: var(--accent); width: 16px;"></i>
@@ -495,54 +501,10 @@
 
             <div class="feature-item" style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: var(--surface-2); border-radius: 10px; border: 1px solid var(--border);">
                 <div style="display: flex; align-items: center; gap: 12px;">
-                    <i class="fa-solid fa-draw-polygon" style="color: #00b4ff; width: 16px;"></i>
-                    <div>
-                        <div style="font-size: 13px; font-weight: 600;">Geofencing</div>
-                        <div style="font-size: 10px; color: var(--muted);">Zone entry/exit monitoring</div>
-                    </div>
-                </div>
-                <label class="switch"><input type="checkbox" id="f-geofenceAlert"><span class="slider"></span></label>
-            </div>
-
-            <div class="feature-item" style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: var(--surface-2); border-radius: 10px; border: 1px solid var(--border);">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <i class="fa-solid fa-plug" style="color: var(--red); width: 16px;"></i>
-                    <div>
-                        <div style="font-size: 13px; font-weight: 600;">Power Alerts</div>
-                        <div style="font-size: 10px; color: var(--muted);">External power disconnection</div>
-                    </div>
-                </div>
-                <label class="switch"><input type="checkbox" id="f-powerAlert"><span class="slider"></span></label>
-            </div>
-
-            <div class="feature-item" style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: var(--surface-2); border-radius: 10px; border: 1px solid var(--border);">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <i class="fa-solid fa-battery-half" style="color: var(--amber); width: 16px;"></i>
-                    <div>
-                        <div style="font-size: 13px; font-weight: 600;">Low Battery</div>
-                        <div style="font-size: 10px; color: var(--muted);">Internal battery backup alerts</div>
-                    </div>
-                </div>
-                <label class="switch"><input type="checkbox" id="f-lowBatteryAlert"><span class="slider"></span></label>
-            </div>
-
-            <div class="feature-item" style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: var(--surface-2); border-radius: 10px; border: 1px solid var(--border);">
-                <div style="display: flex; align-items: center; gap: 12px;">
-                    <i class="fa-solid fa-triangle-exclamation" style="color: var(--red); width: 16px;"></i>
-                    <div>
-                        <div style="font-size: 13px; font-weight: 600;">Panic Mode</div>
-                        <div style="font-size: 10px; color: var(--muted);">SOS emergency button features</div>
-                    </div>
-                </div>
-                <label class="switch"><input type="checkbox" id="f-panicAlert"><span class="slider"></span></label>
-            </div>
-
-            <div class="feature-item" style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: var(--surface-2); border-radius: 10px; border: 1px solid var(--border);">
-                <div style="display: flex; align-items: center; gap: 12px;">
                     <i class="fa-solid fa-heart-pulse" style="color: var(--accent); width: 16px;"></i>
                     <div>
-                        <div style="font-size: 13px; font-weight: 600;">Health Monitoring</div>
-                        <div style="font-size: 10px; color: var(--muted);">System diagnostics & uptime</div>
+                        <div style="font-size: 13px; font-weight: 600;">Device Battery & GPS Lock</div>
+                        <div style="font-size: 10px; color: var(--muted);">Tracker voltage & satellite fix stats</div>
                     </div>
                 </div>
                 <label class="switch"><input type="checkbox" id="f-healthStats"><span class="slider"></span></label>
@@ -550,28 +512,93 @@
 
             <div class="feature-item" style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: var(--surface-2); border-radius: 10px; border: 1px solid var(--border);">
                 <div style="display: flex; align-items: center; gap: 12px;">
-                    <i class="fa-solid fa-microchip" style="color: #8b9bb4; width: 16px;"></i>
+                    <i class="fa-solid fa-circle-exclamation" style="color: var(--red); width: 16px;"></i>
                     <div>
-                        <div style="font-size: 13px; font-weight: 600;">Advanced CAN/OBD</div>
-                        <div style="font-size: 10px; color: var(--muted);">Vehicle ECU data extraction</div>
+                        <div style="font-size: 13px; font-weight: 600;">Panic Alert (SOS)</div>
+                        <div style="font-size: 10px; color: var(--muted);">Emergency push-button alert notifications</div>
                     </div>
                 </div>
-                <label class="switch"><input type="checkbox" id="f-canData"><span class="slider"></span></label>
+                <label class="switch"><input type="checkbox" id="f-panicAlert"><span class="slider"></span></label>
             </div>
 
             <div class="feature-item" style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: var(--surface-2); border-radius: 10px; border: 1px solid var(--border);">
                 <div style="display: flex; align-items: center; gap: 12px;">
-                    <i class="fa-brands fa-bluetooth" style="color: #0057ff; width: 16px;"></i>
+                    <i class="fa-solid fa-triangle-exclamation" style="color: var(--amber); width: 16px;"></i>
                     <div>
-                        <div style="font-size: 13px; font-weight: 600;">Bluetooth BLE</div>
-                        <div style="font-size: 10px; color: var(--muted);">Wireless sensor integration</div>
+                        <div style="font-size: 13px; font-weight: 600;">Harsh Driving Events</div>
+                        <div style="font-size: 10px; color: var(--muted);">Harsh braking, acceleration, and rash turning alerts</div>
                     </div>
                 </div>
-                <label class="switch"><input type="checkbox" id="f-bleData"><span class="slider"></span></label>
+                <label class="switch"><input type="checkbox" id="f-harshAlerts"><span class="slider"></span></label>
+            </div>
+
+            <div class="feature-item" style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: var(--surface-2); border-radius: 10px; border: 1px solid var(--border);">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <i class="fa-solid fa-truck-pickup" style="color: var(--accent); width: 16px;"></i>
+                    <div>
+                        <div style="font-size: 13px; font-weight: 600;">Towing Alerts</div>
+                        <div style="font-size: 10px; color: var(--muted);">Towing start and stop alert notifications</div>
+                    </div>
+                </div>
+                <label class="switch"><input type="checkbox" id="f-towingAlert"><span class="slider"></span></label>
             </div>
         </div>
         
         <button class="modal-btn" onclick="submitFeatures()">Apply Configuration</button>
+    </div>
+</div>
+
+<!-- CREDENTIALS MODAL -->
+<div class="modal-overlay" id="credentialsModal">
+    <div class="modal" style="width:480px;">
+        <div class="modal-header">
+            <div>
+                <h2 style="font-family:var(--font-display);">Customer Credentials</h2>
+                <span style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;">Login Details</span>
+            </div>
+            <button onclick="closeCredentialsModal()" style="background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+
+        <input type="hidden" id="credUserId">
+
+        <!-- Username Row -->
+        <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:12px;">
+            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px;">Username</div>
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div id="credUsername" style="flex:1;font-family:monospace;font-size:15px;color:var(--accent);font-weight:700;">—</div>
+                <button onclick="copyToClipboard('credUsername','btn-copy-user')" id="btn-copy-user" class="cred-copy-btn" title="Copy username">
+                    <i class="fa-regular fa-copy"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Password Row -->
+        <div style="background:var(--surface-2);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:20px;">
+            <div style="font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1.5px;margin-bottom:6px;">Password</div>
+            <div style="display:flex;align-items:center;gap:10px;">
+                <div id="credPassword" data-plain="" style="flex:1;font-family:monospace;font-size:15px;color:var(--text);font-weight:700;letter-spacing:3px;">••••••••</div>
+                <button onclick="togglePasswordReveal()" id="btn-reveal" class="cred-copy-btn" title="Show/Hide password">
+                    <i class="fa-regular fa-eye"></i>
+                </button>
+                <button onclick="copyToClipboard('credPassword','btn-copy-pass',true)" id="btn-copy-pass" class="cred-copy-btn" title="Copy password">
+                    <i class="fa-regular fa-copy"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Reset Password -->
+        <div style="border:1px solid rgba(255,77,90,0.2);border-radius:10px;padding:14px 16px;margin-bottom:20px;background:rgba(255,77,90,0.04);">
+            <div style="font-size:11px;color:var(--muted);margin-bottom:10px;"><i class="fa-solid fa-rotate-right" style="margin-right:6px;color:var(--red);"></i>Reset Password</div>
+            <div style="display:flex;gap:8px;">
+                <input type="text" id="newPasswordInput" class="form-control" placeholder="Enter new password…" style="flex:1;padding:10px 12px;font-size:13px;">
+                <button onclick="submitResetPassword()" style="background:var(--red);border:none;border-radius:8px;padding:0 16px;color:#fff;font-weight:700;cursor:pointer;font-size:12px;">Reset</button>
+            </div>
+        </div>
+
+        <!-- Copy All Button -->
+        <button class="modal-btn" onclick="copyAllCredentials()" style="background:linear-gradient(135deg,var(--accent),#00a87e);color:#021a14;display:flex;align-items:center;justify-content:center;gap:8px;">
+            <i class="fa-solid fa-copy"></i> Copy Full Credentials
+        </button>
     </div>
 </div>
 
@@ -583,6 +610,87 @@
 .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
 input:checked + .slider { background-color: var(--accent); }
 input:checked + .slider:before { transform: translateX(14px); }
+
+/* Credential Copy Button */
+.cred-copy-btn {
+    width:32px; height:32px; border-radius:8px;
+    background:rgba(255,255,255,0.05); border:1px solid var(--border);
+    color:var(--muted); cursor:pointer; transition:all .2s;
+    display:grid; place-items:center; font-size:13px;
+}
+.cred-copy-btn:hover { background:var(--accent-dim); border-color:var(--accent); color:var(--accent); }
+.cred-copy-btn.copied { background:var(--accent-dim); border-color:var(--accent); color:var(--accent); }
+
+/* ── MOBILE RESPONSIVENESS ── */
+@media (max-width: 1024px) {
+  .main-grid {
+    grid-template-columns: 1fr !important;
+  }
+  .shell {
+    padding: 0 16px 20px !important;
+  }
+}
+
+@media (max-width: 768px) {
+  nav {
+    flex-direction: column;
+    align-items: stretch !important;
+    gap: 12px !important;
+    padding: 12px 0 16px !important;
+    margin-bottom: 20px !important;
+  }
+  
+  .search-wrap {
+    margin-left: 0 !important;
+    max-width: 100% !important;
+  }
+  
+  .kpi-grid {
+    grid-template-columns: 1fr !important;
+    gap: 12px !important;
+    margin-bottom: 20px !important;
+  }
+  
+  .kpi {
+    padding: 16px 18px !important;
+  }
+  
+  .kpi-body .val {
+    font-size: 28px !important;
+  }
+  
+  .panel-head {
+    padding: 14px 16px !important;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  
+  .modal {
+    width: 95% !important;
+    padding: 20px !important;
+  }
+  
+  .kpi-mini-grid {
+    grid-template-columns: 1fr !important;
+    gap: 10px !important;
+  }
+  
+  thead th {
+    padding: 10px 12px !important;
+    font-size: 9px !important;
+  }
+  
+  tbody td {
+    padding: 10px 12px !important;
+    font-size: 12px !important;
+  }
+  
+  .user-avatar {
+    width: 30px !important;
+    height: 30px !important;
+    font-size: 12px !important;
+  }
+}
 </style>
 
 

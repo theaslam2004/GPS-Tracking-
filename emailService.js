@@ -1,7 +1,7 @@
 // ============================================================
 // Fleetly GPS — Email Alert Service
 // Sends alert emails to customers for geofence & panic events
-// Config: email.config.json (set enabled: true to activate)
+// Config: email.config.json or environment variables
 // ============================================================
 
 const nodemailer = require('nodemailer');
@@ -9,19 +9,28 @@ let config;
 try {
     config = require('./email.config.json');
 } catch(e) {
-    config = { enabled: false };
+    config = {};
 }
+
+// SMTP configurations with environment variables fallback
+const smtpEnabled = process.env.SMTP_ENABLED ? (process.env.SMTP_ENABLED === 'true') : (config.email ? config.email.enabled : false);
+const smtpHost = process.env.SMTP_HOST || (config.email && config.email.smtp ? config.email.smtp.host : '');
+const smtpPort = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT) : (config.email && config.email.smtp ? config.email.smtp.port : 587);
+const smtpSecure = process.env.SMTP_SECURE ? (process.env.SMTP_SECURE === 'true') : (config.email && config.email.smtp ? config.email.smtp.secure : false);
+const smtpUser = process.env.SMTP_USER || (config.email && config.email.smtp ? config.email.smtp.user : '');
+const smtpPass = process.env.SMTP_PASS || (config.email && config.email.smtp ? config.email.smtp.pass : '');
+const smtpFrom = process.env.SMTP_FROM || (config.email ? config.email.from : 'Fleetly GPS Alerts <no-reply@fleetly.com>');
 
 let transporter = null;
 
-if (config.enabled && config.smtp) {
+if (smtpEnabled && smtpHost) {
     transporter = nodemailer.createTransport({
-        host: config.smtp.host,
-        port: config.smtp.port,
-        secure: config.smtp.secure || false,
+        host: smtpHost,
+        port: smtpPort,
+        secure: smtpSecure,
         auth: {
-            user: config.smtp.user,
-            pass: config.smtp.pass
+            user: smtpUser,
+            pass: smtpPass
         }
     });
     transporter.verify((err) => {
@@ -29,7 +38,7 @@ if (config.enabled && config.smtp) {
         else console.log('[EMAIL] SMTP ready — alert emails enabled.');
     });
 } else {
-    console.log('[EMAIL] Email alerts disabled. Configure email.config.json to enable.');
+    console.log('[EMAIL] Email alerts disabled. Configure environment variables or email.config.json to enable.');
 }
 
 // ---------------------------------------------------------------
@@ -38,7 +47,7 @@ if (config.enabled && config.smtp) {
 async function sendAlert({ to, subject, html }) {
     if (!transporter || !to) return;
     try {
-        await transporter.sendMail({ from: config.from, to, subject, html });
+        await transporter.sendMail({ from: smtpFrom, to, subject, html });
         console.log(`[EMAIL] Alert sent to: ${to} | Subject: ${subject}`);
     } catch(e) {
         console.error(`[EMAIL] Failed to send to ${to}:`, e.message);

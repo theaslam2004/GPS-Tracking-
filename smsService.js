@@ -13,17 +13,21 @@ let config;
 try {
     config = require('./email.config.json');
 } catch (e) {
-    config = { sms: { enabled: false } };
+    config = {};
 }
 
-const SMS_API_URL = 'https://www.fast2sms.com/dev/bulkV2';
 const smsConfig = config.sms || {};
-const isSmsEnabled = smsConfig.enabled && smsConfig.apiKey && !smsConfig.apiKey.includes('YOUR_');
 
-if (isSmsEnabled) {
+// Fast2SMS configurations with environment variables fallback
+const smsApiKey = process.env.FAST2SMS_API_KEY || smsConfig.apiKey;
+const isSmsEnabled = process.env.SMS_ENABLED ? (process.env.SMS_ENABLED === 'true') : (smsConfig.enabled && smsApiKey && !smsApiKey.includes('YOUR_'));
+
+const SMS_API_URL = 'https://www.fast2sms.com/dev/bulkV2';
+
+if (isSmsEnabled && smsApiKey && !smsApiKey.includes('YOUR_')) {
     console.log(`[SMS] Fast2SMS Production Service INITIALIZED ✅ (Phone alerts active)`);
 } else {
-    console.log(`[SMS] Service PENDING ⚠️ (Update email.config.json with Fast2SMS API Key)`);
+    console.log(`[SMS] Service PENDING ⚠️ (Configure environment variables or email.config.json with Fast2SMS API Key)`);
 }
 
 /**
@@ -41,7 +45,7 @@ async function dispatchSMS(phone, message) {
     }
 
     // 2. Simulated Mode (If no API Key)
-    if (!isSmsEnabled) {
+    if (!isSmsEnabled || !smsApiKey || smsApiKey.includes('YOUR_')) {
         console.log(`\n[SMS-SIMULATOR] 📱 To: ${cleanPhone}`);
         console.log(`[SMS-SIMULATOR] 📝 Msg: ${message}`);
         console.log(`-----------------------------------------------\n`);
@@ -55,7 +59,7 @@ async function dispatchSMS(phone, message) {
             url: SMS_API_URL,
             timeout: 10000, // 10s timeout
             headers: {
-                'authorization': smsConfig.apiKey,
+                'authorization': smsApiKey,
                 'Content-Type': 'application/json'
             },
             data: {

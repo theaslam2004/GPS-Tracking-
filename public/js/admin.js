@@ -18,6 +18,106 @@ let currentViewSettings = null;
 function showAddCustomerModal() { document.getElementById('addCustomerModal').classList.add('active'); }
 function closeAddCustomerModal() { document.getElementById('addCustomerModal').classList.remove('active'); }
 
+// ── Credentials Modal ──
+let _passwordRevealed = false;
+
+async function showCredentialsModal(userId) {
+    document.getElementById('credUserId').value = userId;
+    document.getElementById('credUsername').innerText = '…loading…';
+    document.getElementById('credPassword').innerText = '••••••••';
+    document.getElementById('credPassword').dataset.plain = '';
+    document.getElementById('newPasswordInput').value = '';
+    _passwordRevealed = false;
+    document.getElementById('btn-reveal').innerHTML = '<i class="fa-regular fa-eye"></i>';
+    document.getElementById('credentialsModal').classList.add('active');
+
+    try {
+        const res = await fetch(`/api/admin/get-credentials/${userId}`);
+        const data = await res.json();
+        if (data.success) {
+            document.getElementById('credUsername').innerText = data.username;
+            document.getElementById('credPassword').dataset.plain = data.password;
+            document.getElementById('credPassword').innerText = '••••••••';
+        } else {
+            document.getElementById('credUsername').innerText = 'Error';
+        }
+    } catch(e) {
+        document.getElementById('credUsername').innerText = 'Failed to load';
+    }
+}
+
+function closeCredentialsModal() {
+    document.getElementById('credentialsModal').classList.remove('active');
+}
+
+function togglePasswordReveal() {
+    const el = document.getElementById('credPassword');
+    const btn = document.getElementById('btn-reveal');
+    _passwordRevealed = !_passwordRevealed;
+    if (_passwordRevealed) {
+        el.innerText = el.dataset.plain || '(empty)';
+        btn.innerHTML = '<i class="fa-regular fa-eye-slash"></i>';
+        btn.classList.add('copied');
+    } else {
+        el.innerText = '••••••••';
+        btn.innerHTML = '<i class="fa-regular fa-eye"></i>';
+        btn.classList.remove('copied');
+    }
+}
+
+function copyToClipboard(elementId, btnId, usePlain = false) {
+    const el = document.getElementById(elementId);
+    const text = usePlain ? (el.dataset.plain || el.innerText) : el.innerText;
+    navigator.clipboard.writeText(text).then(() => {
+        const btn = document.getElementById(btnId);
+        btn.innerHTML = '<i class="fa-solid fa-check"></i>';
+        btn.classList.add('copied');
+        setTimeout(() => {
+            btn.innerHTML = '<i class="fa-regular fa-copy"></i>';
+            btn.classList.remove('copied');
+        }, 1800);
+    });
+}
+
+function copyAllCredentials() {
+    const username = document.getElementById('credUsername').innerText;
+    const password = document.getElementById('credPassword').dataset.plain || '';
+    const text = `Fleetly GPS Login\nUsername: ${username}\nPassword: ${password}\nPortal: ${window.location.origin}`;
+    navigator.clipboard.writeText(text).then(() => {
+        const btn = document.querySelector('#credentialsModal .modal-btn');
+        const orig = btn.innerHTML;
+        btn.innerHTML = '<i class="fa-solid fa-check"></i> Copied!';
+        setTimeout(() => { btn.innerHTML = orig; }, 2000);
+    });
+}
+
+async function submitResetPassword() {
+    const userId = document.getElementById('credUserId').value;
+    const newPassword = document.getElementById('newPasswordInput').value.trim();
+    if (!newPassword) return alert('Enter a new password.');
+    const res = await fetch('/api/admin/reset-password', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ userId, newPassword })
+    });
+    const result = await res.json();
+    if (result.success) {
+        document.getElementById('credPassword').dataset.plain = newPassword;
+        if (_passwordRevealed) document.getElementById('credPassword').innerText = newPassword;
+        document.getElementById('newPasswordInput').value = '';
+        const btn = document.querySelector('#credentialsModal [onclick="submitResetPassword()"]');
+        const orig = btn.innerText;
+        btn.innerText = '✓ Done';
+        setTimeout(() => { btn.innerText = orig; }, 1800);
+    } else {
+        alert('Reset failed.');
+    }
+}
+
+function exportAllCustomers() {
+    window.location.href = `/api/export/devices?userId=admin&role=admin`;
+}
+
 function showValidityModal(userId) {
     document.getElementById('valUserId').value = userId;
     document.getElementById('validityModal').classList.add('active');
@@ -42,7 +142,7 @@ function showFeaturesModal(userId, imei = null) {
     fetch(url)
         .then(res => res.json())
         .then(settings => {
-            const keys = ['odometer', 'speedAlert', 'ignitionAlert', 'geofenceAlert', 'powerAlert', 'lowBatteryAlert', 'panicAlert', 'healthStats', 'canData', 'bleData'];
+            const keys = ['odometer', 'speedAlert', 'ignitionAlert', 'healthStats', 'panicAlert', 'harshAlerts', 'towingAlert'];
             keys.forEach(key => {
                 const el = document.getElementById(`f-${key}`);
                 if (el) el.checked = settings[key] !== false;
@@ -162,13 +262,10 @@ async function submitFeatures() {
         odometer: document.getElementById('f-odometer').checked,
         speedAlert: document.getElementById('f-speedAlert').checked,
         ignitionAlert: document.getElementById('f-ignitionAlert').checked,
-        geofenceAlert: document.getElementById('f-geofenceAlert').checked,
-        powerAlert: document.getElementById('f-powerAlert').checked,
-        lowBatteryAlert: document.getElementById('f-lowBatteryAlert').checked,
-        panicAlert: document.getElementById('f-panicAlert').checked,
         healthStats: document.getElementById('f-healthStats').checked,
-        canData: document.getElementById('f-canData').checked,
-        bleData: document.getElementById('f-bleData').checked
+        panicAlert: document.getElementById('f-panicAlert').checked,
+        harshAlerts: document.getElementById('f-harshAlerts').checked,
+        towingAlert: document.getElementById('f-towingAlert').checked
     };
 
     const url = imei ? '/api/admin/update-device-settings' : '/api/admin/update-customer-settings';
@@ -179,16 +276,13 @@ async function submitFeatures() {
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify(body)
     });
-    
     const result = await res.json();
     if (result.success) {
         closeFeaturesModal();
-        if (imei) {
-            // Update the local currentViewSettings if we are in that view
-            if (currentViewUserId === userId) {
-                currentViewSettings = settings;
-                renderCustomerFleet(userId);
-            }
+        // Update local settings cache and redraw customer fleet table if viewing this user
+        if (currentViewUserId === userId) {
+            currentViewSettings = settings;
+            renderCustomerFleet(userId);
         }
         loadDashboard();
     }
@@ -279,23 +373,31 @@ async function loadDashboard() {
             const isExpired = daysLeft <= 0;
             if (isExpired) expiredCount++;
 
+            // Devices belonging to this customer
+            const numDevices = (data.allDevices || []).filter(d => d.ownerId === c.id).length;
+
             return `
                 <tr>
                     <td>
                         <div style="cursor:pointer" onclick="openCustomerDetail('${c.id}', '${c.username}')">
-                            <div class="cust-name" style="color:var(--accent)">${c.username} <i class="fa-solid fa-arrow-right" style="font-size:10px; margin-left:5px;"></i></div>
-                            <div class="cust-id">ID: ${c.id.substring(0,8)}...</div>
+                            <div class="cust-name" style="color:var(--accent);font-weight:700;">${c.username} <i class="fa-solid fa-arrow-right" style="font-size:10px;margin-left:5px;"></i></div>
+                            <div style="font-size:10px;color:var(--muted);margin-top:2px;"><i class="fa-solid fa-satellite-dish" style="margin-right:4px;"></i>${numDevices} device${numDevices !== 1 ? 's' : ''}</div>
                         </div>
                     </td>
                     <td>
                         <div class="contact-cell">
-                            <div class="contact-row"><i class="fa-solid fa-phone"></i> ${c.phone || 'N/A'}</div>
-                            <div class="contact-row"><i class="fa-solid fa-envelope"></i> ${c.email || 'N/A'}</div>
+                            <div class="contact-row"><i class="fa-solid fa-phone" style="width:12px;"></i> ${c.phone || '<span style="color:var(--muted)">N/A</span>'}</div>
+                            <div class="contact-row"><i class="fa-solid fa-envelope" style="width:12px;"></i> ${c.email || '<span style="color:var(--muted)">N/A</span>'}</div>
                         </div>
                     </td>
                     <td>
+                        <button onclick="showCredentialsModal('${c.id}')" style="background:var(--surface-2);border:1px solid var(--border);border-radius:8px;padding:5px 12px;color:var(--accent);cursor:pointer;font-size:11px;font-weight:600;display:flex;align-items:center;gap:6px;transition:all .2s;" onmouseover="this.style.borderColor='var(--accent)'" onmouseout="this.style.borderColor='var(--border)'">
+                            <i class="fa-solid fa-key"></i> View
+                        </button>
+                    </td>
+                    <td style="text-align:center;">
                         <span class="badge ${isExpired ? 'red' : (daysLeft < 10 ? 'amber' : 'green')}">
-                            ${isExpired ? 'Expired' : daysLeft + ' days left'}
+                            ${isExpired ? 'Expired' : daysLeft + ' days'}
                         </span>
                     </td>
                     <td>

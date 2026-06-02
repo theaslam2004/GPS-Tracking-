@@ -7,10 +7,18 @@ window.onerror = function(message, source, lineno, colno, error) {
     return false;
 };
 
-const user = JSON.parse(localStorage.getItem('user'));
+// Auto-migrate legacy user sessions without ID to prevent unexpected redirects
+let user = JSON.parse(localStorage.getItem('user'));
+if (user && !user.id) {
+    if (user.username === 'testcustomer') user.id = 'test-customer-1';
+    else if (user.username === 'admin') user.id = '1';
+    localStorage.setItem('user', JSON.stringify(user));
+}
+
 console.log('[Auth Check] User:', user);
-if (!user || user.role !== 'customer') {
-    console.warn('[Auth Check] Access Denied. Redirecting to login...');
+if (!user || !user.id || user.role !== 'customer') {
+    console.warn('[Auth Check] Access Denied or Session Stale. Redirecting to login...');
+    localStorage.removeItem('user');
     window.location.href = 'index.html';
 }
 
@@ -19,6 +27,7 @@ document.getElementById('exportBtn').href = `/api/export/devices?userId=${user.i
 
 let map;
 const markers = {};
+const livePaths = {}; // Store L.polyline paths for breadcrumbs
 let myDevices = [];
 let latestData = {}; // Store latest telemetry for panel
 let activeImei = null;
@@ -193,36 +202,68 @@ async function submitDeviceRequest() {
 }
 
 async function loadData() {
-    const res = await fetch(`/api/customer/data?userId=${user.id}`);
-    const data = await res.json();
-    
-    myDevices = data.devices;
-    
-    // Fetch Per-Device Settings
-    const settingsRes = await fetch(`/api/customer/settings?userId=${user.id}`);
-    userSettings = await settingsRes.json();
-    console.log('[Settings] Loaded Map:', userSettings);
-
-    loadGeofences();
-    
-    if (data.subscription) {
-        const expDate = new Date(data.subscription.expirationDate);
-        const daysLeft = Math.ceil((expDate - new Date()) / (1000 * 60 * 60 * 24));
-        document.getElementById('validityDays').innerText = `${daysLeft > 0 ? daysLeft : 0} days left`;
+    try {
+        const res = await fetch(`/api/customer/data?userId=${user.id}`);
+        const data = await res.json();
         
-        if(daysLeft <= 0) {
-            document.getElementById('subBanner').style.background = '#fee2e2';
-            document.getElementById('lockoutOverlay').classList.add('active');
+        myDevices = data.devices || [];
+        latestData = data.lastSeen || {};
+        
+        // Fetch Per-Device Settings
+        try {
+            const settingsRes = await fetch(`/api/customer/settings?userId=${user.id}`);
+            userSettings = await settingsRes.json();
+            console.log('[Settings] Loaded Map:', userSettings);
+        } catch(e) {
+            console.warn('[Settings] Failed to load settings, using empty defaults.');
+            userSettings = {};
         }
-    }
-    
-    renderDeviceList();
-    
-    // Global Feature Visibility
-    const anyGeofenceEnabled = myDevices.some(d => isFeatureEnabled(d.imei, 'geofenceAlert'));
-    const geofenceBtn = document.getElementById('geofenceToggleBtn');
-    if (geofenceBtn) {
-        geofenceBtn.style.display = anyGeofenceEnabled ? 'block' : 'none';
+
+        loadGeofences();
+        
+        if (data.subscription) {
+            const expDate = new Date(data.subscription.expirationDate);
+            const daysLeft = Math.ceil((expDate - new Date()) / (1000 * 60 * 60 * 24));
+            document.getElementById('validityDays').innerText = `${daysLeft > 0 ? daysLeft : 0} days left`;
+            
+            if(daysLeft <= 0) {
+                document.getElementById('subBanner').style.background = '#fee2e2';
+                document.getElementById('lockoutOverlay').classList.add('active');
+            }
+        }
+        
+        renderDeviceList();
+        
+        // Render last seen locations and paths on map immediately
+        Object.keys(latestData).forEach(imei => {
+            const deviceData = latestData[imei];
+            if (deviceData) {
+                deviceData.imei = imei;
+                deviceData.ownerId = user.id;
+                handleDeviceData(deviceData, false);
+            }
+        });
+        
+        // Expose settings to window context for debugging
+        window.userSettings = userSettings;
+        window.activeImei = activeImei;
+        
+        // Focus first/pinned device
+        const pinnedDev = myDevices.find(d => d.pinned);
+        const defaultDev = pinnedDev || myDevices[0];
+        if (defaultDev && latestData[defaultDev.imei]) {
+            window.initialFocusDone = true;
+            focusDevice(defaultDev.imei);
+        }
+        
+        // Global Feature Visibility
+        const anyGeofenceEnabled = myDevices.some(d => isFeatureEnabled(d.imei, 'geofenceAlert'));
+        const geofenceBtn = document.getElementById('geofenceToggleBtn');
+        if (geofenceBtn) {
+            geofenceBtn.style.display = anyGeofenceEnabled ? 'block' : 'none';
+        }
+    } catch(err) {
+        console.error('[loadData] Error:', err);
     }
 }
 
@@ -477,6 +518,23 @@ function renderDeviceList() {
         const odoHidden = !isFeatureEnabled(d.imei, 'odometer') ? 'display:none' : '';
         const speedHidden = !isFeatureEnabled(d.imei, 'speedAlert') ? 'display:none' : '';
         
+        // Use live telemetry values if available
+        const live = latestData[d.imei] || {};
+        const speedVal = live.speed !== undefined ? live.speed : 0;
+        const odoVal = live.odometer !== undefined ? live.odometer.toFixed(1) : (d.odometer || 0);
+        const timeVal = live.timestamp ? new Date(live.timestamp).toLocaleTimeString() : '--';
+        
+        // Offline status check
+        let statusText = 'Offline';
+        let statusColor = 'var(--text-secondary)';
+        if (live.timestamp) {
+            const isStale = (Date.now() - new Date(live.timestamp)) > 30000;
+            if (!isStale) {
+                statusText = live.speed > 5 ? 'Running' : 'Idle';
+                statusColor = live.speed > 5 ? 'var(--success)' : 'var(--warning)';
+            }
+        }
+        
         return `
             <div class="device-card" id="card-${d.imei}" onclick="focusDevice('${d.imei}')">
                 <div class="device-header">
@@ -484,12 +542,12 @@ function renderDeviceList() {
                         <i class="fa-solid fa-star" style="color: ${d.pinned ? 'var(--warning)' : 'var(--text-secondary)'}; opacity: ${d.pinned ? '1' : '0.5'}; cursor: pointer; margin-right: 6px; transition: all 0.2s;" onclick="togglePin('${d.imei}', event)" title="${d.pinned ? 'Unpin' : 'Pin to top'}"></i>
                         <i class="fa-solid fa-truck"></i> ${d.name || d.imei}
                     </div>
-                    <div style="font-weight: 700; font-size: 0.8rem; color: var(--text-secondary);" id="status-${d.imei}">Offline</div>
+                    <div style="font-weight: 700; font-size: 0.8rem; color: ${statusColor};" id="status-${d.imei}">${statusText}</div>
                 </div>
                 <div class="device-stats" style="display: flex; justify-content: space-between; font-size: 0.75rem; padding-top: 8px;">
-                    <div class="stat-item" style="${speedHidden}"><i class="fa-solid fa-gauge-high"></i> <span id="speed-${d.imei}">0</span> km/h</div>
-                    <div class="stat-item" style="${odoHidden}"><i class="fa-solid fa-road"></i> <span id="odo-${d.imei}">${d.odometer || 0}</span> km</div>
-                    <div class="stat-item"><i class="fa-regular fa-clock"></i> <span id="time-${d.imei}">--</span></div>
+                    <div class="stat-item" style="${speedHidden}"><i class="fa-solid fa-gauge-high"></i> <span id="speed-${d.imei}">${speedVal}</span> km/h</div>
+                    <div class="stat-item" style="${odoHidden}"><i class="fa-solid fa-road"></i> <span id="odo-${d.imei}">${odoVal}</span> km</div>
+                    <div class="stat-item"><i class="fa-regular fa-clock"></i> <span id="time-${d.imei}">${timeVal}</span></div>
                 </div>
             </div>
         `;
@@ -573,6 +631,12 @@ function updatePanelData(data, deviceName) {
     
     document.getElementById('panelDeviceName').innerText = deviceName || imei;
     document.getElementById('panelSpeed').innerText = speed;
+    
+    // Toggle Visibility of Speedometer Gauge based on Admin settings
+    const speedGauge = document.querySelector('.panel-speedometer-container');
+    if (speedGauge) {
+        speedGauge.style.display = isFeatureEnabled(imei, 'speedAlert') ? 'flex' : 'none';
+    }
     
     // Animate Gauge (0-140 km/h mapped to 125.6-0 dashoffset)
     const maxSpeed = 140;
@@ -744,6 +808,147 @@ socket.on('subscription_expired', (data) => {
     }
 });
 
+// Dynamic Device Data and Map Rendering Handler
+function handleDeviceData(data, isLive = true) {
+    if (data.ownerId != user.id) return;
+    
+    const { imei, latitude, longitude, speed, timestamp } = data;
+    latestData[imei] = data;
+
+    const device = myDevices.find(d => d.imei === imei);
+    const deviceName = device ? device.name : imei;
+    const popupHTML = buildTelemetryHTML(data, deviceName);
+    
+    // Check for Harsh Driving Events (only if live packet)
+    if (isLive && data.event) {
+        let type = 'info';
+        if (data.event.includes('Harsh') || data.event.includes('Rash') || data.event.includes('Emergency')) {
+            type = 'danger';
+        } else if (data.event.includes('Tamper') || data.event.includes('Battery') || data.event.includes('Power') || data.event.includes('Disconnected') || data.event.includes('Tow') || data.event.includes('Tilt')) {
+            type = 'warning';
+        }
+        
+        const eventKey = `${imei}_${data.event}`;
+        const lastEventTime = window[`last_${eventKey}`] || 0;
+        const now = Date.now();
+        
+        let allowed = true;
+        const settings = userSettings[imei] || {};
+        if ((data.event.includes('Harsh') || data.event.includes('Rash')) && settings.harshAlerts === false) allowed = false;
+        if (data.event.includes('Tamper') && settings.healthStats === false) allowed = false;
+        if (data.event.includes('Emergency') && settings.panicAlert === false) allowed = false;
+        if (data.event.includes('Ignition') && settings.ignitionAlert === false) allowed = false;
+        if ((data.event.includes('Battery') || data.event.includes('Power')) && settings.healthStats === false) allowed = false;
+        if (data.event.includes('Tow') && settings.towingAlert === false) allowed = false;
+
+        if (allowed && now - lastEventTime > 10000) {
+            showToast(`⚠️ Alert: ${deviceName}`, `Event Detected: ${data.event}`, type);
+            window[`last_${eventKey}`] = now;
+        }
+    }
+    
+    // Update Map with Premium Custom Beacon Icon
+    const status = speed > 5 ? 'running' : 'halt';
+    const isPinned = device && device.pinned;
+    const vehicleIcon = getVehicleIcon(data.heading, status, isPinned);
+
+    // Live polyline breadcrumb path
+    if (!livePaths[imei]) {
+        livePaths[imei] = L.polyline([], {
+            color: 'var(--primary)',
+            weight: 3,
+            opacity: 0.6,
+            dashArray: '5, 5'
+        }).addTo(map);
+    }
+    
+    const latlngs = livePaths[imei].getLatLngs();
+    latlngs.push([latitude, longitude]);
+    if (latlngs.length > 100) latlngs.shift();
+    livePaths[imei].setLatLngs(latlngs);
+
+    if(markers[imei]) {
+        markers[imei].setLatLng([latitude, longitude]);
+        markers[imei].setIcon(vehicleIcon);
+        if(markers[imei].isPopupOpen()) {
+            markers[imei].getPopup().setContent(popupHTML);
+        } else {
+            markers[imei].setPopupContent(popupHTML);
+        }
+    } else {
+        markers[imei] = L.marker([latitude, longitude], { icon: vehicleIcon }).addTo(map)
+            .bindPopup(popupHTML)
+            .on('click', () => focusDevice(imei));
+    }
+    
+    // Auto-focus logic: Focus the pinned vehicle by default
+    if (isLive) {
+        if (device && device.pinned && !window.initialFocusDone) {
+            window.initialFocusDone = true;
+            focusDevice(imei);
+        } else if (!window.initialFocusDone && myDevices.every(d => !d.pinned)) {
+            window.initialFocusDone = true;
+            focusDevice(imei);
+        }
+    }
+    
+    // Update Sidebar elements
+    const speedEl = document.getElementById(`speed-${imei}`);
+    const timeEl = document.getElementById(`time-${imei}`);
+    const statusEl = document.getElementById(`status-${imei}`);
+    const odoEl = document.getElementById(`odo-${imei}`);
+    
+    if(speedEl) {
+        speedEl.innerText = speed;
+        if(odoEl && data.odometer) odoEl.innerText = data.odometer.toFixed(1);
+        
+        const timeObj = new Date(timestamp);
+        timeEl.innerText = timeObj.toLocaleTimeString();
+        
+        statusEl.innerText = speed > 5 ? 'Running' : 'Idle';
+        statusEl.className = '';
+        statusEl.style.color = speed > 5 ? 'var(--success)' : 'var(--warning)';
+        statusEl.style.background = 'transparent';
+    }
+    
+    // Update panel if it's currently open for this device
+    const panel = document.getElementById('vehiclePanel');
+    if(panel.classList.contains('open') && activeImei === imei) {
+        updatePanelData(data, deviceName);
+    }
+    
+    updateFleetCounts();
+}
+
+// Generate premium custom rotating arrowhead marker icon
+function getVehicleIcon(heading, status, pinned) {
+    let color = '#FFab00'; // Idle (Amber)
+    let pulseClass = '';
+    if (status === 'running') {
+        color = '#00E676'; // Moving (Green)
+        pulseClass = 'beacon-pulse';
+    } else if (status === 'offline') {
+        color = '#FF3D00'; // Offline (Red)
+    }
+    
+    const borderStyle = pinned ? 'border: 2px dashed #FFb547;' : 'border: 1.5px solid rgba(255, 255, 255, 0.4);';
+    const shadowStyle = pinned ? 'box-shadow: 0 0 12px #FFb547;' : `box-shadow: 0 0 8px ${color};`;
+
+    return L.divIcon({
+        className: 'custom-vehicle-marker',
+        html: `
+            <div class="vehicle-beacon ${pulseClass}" style="background: ${color}; color: ${color}; ${borderStyle} ${shadowStyle}">
+                <div class="heading-arrow" style="transform: rotate(${heading || 0}deg); color: #ffffff;">
+                    <i class="fa-solid fa-location-arrow"></i>
+                </div>
+            </div>
+        `,
+        iconSize: [28, 28],
+        iconAnchor: [14, 14],
+        popupAnchor: [0, -18]
+    });
+}
+
 socket.on('panic_alert', (data) => {
     const settings = userSettings[data.imei] || {};
     if (data.ownerId === user.id && settings.panicAlert !== false) {
@@ -765,6 +970,13 @@ socket.on('settings_updated', (data) => {
         const geofenceBtn = document.getElementById('geofenceToggleBtn');
         if (geofenceBtn) geofenceBtn.style.display = anyGeofenceEnabled ? 'block' : 'none';
 
+        // Update popup HTML content of existing marker
+        if (markers[imei] && latestData[imei]) {
+            const device = myDevices.find(d => d.imei === imei);
+            const popupHTML = buildTelemetryHTML(latestData[imei], device ? device.name : imei);
+            markers[imei].setPopupContent(popupHTML);
+        }
+
         // Re-render current panel if open and it's this device
         if(activeImei === imei && latestData[imei]) {
             const device = myDevices.find(d => d.imei === imei);
@@ -782,110 +994,17 @@ socket.on('geofence_alert', (data) => {
     const msg = `Vehicle has ${isEnter ? 'ENTERED' : 'EXITED'} geofence: ${data.geofenceName}`;
     const alertType = isEnter ? 'info' : 'warning';
     
-    // Debounce to prevent rapid-fire identical alerts
     const eventKey = `${data.imei}_${data.type}_${data.geofenceName}`;
     const lastEventTime = window[`last_${eventKey}`] || 0;
     const now = Date.now();
-    if (now - lastEventTime > 30000) { // Only show once every 30 seconds per geofence crossing type
+    if (now - lastEventTime > 30000) {
         showToast(title, msg, alertType);
         window[`last_${eventKey}`] = now;
     }
 });
 
 socket.on('device_data', (data) => {
-    // Only process if this device belongs to this user
-    if (data.ownerId != user.id) return;
-    
-    const { imei, latitude, longitude, speed, timestamp } = data;
-    latestData[imei] = data; // Store latest for panel
-
-    
-    // Find device name
-    const device = myDevices.find(d => d.imei === imei);
-    const deviceName = device ? device.name : imei;
-    const popupHTML = buildTelemetryHTML(data, deviceName);
-    
-    // Check for Harsh Driving Events
-    if (data.event) {
-        let type = 'info';
-        if (data.event.includes('Harsh') || data.event.includes('Rash') || data.event.includes('Emergency')) {
-            type = 'danger';
-        } else if (data.event.includes('Tamper') || data.event.includes('Disconnected')) {
-            type = 'warning';
-        }
-        
-        // Prevent spamming the same event every second (debouncing)
-        const eventKey = `${imei}_${data.event}`;
-        const lastEventTime = window[`last_${eventKey}`] || 0;
-        const now = Date.now();
-        
-        // Filter based on settings
-        let allowed = true;
-        const settings = userSettings[imei] || {};
-        if (data.event.includes('Harsh') && settings.speedAlert === false) allowed = false;
-        if (data.event.includes('Tamper') && settings.healthStats === false) allowed = false;
-        if (data.event.includes('Emergency') && settings.panicAlert === false) allowed = false;
-
-        if (allowed && now - lastEventTime > 10000) { // Only show once every 10 seconds per event type per device
-            showToast(`⚠️ Alert: ${deviceName}`, `Event Detected: ${data.event}`, type);
-            window[`last_${eventKey}`] = now;
-        }
-    }
-    
-    // Update Map
-    if(markers[imei]) {
-        markers[imei].setLatLng([latitude, longitude]);
-        // Update popup if it's currently open
-        if(markers[imei].isPopupOpen()) {
-            markers[imei].getPopup().setContent(popupHTML);
-        } else {
-            markers[imei].setPopupContent(popupHTML);
-        }
-    } else {
-        markers[imei] = L.marker([latitude, longitude]).addTo(map)
-            .bindPopup(popupHTML)
-            .on('click', () => focusDevice(imei));
-    }
-    
-    // Auto-focus logic: Focus the pinned vehicle by default
-    if (device && device.pinned && !window.initialFocusDone) {
-        window.initialFocusDone = true;
-        focusDevice(imei);
-    } else if (!window.initialFocusDone && myDevices.every(d => !d.pinned)) {
-        // Fallback: If no vehicle is pinned, focus the first one that connects
-        window.initialFocusDone = true;
-        focusDevice(imei);
-    }
-    
-    // Update Sidebar
-    const speedEl = document.getElementById(`speed-${imei}`);
-    const timeEl = document.getElementById(`time-${imei}`);
-    const statusEl = document.getElementById(`status-${imei}`);
-    const odoEl = document.getElementById(`odo-${imei}`);
-    
-    if(speedEl) {
-        speedEl.innerText = speed;
-        if(odoEl && data.odometer) odoEl.innerText = data.odometer;
-        
-        const timeObj = new Date(timestamp);
-        timeEl.innerText = timeObj.toLocaleTimeString();
-        
-        statusEl.innerText = speed > 5 ? 'Running' : 'Idle';
-        statusEl.className = '';
-        statusEl.style.color = speed > 5 ? 'var(--success)' : 'var(--warning)';
-        statusEl.style.background = 'transparent';
-    }
-    
-    // Update panel if it's currently open for this device
-    const panel = document.getElementById('vehiclePanel');
-    if(panel.classList.contains('open')) {
-        const currentPanelDevice = document.getElementById('panelDeviceName').innerText;
-        if(currentPanelDevice === deviceName || currentPanelDevice === imei) {
-            updatePanelData(data, deviceName);
-        }
-    }
-    
-    updateFleetCounts();
+    handleDeviceData(data, true);
 });
 
 initMap();

@@ -103,21 +103,19 @@ function parseDeviceData(buffer) {
                 const heading = parseFloat(parts[latDirIndex + 4]) || 0;
                 const satellites = parseFloat(parts[latDirIndex + 5]) || 0;
                 
+                let ignition = false;
+                if (parts.length > latDirIndex + 10 && parts[latDirIndex + 10] === '1') {
+                    ignition = true;
+                }
+                
                 let batteryPercentage = 100;
-                // In manual: Int Battery is usually roughly parts[latDirIndex + 14]
-                // Ext Volt is parts[latDirIndex + 13]
-                if (parts.length > latDirIndex + 14) {
-                    const intVolt = parseFloat(parts[latDirIndex + 14]);
+                if (parts.length > latDirIndex + 13) {
+                    const intVolt = parseFloat(parts[latDirIndex + 13]);
                     if (!isNaN(intVolt) && intVolt > 0) {
                         batteryPercentage = Math.round(((intVolt - 3.4) / (4.2 - 3.4)) * 100);
                         if (batteryPercentage > 100) batteryPercentage = 100;
                         if (batteryPercentage < 0) batteryPercentage = 0;
                     }
-                }
-                
-                let ignition = false;
-                if (parts[latDirIndex - 4] === '1') {
-                    ignition = true;
                 }
                 
                 let odometer = 0;
@@ -130,14 +128,49 @@ function parseDeviceData(buffer) {
                     }
                 }
 
+                const alertId = parseInt(parts[4]);
                 let event = null;
-                switch (packetType) {
-                    case 'HB': event = 'Harsh Braking'; break;
-                    case 'HA': event = 'Harsh Acceleration'; break;
-                    case 'RT': event = 'Rash Turning'; break;
-                    case 'EA': event = 'Emergency Alert'; break;
-                    case 'TA': event = 'Tamper Alert'; break;
-                    case 'BD': event = 'Battery Disconnected'; break;
+                let parsedPacketType = packetType;
+
+                // Map by Alert ID first
+                switch (alertId) {
+                    case 1: event = 'Location Update'; break;
+                    case 3: event = 'Vehicle Battery Disconnected'; parsedPacketType = 'BD'; break;
+                    case 4: event = 'Internal Battery Low'; parsedPacketType = 'BL'; break;
+                    case 6: event = 'Vehicle Battery Reconnected'; parsedPacketType = 'BR'; break;
+                    case 7: event = 'Ignition ON'; parsedPacketType = 'IN'; break;
+                    case 8: event = 'Ignition OFF'; parsedPacketType = 'IF'; break;
+                    case 9: event = 'GPS box opened'; parsedPacketType = 'TA'; break;
+                    case 10: event = 'Emergency Alert (SOS)'; parsedPacketType = 'EA'; break;
+                    case 11: event = 'Emergency Alert (SOS) Cleared'; break;
+                    case 13: event = 'Harsh Braking'; parsedPacketType = 'HB'; break;
+                    case 14: event = 'Harsh Acceleration'; parsedPacketType = 'HA'; break;
+                    case 15: event = 'Rash Turning'; parsedPacketType = 'RT'; break;
+                    case 16: event = 'Emergency button Tampered'; parsedPacketType = 'TA'; break;
+                    case 51: event = 'Tilt Alert'; break;
+                    case 52: event = 'Towing Started'; parsedPacketType = 'TS'; break;
+                    case 53: event = 'Towing Stopped'; parsedPacketType = 'TE'; break;
+                }
+
+                // Fallback to packet type if no event was mapped by alert ID
+                if (!event) {
+                    switch (packetType) {
+                        case 'EA': event = 'Emergency Alert (SOS)'; break;
+                        case 'TA': event = 'Tamper Alert'; break;
+                        case 'HP': event = 'Health Packet'; break;
+                        case 'IN': event = 'Ignition ON'; break;
+                        case 'IF': event = 'Ignition OFF'; break;
+                        case 'BD': event = 'Vehicle Battery Disconnected'; break;
+                        case 'BR': event = 'Vehicle Battery Reconnected'; break;
+                        case 'BL': event = 'Internal Battery Low'; break;
+                        case 'HB': event = 'Harsh Braking'; break;
+                        case 'HA': event = 'Harsh Acceleration'; break;
+                        case 'RT': event = 'Rash Turning'; break;
+                        case 'TS': event = 'Towing Started'; break;
+                        case 'TE': event = 'Towing Stopped'; break;
+                        case 'DT': event = 'Emergency Tamper'; break;
+                        case 'OA': event = 'Over the Air Command'; break;
+                    }
                 }
 
                 return {
@@ -152,7 +185,7 @@ function parseDeviceData(buffer) {
                     battery: batteryPercentage,
                     odometer: odometer,
                     ignition: ignition,
-                    packetType: packetType,
+                    packetType: parsedPacketType,
                     event: event,
                     rawHex: rawString
                 };
