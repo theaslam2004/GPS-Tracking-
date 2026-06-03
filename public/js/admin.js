@@ -240,9 +240,6 @@ function renderCustomerFleet(userId) {
                         <button class="icon-btn" onclick="downloadDeviceData('${d.imei}')" title="Download History (CSV)">
                             <i class="fa-solid fa-download"></i>
                         </button>
-                        <button class="icon-btn" onclick="showFeaturesModal('${userId}', '${d.imei}')" title="Configure Features">
-                            <i class="fa-solid fa-sliders"></i>
-                        </button>
                     </div>
                 </td>
             </tr>
