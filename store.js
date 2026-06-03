@@ -164,12 +164,12 @@ module.exports = {
         };
         data.users.push(newUser);
         
-        // Add 30 days dummy subscription
+        // Add 10 days trial subscription
         const expirationDate = new Date();
-        expirationDate.setDate(expirationDate.getDate() + 30);
+        expirationDate.setDate(expirationDate.getDate() + 10);
         data.subscriptions.push({
             userId: newUser.id,
-            validityDays: 30,
+            validityDays: 10,
             expirationDate: expirationDate.toISOString()
         });
 
