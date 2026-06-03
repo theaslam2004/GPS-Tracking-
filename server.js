@@ -226,6 +226,22 @@ app.post('/api/admin/update-device-settings', (req, res) => {
     res.json({ success });
 });
 
+app.get('/api/admin/get-credentials/:userId', (req, res) => {
+    const userId = req.params.userId;
+    const creds = store.getUserCredentials(userId);
+    if (creds) {
+        res.json({ success: true, username: creds.username, password: creds.password });
+    } else {
+        res.json({ success: false, error: 'User not found' });
+    }
+});
+
+app.post('/api/admin/reset-password', (req, res) => {
+    const { userId, newPassword } = req.body;
+    const success = store.resetPassword(userId, newPassword);
+    res.json({ success });
+});
+
 
 // Socket.io for Real-time communication with the web frontend
 io.on('connection', (socket) => {
