@@ -7,36 +7,93 @@ const parseDeviceData = require('./parser');
 const store = require('./store');
 const emailService = require('./emailService');
 const smsService = require('./smsService');
+const session = require('express-session');
+require('dotenv').config();
 
-const TCP_PORT = 8080;
-const HTTP_PORT = 3000;
+const TCP_PORT = process.env.TCP_PORT ? parseInt(process.env.TCP_PORT) : 8080;
+const HTTP_PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
 
 // Setup Express and HTTP server for the Frontend
 const app = express();
 const server = http.createServer(app);
 const io = new Server(server);
 
+// Setup Express Session
+app.use(session({
+    secret: process.env.SESSION_SECRET || 'fleetly-gps-session-super-secure-key-2026',
+    resave: false,
+    saveUninitialized: false,
+    cookie: {
+        secure: false, // Set to true if running over HTTPS in production
+        maxAge: 24 * 60 * 60 * 1000 // 24 Hours
+    }
+}));
+
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
-// API: Login
-app.post('/api/login', (req, res) => {
-    const { username, password } = req.body;
-    console.log(`[HTTP] Login attempt for user: ${username}`);
-    const user = store.getUser(username, password);
-    if (user) {
-        console.log(`[HTTP] Login successful for: ${username}`);
-        res.json({ success: true, user: { id: user.id, username: user.username, role: user.role } });
+// Authentication Middlewares
+const requireLogin = (req, res, next) => {
+    if (req.session && req.session.user) {
+        return next();
+    }
+    res.status(401).json({ success: false, error: 'Unauthorized: Login required' });
+};
+
+const requireAdmin = (req, res, next) => {
+    if (req.session && req.session.user && req.session.user.role === 'admin') {
+        return next();
+    }
+    res.status(403).json({ success: false, error: 'Forbidden: Admin access required' });
+};
+
+// API: Auth Check
+app.get('/api/auth/me', (req, res) => {
+    if (req.session && req.session.user) {
+        res.json({ success: true, user: req.session.user });
     } else {
-        console.log(`[HTTP] Login failed for: ${username}`);
-        res.json({ success: false, error: 'Invalid credentials' });
+        res.status(401).json({ success: false, error: 'Not authenticated' });
     }
 });
 
-// API: Customer endpoints
-app.post('/api/customer/request-device', (req, res) => {
+// API: Login
+app.post('/api/login', async (req, res) => {
+    const { username, password } = req.body;
+    console.log(`[HTTP] Login attempt for user: ${username}`);
+    try {
+        const user = await store.getUser(username, password);
+        if (user) {
+            console.log(`[HTTP] Login successful for: ${username}`);
+            req.session.user = {
+                id: user.id,
+                username: user.username,
+                role: user.role
+            };
+            res.json({ success: true, user: req.session.user });
+        } else {
+            console.log(`[HTTP] Login failed for: ${username}`);
+            res.json({ success: false, error: 'Invalid credentials' });
+        }
+    } catch(e) {
+        console.error('[HTTP] Login Error:', e);
+        res.status(500).json({ success: false, error: 'Internal server error' });
+    }
+});
+
+// API: Logout
+app.post('/api/logout', (req, res) => {
+    req.session.destroy(err => {
+        if (err) return res.status(500).json({ success: false, error: 'Could not log out' });
+        res.clearCookie('connect.sid');
+        res.json({ success: true });
+    });
+});
+
+// ── CUSTOMER API ENDPOINTS ──
+
+app.post('/api/customer/request-device', requireLogin, async (req, res) => {
     const { userId, imei } = req.body;
-    const result = store.requestDevice(userId, imei);
+    const result = await store.requestDevice(userId, imei);
     if (result.error) {
         res.json({ success: false, error: result.error });
     } else {
@@ -45,77 +102,86 @@ app.post('/api/customer/request-device', (req, res) => {
     }
 });
 
-app.post('/api/customer/pin-device', (req, res) => {
+app.post('/api/customer/pin-device', requireLogin, async (req, res) => {
     const { userId, imei } = req.body;
-    const pinned = store.togglePinDevice(userId, imei);
+    const pinned = await store.togglePinDevice(userId, imei);
     res.json({ success: true, pinned });
 });
 
-app.get('/api/customer/data', (req, res) => {
+app.get('/api/customer/data', requireLogin, async (req, res) => {
     const userId = req.query.userId;
-    const devices = store.getCustomerDevices(userId);
+    const devices = await store.getCustomerDevices(userId);
     const lastSeen = {};
-    const allLastSeen = store.getData().deviceLastSeen || {};
+    const dataStore = await store.getData();
+    const allLastSeen = dataStore.deviceLastSeen || {};
     devices.forEach(d => {
         if (allLastSeen[d.imei]) {
             lastSeen[d.imei] = allLastSeen[d.imei];
         }
     });
+
+    const subscription = await store.getCustomerSubscription(userId);
+    const pricing = await store.getSystemSettings();
+
     res.json({
         devices,
-        subscription: store.getCustomerSubscription(userId),
-        lastSeen
+        subscription,
+        lastSeen,
+        deviceCount: devices.length,
+        pricing
     });
 });
 
-app.get('/api/customer/history', (req, res) => {
+app.get('/api/customer/history', requireLogin, async (req, res) => {
     const imei = req.query.imei;
     res.json({
-        history: store.getHistory(imei)
+        history: await store.getHistory(imei)
     });
 });
-app.get('/api/customer/settings', (req, res) => {
+
+app.get('/api/customer/settings', requireLogin, async (req, res) => {
     const userId = req.query.userId;
-    const devices = store.getCustomerDevices(userId);
+    const devices = await store.getCustomerDevices(userId);
     const settingsMap = {};
-    devices.forEach(d => {
-        settingsMap[d.imei] = store.getDeviceSettings(d.imei);
-    });
+    for (let d of devices) {
+        settingsMap[d.imei] = await store.getDeviceSettings(d.imei);
+    }
     res.json(settingsMap);
 });
 
 // API: Geofences
-app.get('/api/customer/geofences', (req, res) => {
+app.get('/api/customer/geofences', requireLogin, async (req, res) => {
     const userId = req.query.userId;
-    console.log(`[HTTP] Fetching geofences for user: ${userId}`);
-    res.json(store.getGeofences(userId));
+    res.json(await store.getGeofences(userId));
 });
-app.post('/api/customer/geofence', (req, res) => {
-    console.log(`[HTTP] Adding new geofence: ${req.body.name}`);
-    res.json(store.addGeofence(req.body));
+
+app.post('/api/customer/geofence', requireLogin, async (req, res) => {
+    res.json(await store.addGeofence(req.body));
 });
-app.post('/api/customer/geofence/update/:id', (req, res) => {
-    console.log(`[HTTP] Updating geofence ID: ${req.params.id} with Name: ${req.body.name}`);
-    res.json({ success: store.updateGeofence(req.params.id, req.body) });
+
+app.post('/api/customer/geofence/update/:id', requireLogin, async (req, res) => {
+    res.json({ success: await store.updateGeofence(req.params.id, req.body) });
 });
-app.delete('/api/customer/geofence/:id', (req, res) => {
-    console.log(`[HTTP] Deleting geofence ID: ${req.params.id}`);
-    res.json({ success: store.deleteGeofence(req.params.id) });
+
+app.delete('/api/customer/geofence/:id', requireLogin, async (req, res) => {
+    res.json({ success: await store.deleteGeofence(req.params.id) });
 });
 
 // API: Export Excel / CSV
-app.get('/api/export/devices', (req, res) => {
+app.get('/api/export/devices', requireLogin, async (req, res) => {
     const userId = req.query.userId;
     const role = req.query.role;
     
     let devices = [];
-    if (role === 'admin') {
-        devices = store.getData().devices;
+    if (role === 'admin' && req.session.user.role === 'admin') {
+        const dataStore = await store.getData();
+        devices = dataStore.devices;
     } else {
-        devices = store.getCustomerDevices(userId);
+        devices = await store.getCustomerDevices(userId);
     }
     
-    const lastSeen = store.getData().deviceLastSeen;
+    const dataStore = await store.getData();
+    const lastSeen = dataStore.deviceLastSeen;
     
     let csv = "IMEI,Name,OwnerID,LastLatitude,LastLongitude,LastSpeed,LastTimestamp\n";
     devices.forEach(d => {
@@ -128,9 +194,9 @@ app.get('/api/export/devices', (req, res) => {
     res.send(csv);
 });
 
-app.get('/api/export/history/:imei', (req, res) => {
+app.get('/api/export/history/:imei', requireLogin, async (req, res) => {
     const imei = req.params.imei;
-    const history = store.getHistory(imei);
+    const history = await store.getHistory(imei);
     
     let csv = "Timestamp,Latitude,Longitude,Speed,Odometer,RawData\n";
     history.forEach(pt => {
@@ -142,22 +208,37 @@ app.get('/api/export/history/:imei', (req, res) => {
     res.send(csv);
 });
 
-// -----------------------------------------------------------------------
-// ADMIN API ENDPOINTS
-// -----------------------------------------------------------------------
-app.get('/api/admin/dashboard', (req, res) => {
-    const data = store.getData();
+// ── ADMIN API ENDPOINTS ──
+
+app.get('/api/admin/dashboard', requireAdmin, async (req, res) => {
+    const dataStore = await store.getData();
+    const payments = await store.getPayments();
+    const totalIncome = await store.getTotalIncome();
+    const pricing = await store.getSystemSettings();
+
+    // Compute plan breakdown stats
+    const customers = await store.getAllCustomers();
+    const planStats = { Trial: 0, Basic: 0, Standard: 0, Premium: 0, Enterprise: 0 };
+    customers.forEach(c => {
+        const plan = (c.subscription && c.subscription.planName) || 'Trial';
+        if (planStats[plan] !== undefined) planStats[plan]++;
+    });
+
     res.json({
-        customers: store.getAllCustomers(),
-        allDevices: data.devices,
-        requests: data.deviceRequests,
-        lastSeen: data.deviceLastSeen || {}
+        customers,
+        allDevices: dataStore.devices,
+        requests: dataStore.deviceRequests,
+        lastSeen: dataStore.deviceLastSeen || {},
+        payments,
+        totalIncome,
+        pricing,
+        planStats
     });
 });
 
-app.post('/api/admin/approve-request', (req, res) => {
+app.post('/api/admin/approve-request', requireAdmin, async (req, res) => {
     const { imei, ownerId } = req.body;
-    const success = store.approveDeviceRequest(imei, ownerId);
+    const success = await store.approveDeviceRequest(imei, ownerId);
     if (success) {
         io.emit('admin_update');
         io.emit('customer_update', { userId: ownerId });
@@ -165,59 +246,56 @@ app.post('/api/admin/approve-request', (req, res) => {
     res.json({ success });
 });
 
-app.delete('/api/admin/delete-customer/:userId', (req, res) => {
-    const success = store.deleteCustomer(req.params.userId);
+app.delete('/api/admin/delete-customer/:userId', requireAdmin, async (req, res) => {
+    const success = await store.deleteCustomer(req.params.userId);
     if (success) io.emit('admin_update');
     res.json({ success });
 });
 
-app.post('/api/admin/update-contact', (req, res) => {
+app.post('/api/admin/update-contact', requireAdmin, async (req, res) => {
     const { userId, phone, email } = req.body;
-    const success = store.updateContact(userId, phone, email);
+    const success = await store.updateContact(userId, phone, email);
     if (success) io.emit('admin_update');
     res.json({ success });
 });
 
-app.post('/api/admin/update-validity', (req, res) => {
+app.post('/api/admin/update-validity', requireAdmin, async (req, res) => {
     const { userId, days } = req.body;
-    const success = store.addSubscriptionDays(userId, parseInt(days));
+    const success = await store.addSubscriptionDays(userId, parseInt(days));
     if (success) io.emit('admin_update');
     res.json({ success });
 });
 
-app.get('/api/admin/customer-settings/:userId', (req, res) => {
-    // This is a bulk action helper - returns settings for the user (or default if no global user settings)
-    const settings = store.getUserSettings(req.params.userId);
+app.get('/api/admin/customer-settings/:userId', requireAdmin, async (req, res) => {
+    const settings = await store.getUserSettings(req.params.userId);
     res.json(settings);
 });
 
-app.post('/api/admin/update-customer-settings', (req, res) => {
+app.post('/api/admin/update-customer-settings', requireAdmin, async (req, res) => {
     const { userId, settings } = req.body;
-    
-    // Save to userSettings so customer-level selections are persisted
-    store.updateUserSettings(userId, settings);
+    await store.updateUserSettings(userId, settings);
     
     // Bulk update all devices for this user
-    const devices = store.getCustomerDevices(userId);
-    devices.forEach(d => {
-        store.updateDeviceSettings(d.imei, settings);
+    const devices = await store.getCustomerDevices(userId);
+    for (let d of devices) {
+        await store.updateDeviceSettings(d.imei, settings);
         io.emit('settings_updated', { imei: d.imei, settings, userId });
-    });
+    }
     io.emit('admin_update');
     res.json({ success: true });
 });
 
-app.get('/api/admin/device-settings/:imei', (req, res) => {
-    const settings = store.getDeviceSettings(req.params.imei);
+app.get('/api/admin/device-settings/:imei', requireAdmin, async (req, res) => {
+    const settings = await store.getDeviceSettings(req.params.imei);
     res.json(settings);
 });
 
-app.post('/api/admin/update-device-settings', (req, res) => {
+app.post('/api/admin/update-device-settings', requireAdmin, async (req, res) => {
     const { imei, settings } = req.body;
-    const success = store.updateDeviceSettings(imei, settings);
+    const success = await store.updateDeviceSettings(imei, settings);
     if (success) {
-        const data = store.getData();
-        const device = data.devices.find(d => d.imei === imei);
+        const dataStore = await store.getData();
+        const device = dataStore.devices.find(d => d.imei === imei);
         io.emit('admin_update');
         if (device) {
             io.emit('settings_updated', { imei, settings, userId: device.ownerId });
@@ -226,9 +304,9 @@ app.post('/api/admin/update-device-settings', (req, res) => {
     res.json({ success });
 });
 
-app.get('/api/admin/get-credentials/:userId', (req, res) => {
+app.get('/api/admin/get-credentials/:userId', requireAdmin, async (req, res) => {
     const userId = req.params.userId;
-    const creds = store.getUserCredentials(userId);
+    const creds = await store.getUserCredentials(userId);
     if (creds) {
         res.json({ success: true, username: creds.username, password: creds.password });
     } else {
@@ -236,16 +314,99 @@ app.get('/api/admin/get-credentials/:userId', (req, res) => {
     }
 });
 
-app.post('/api/admin/reset-password', (req, res) => {
+app.post('/api/admin/reset-password', requireAdmin, async (req, res) => {
     const { userId, newPassword } = req.body;
-    const success = store.resetPassword(userId, newPassword);
+    const success = await store.resetPassword(userId, newPassword);
     res.json({ success });
+});
+
+// ── SYSTEM PRICING & SUBSCRIPTIONS API ──
+
+// GET active pricing for customer
+app.get('/api/customer/pricing', requireLogin, async (req, res) => {
+    try {
+        const pricing = await store.getSystemSettings();
+        res.json({ success: true, pricing });
+    } catch (e) {
+        res.status(500).json({ success: false, error: 'Failed to load pricing configurations.' });
+    }
+});
+
+// Customer Upgrade Plan (Simulated payment check-out)
+app.post('/api/customer/upgrade-plan', requireLogin, async (req, res) => {
+    const { userId, planName } = req.body;
+    if (req.session.user.id !== userId) {
+        return res.status(403).json({ success: false, error: 'Forbidden: Access denied' });
+    }
+
+    try {
+        const pricing = await store.getSystemSettings();
+        const planConfig = pricing[planName];
+        if (!planConfig) {
+            return res.status(400).json({ success: false, error: 'Invalid subscription plan selected.' });
+        }
+
+        const pricePaid = planConfig.price;
+        const result = await store.updateCustomerPlan(userId, planName, pricePaid);
+
+        if (result) {
+            io.emit('admin_update');
+            io.emit('customer_update', { userId });
+            res.json({ success: true, subscription: result });
+        } else {
+            res.status(500).json({ success: false, error: 'Plan upgrade failed.' });
+        }
+    } catch (e) {
+        res.status(500).json({ success: false, error: 'Failed to complete transaction.' });
+    }
+});
+
+// GET System Pricing configurations (Admin only)
+app.get('/api/admin/pricing', requireAdmin, async (req, res) => {
+    try {
+        const pricing = await store.getSystemSettings();
+        res.json({ success: true, pricing });
+    } catch (e) {
+        res.status(500).json({ success: false, error: 'Failed to fetch settings.' });
+    }
+});
+
+// POST Update System Pricing / Plan Configurations (Admin only)
+app.post('/api/admin/pricing', requireAdmin, async (req, res) => {
+    const { plans } = req.body;
+    try {
+        const success = await store.updateSystemSettings(plans);
+        if (success) {
+            io.emit('admin_update');
+            res.json({ success: true });
+        } else {
+            res.json({ success: false, error: 'Failed to save settings.' });
+        }
+    } catch (e) {
+        res.status(500).json({ success: false, error: 'Failed to update system configurations.' });
+    }
+});
+
+// Admin Update Customer's plan directly
+app.post('/api/admin/update-plan', requireAdmin, async (req, res) => {
+    const { userId, planName, pricePaid } = req.body;
+    try {
+        const result = await store.updateCustomerPlan(userId, planName, parseFloat(pricePaid || 0));
+        if (result) {
+            io.emit('admin_update');
+            io.emit('customer_update', { userId });
+            res.json({ success: true, subscription: result });
+        } else {
+            res.json({ success: false, error: 'Could not update user plan.' });
+        }
+    } catch (e) {
+        res.status(500).json({ success: false, error: 'Server error' });
+    }
 });
 
 
 // Socket.io for Real-time communication with the web frontend
 io.on('connection', (socket) => {
-
     console.log('[Web] A client connected');
     socket.on('disconnect', () => {
         console.log('[Web] Client disconnected');
@@ -261,7 +422,7 @@ const tcpServer = net.createServer((socket) => {
     const clientAddress = `${socket.remoteAddress}:${socket.remotePort}`;
     console.log(`[TCP] Device connected from: ${clientAddress}`);
 
-    socket.on('data', (data) => {
+    socket.on('data', async (data) => {
         console.log(`[TCP] Received raw data from ${clientAddress} (${data.length} bytes)`);
         
         // Pass the raw buffer to our parser
@@ -270,22 +431,22 @@ const tcpServer = net.createServer((socket) => {
         if (parsedData) {
             console.log(`[TCP] Parsed Data:`, parsedData);
             
-            // Update last seen in store and check geofences
-            const alerts = store.updateDeviceLastSeen(parsedData.imei, parsedData);
+            // Update last seen in store
+            const alerts = await store.updateDeviceLastSeen(parsedData.imei, parsedData);
             
             // Identify owner
-            const devices = store.getData().devices;
+            const dataStore = await store.getData();
+            const devices = dataStore.devices;
             const device = devices.find(d => d.imei === parsedData.imei);
             if (device) {
                 parsedData.ownerId = device.ownerId;
                 
                 // Subscription Lockout Check
-                const sub = store.getCustomerSubscription(device.ownerId);
+                const sub = await store.getCustomerSubscription(device.ownerId);
                 if (sub && sub.daysLeft <= 0) {
                     console.log(`[TCP] Blocked data for ${parsedData.imei} due to expired subscription.`);
-                    // Notify frontend of lockout
                     io.emit('subscription_expired', { ownerId: device.ownerId });
-                    return; // Stop here, do not broadcast
+                    return;
                 }
             }
 
@@ -294,7 +455,7 @@ const tcpServer = net.createServer((socket) => {
             
             // Broadcast Geofence Alerts
             if (alerts && alerts.length > 0) {
-                alerts.forEach(alert => {
+                alerts.forEach(async (alert) => {
                     const geoDeviceName = (device && device.name) ? device.name : parsedData.imei;
                     io.emit('geofence_alert', {
                         ownerId: parsedData.ownerId,
@@ -304,9 +465,8 @@ const tcpServer = net.createServer((socket) => {
                         geofenceName: alert.geofenceName
                     });
 
-                    const contact = store.getCustomerContact(parsedData.ownerId);
+                    const contact = await store.getCustomerContact(parsedData.ownerId);
                     if (contact) {
-                        // Email
                         if (contact.email) {
                             emailService.sendGeofenceAlert({
                                 email: contact.email,
@@ -318,7 +478,6 @@ const tcpServer = net.createServer((socket) => {
                                 timestamp: parsedData.timestamp
                             });
                         }
-                        // SMS (New Production Calls)
                         if (contact.phone) {
                             if (alert.type === 'geofence_enter') {
                                 smsService.sendGeofenceEnter(contact.phone, geoDeviceName, alert.geofenceName);
@@ -343,9 +502,8 @@ const tcpServer = net.createServer((socket) => {
                     time: parsedData.timestamp
                 });
 
-                const contact = store.getCustomerContact(parsedData.ownerId);
+                const contact = await store.getCustomerContact(parsedData.ownerId);
                 if (contact) {
-                    // Email
                     if (contact.email) {
                         emailService.sendPanicAlert({
                             email: contact.email,
@@ -357,7 +515,6 @@ const tcpServer = net.createServer((socket) => {
                             timestamp: parsedData.timestamp
                         });
                     }
-                    // SMS (Production Call)
                     if (contact.phone) {
                         smsService.sendPanic(contact.phone, deviceName);
                     }
@@ -365,7 +522,7 @@ const tcpServer = net.createServer((socket) => {
             }
 
             // --- DRIVING BEHAVIOUR EVENTS (HB, HA, RT, TA, BD) ---
-            const drivingContact = store.getCustomerContact(parsedData.ownerId);
+            const drivingContact = await store.getCustomerContact(parsedData.ownerId);
             const drivingDeviceName = (device && device.name) ? device.name : parsedData.imei;
             if (drivingContact && drivingContact.phone) {
                 switch (parsedData.packetType) {
@@ -380,7 +537,6 @@ const tcpServer = net.createServer((socket) => {
                 }
             }
 
-            
             // Send live log to admin
             io.emit('admin_live_log', {
                 time: parsedData.timestamp,
@@ -390,13 +546,10 @@ const tcpServer = net.createServer((socket) => {
             });
         } else {
             console.log(`[TCP] Could not parse data (or not a location packet). Sending raw to UI.`);
-            // Send raw data to frontend for debugging
             io.emit('raw_log', {
                 time: new Date().toISOString(),
                 hex: data.toString('ascii')
             });
-            
-            // Send live log to admin
             io.emit('admin_live_log', {
                 time: new Date().toISOString(),
                 imei: 'Unknown',

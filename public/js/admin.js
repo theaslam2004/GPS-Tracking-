@@ -1,7 +1,34 @@
-const user = JSON.parse(localStorage.getItem('user'));
-if (!user || user.role !== 'admin') {
-    window.location.href = 'index.html';
-}
+let user = null;
+
+(async () => {
+    try {
+        const response = await fetch('/api/auth/me');
+        if (response.status === 401) {
+            console.warn('[Auth Check] Unauthorized: Redirecting to login...');
+            localStorage.removeItem('user');
+            window.location.href = 'index.html';
+            return;
+        }
+        const data = await response.json();
+        if (!data.success || !data.user || data.user.role !== 'admin') {
+            console.warn('[Auth Check] Access Denied or Session Stale. Redirecting to login...');
+            localStorage.removeItem('user');
+            window.location.href = 'index.html';
+            return;
+        }
+        
+        // Sync user object
+        user = data.user;
+        localStorage.setItem('user', JSON.stringify(user));
+        
+        // Load Dashboard
+        loadDashboard();
+    } catch (e) {
+        console.error('[Auth Check] Error validating session:', e);
+        localStorage.removeItem('user');
+        window.location.href = 'index.html';
+    }
+})();
 
 function logout() {
     localStorage.removeItem('user');
@@ -120,9 +147,28 @@ function exportAllCustomers() {
 
 function showValidityModal(userId) {
     document.getElementById('valUserId').value = userId;
+    const customer = dashboardCache.customers.find(c => c.id === userId);
+    const activePlan = (customer && customer.subscription && customer.subscription.planName) || 'Trial';
+    document.getElementById('valPlanSelect').value = activePlan;
+    
+    if (dashboardCache && dashboardCache.pricing && dashboardCache.pricing[activePlan]) {
+        document.getElementById('valPricePaid').value = dashboardCache.pricing[activePlan].price;
+    } else {
+        document.getElementById('valPricePaid').value = 0;
+    }
+    
     document.getElementById('validityModal').classList.add('active');
 }
 function closeValidityModal() { document.getElementById('validityModal').classList.remove('active'); }
+
+function onAdminPlanChange() {
+    const selectedPlan = document.getElementById('valPlanSelect').value;
+    if (dashboardCache && dashboardCache.pricing && dashboardCache.pricing[selectedPlan]) {
+        document.getElementById('valPricePaid').value = dashboardCache.pricing[selectedPlan].price;
+    } else {
+        document.getElementById('valPricePaid').value = 0;
+    }
+}
 
 function showContactModal(userId, phone, email) {
     document.getElementById('contactUserId').value = userId;
@@ -358,6 +404,7 @@ async function loadDashboard() {
         // Update Stats
         document.getElementById('statTotalCustomers').innerText = data.customers.length;
         document.getElementById('statTotalDevices').innerText = data.allDevices.length;
+        document.getElementById('statTotalIncome').innerText = `₹${data.totalIncome || 0}`;
         
         let expiredCount = 0;
         const now = new Date();
@@ -372,13 +419,17 @@ async function loadDashboard() {
 
             // Devices belonging to this customer
             const numDevices = (data.allDevices || []).filter(d => d.ownerId === c.id).length;
+            const planName = (c.subscription && c.subscription.planName) || 'Trial';
+            const deviceLimit = (c.subscription && c.subscription.deviceLimit) || 1;
 
             return `
                 <tr>
                     <td>
                         <div style="cursor:pointer" onclick="openCustomerDetail('${c.id}', '${c.username}')">
                             <div class="cust-name" style="color:var(--accent);font-weight:700;">${c.username} <i class="fa-solid fa-arrow-right" style="font-size:10px;margin-left:5px;"></i></div>
-                            <div style="font-size:10px;color:var(--muted);margin-top:2px;"><i class="fa-solid fa-satellite-dish" style="margin-right:4px;"></i>${numDevices} device${numDevices !== 1 ? 's' : ''}</div>
+                            <div style="font-size:10px;color:var(--muted);margin-top:2px;">
+                                <i class="fa-solid fa-satellite-dish" style="margin-right:4px;"></i>${numDevices} / ${deviceLimit} device${numDevices !== 1 ? 's' : ''} [${planName}]
+                            </div>
                         </div>
                     </td>
                     <td>
@@ -425,6 +476,24 @@ async function loadDashboard() {
             </tr>
         `).join('');
 
+        // Render Recent Payments Log
+        const paymentBody = document.getElementById('paymentTableBody');
+        if (paymentBody) {
+            if (data.payments && data.payments.length > 0) {
+                paymentBody.innerHTML = data.payments.map(p => `
+                    <tr>
+                        <td><code style="font-family: monospace; font-size: 11px;">TXN_${p.id.substring(p.id.length - 6)}</code></td>
+                        <td style="font-weight: 600;">${p.username}</td>
+                        <td><span class="badge green" style="font-size: 11px; padding: 3px 8px;">${p.planName}</span></td>
+                        <td style="font-weight: 700; color: var(--accent);">₹${p.amount}</td>
+                        <td style="font-size: 11px; color: var(--muted);">${new Date(p.timestamp).toLocaleString('en-IN')}</td>
+                    </tr>
+                `).join('');
+            } else {
+                paymentBody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--muted)">No payments logged yet.</td></tr>`;
+            }
+        }
+
         document.getElementById('statExpired').innerText = expiredCount;
 
     } catch (err) { console.error('Dashboard Sync Error:', err); }
@@ -451,14 +520,83 @@ async function deleteCustomer(userId) {
 
 async function submitValidity() {
     const userId = document.getElementById('valUserId').value;
-    const days = document.getElementById('addDays').value;
-    const res = await fetch('/api/admin/update-validity', {
+    const planName = document.getElementById('valPlanSelect').value;
+    const pricePaid = document.getElementById('valPricePaid').value;
+    const res = await fetch('/api/admin/update-plan', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ userId, days })
+        body: JSON.stringify({ userId, planName, pricePaid })
     });
     const result = await res.json();
     if (result.success) { closeValidityModal(); loadDashboard(); }
+    else { alert(result.error || 'Failed to update user subscription.'); }
+}
+
+function showPricingModal() {
+    const container = document.getElementById('pricingConfigContainer');
+    if (!container || !dashboardCache || !dashboardCache.pricing) return;
+
+    const pricing = dashboardCache.pricing;
+    container.innerHTML = Object.keys(pricing).map(key => {
+        const plan = pricing[key];
+        return `
+            <div class="pricing-plan-edit-card" style="padding: 14px; background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; margin-bottom: 10px;">
+                <h4 style="color: var(--accent); font-family: var(--font-display); margin-bottom: 10px;">${plan.name} Plan</h4>
+                <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px;">
+                    <div>
+                        <label style="font-size: 10px; color: var(--muted); text-transform: uppercase;">Price (₹)</label>
+                        <input type="number" id="p-price-${plan.name}" class="form-control" style="padding: 6px; font-size: 12px;" value="${plan.price}">
+                    </div>
+                    <div>
+                        <label style="font-size: 10px; color: var(--muted); text-transform: uppercase;">Devices Limit</label>
+                        <input type="number" id="p-limit-${plan.name}" class="form-control" style="padding: 6px; font-size: 12px;" value="${plan.deviceLimit}">
+                    </div>
+                    <div>
+                        <label style="font-size: 10px; color: var(--muted); text-transform: uppercase;">Validity (Days)</label>
+                        <input type="number" id="p-days-${plan.name}" class="form-control" style="padding: 6px; font-size: 12px;" value="${plan.validityDays}">
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    document.getElementById('pricingModal').classList.add('active');
+}
+
+function closePricingModal() {
+    document.getElementById('pricingModal').classList.remove('active');
+}
+
+async function submitPricingSettings() {
+    if (!dashboardCache || !dashboardCache.pricing) return;
+    
+    const updatedPlans = {};
+    Object.keys(dashboardCache.pricing).forEach(key => {
+        updatedPlans[key] = {
+            name: key,
+            price: parseFloat(document.getElementById(`p-price-${key}`).value || 0),
+            deviceLimit: parseInt(document.getElementById(`p-limit-${key}`).value || 1),
+            validityDays: parseInt(document.getElementById(`p-days-${key}`).value || 30)
+        };
+    });
+
+    try {
+        const res = await fetch('/api/admin/pricing', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ plans: updatedPlans })
+        });
+        const data = await res.json();
+        if (data.success) {
+            closePricingModal();
+            loadDashboard();
+            alert('Plan configurations updated successfully!');
+        } else {
+            alert('Failed to save configurations.');
+        }
+    } catch (e) {
+        alert('Server connection error.');
+    }
 }
 
 async function submitContact() {
@@ -497,7 +635,7 @@ function downloadDeviceData(imei) {
 // -----------------------------------------------------------------------
 // Real-time Terminal Logic
 // -----------------------------------------------------------------------
-loadDashboard();
+
 const socket = io();
 socket.on('admin_update', loadDashboard);
 

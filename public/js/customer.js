@@ -7,23 +7,45 @@ window.onerror = function(message, source, lineno, colno, error) {
     return false;
 };
 
-// Auto-migrate legacy user sessions without ID to prevent unexpected redirects
-let user = JSON.parse(localStorage.getItem('user'));
-if (user && !user.id) {
-    if (user.username === 'testcustomer') user.id = 'test-customer-1';
-    else if (user.username === 'admin') user.id = '1';
-    localStorage.setItem('user', JSON.stringify(user));
-}
+let user = null;
 
-console.log('[Auth Check] User:', user);
-if (!user || !user.id || user.role !== 'customer') {
-    console.warn('[Auth Check] Access Denied or Session Stale. Redirecting to login...');
-    localStorage.removeItem('user');
-    window.location.href = 'index.html';
-}
-
-// Setup Export link
-document.getElementById('exportBtn').href = `/api/export/devices?userId=${user.id}&role=${user.role}`;
+// Perform startup authentication validation check
+(async () => {
+    try {
+        const response = await fetch('/api/auth/me');
+        if (response.status === 401) {
+            console.warn('[Auth Check] Unauthorized: Redirecting to login...');
+            localStorage.removeItem('user');
+            window.location.href = 'index.html';
+            return;
+        }
+        const data = await response.json();
+        if (!data.success || !data.user || data.user.role !== 'customer') {
+            console.warn('[Auth Check] Access Denied or Session Stale. Redirecting to login...');
+            localStorage.removeItem('user');
+            window.location.href = 'index.html';
+            return;
+        }
+        
+        // Sync user object
+        user = data.user;
+        localStorage.setItem('user', JSON.stringify(user));
+        
+        // Setup Export link
+        const exportBtn = document.getElementById('exportBtn');
+        if (exportBtn) {
+            exportBtn.href = `/api/export/devices?userId=${user.id}&role=${user.role}`;
+        }
+        
+        // Initialize Map and Load Data
+        initMap();
+        loadData();
+    } catch (e) {
+        console.error('[Auth Check] Error validating session:', e);
+        localStorage.removeItem('user');
+        window.location.href = 'index.html';
+    }
+})();
 
 let map;
 const markers = {};
@@ -159,6 +181,73 @@ function logout() {
 function showAddDeviceModal() { document.getElementById('addDeviceModal').classList.add('active'); }
 function closeAddDeviceModal() { document.getElementById('addDeviceModal').classList.remove('active'); }
 
+function showUpgradeModal() {
+    const pricing = window.pricingConfig;
+    const currentPlan = window.currentPlanName || 'Trial';
+    const container = document.getElementById('customerUpgradePlansContainer');
+    if (!container || !pricing) return;
+    
+    // Sort plans by price
+    const sortedPlanKeys = Object.keys(pricing).sort((a,b) => pricing[a].price - pricing[b].price);
+    
+    container.innerHTML = sortedPlanKeys.map(key => {
+        const plan = pricing[key];
+        if (plan.name === 'Trial') return ''; // Don't show trial as upgrade option
+        
+        const isCurrent = currentPlan === plan.name;
+        const activeClass = isCurrent ? 'style="border-color: var(--accent); box-shadow: 0 0 15px rgba(0,220,180,0.25);"' : '';
+        const limitText = plan.deviceLimit >= 500 ? 'Unlimited' : `${plan.deviceLimit} Device(s)`;
+        
+        return `
+            <div class="plan-card glass-panel" ${activeClass} style="display: flex; flex-direction: column; justify-content: space-between; padding: 1.5rem; border: 1px solid var(--border-light); border-radius: var(--radius-md); transition: all 0.2s; position: relative;">
+                ${isCurrent ? '<div style="position: absolute; top: -10px; right: 10px; background: var(--accent); color: #000; font-size: 0.65rem; font-weight: 800; padding: 2px 8px; border-radius: 10px; text-transform: uppercase;">Current</div>' : ''}
+                <div>
+                    <h3 style="font-family: \'Outfit\', sans-serif; font-size: 1.25rem; font-weight: 700; margin-bottom: 0.5rem; color: ${isCurrent ? 'var(--accent)' : 'var(--text-primary)'};">${plan.name}</h3>
+                    <div style="font-family: \'Outfit\', sans-serif; font-size: 1.8rem; font-weight: 800; color: #fff; margin-bottom: 1rem;">
+                        ₹${plan.price}<span style="font-size: 0.85rem; font-weight: 400; color: var(--text-secondary);">/mo</span>
+                    </div>
+                    <ul style="list-style: none; padding: 0; font-size: 0.82rem; color: var(--text-secondary); display: flex; flex-direction: column; gap: 8px; margin-bottom: 1.5rem;">
+                        <li><i class="fa-solid fa-check" style="color: var(--accent); margin-right: 6px;"></i> Support for <b>${limitText}</b></li>
+                        <li><i class="fa-solid fa-check" style="color: var(--accent); margin-right: 6px;"></i> <b>${plan.validityDays} Days</b> validity</li>
+                        <li><i class="fa-solid fa-check" style="color: var(--accent); margin-right: 6px;"></i> Simulated checkout in INR</li>
+                    </ul>
+                </div>
+                <button class="btn ${isCurrent ? 'btn-outline' : 'btn-primary'}" onclick="upgradePlan('${plan.name}')" ${isCurrent ? 'disabled' : ''} style="width: 100%; font-size: 0.82rem; padding: 0.6rem;">
+                    ${isCurrent ? 'Active Plan' : 'Choose Plan'}
+                </button>
+            </div>
+        `;
+    }).join('');
+
+    document.getElementById('upgradeModal').classList.add('active');
+}
+
+function closeUpgradeModal() {
+    document.getElementById('upgradeModal').classList.remove('active');
+}
+
+async function upgradePlan(planName) {
+    if (!confirm(`Upgrade to the ${planName} Plan? (Simulated payment will be completed)`)) return;
+    
+    try {
+        const res = await fetch('/api/customer/upgrade-plan', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ userId: user.id, planName })
+        });
+        const data = await res.json();
+        if (data.success) {
+            closeUpgradeModal();
+            showToast("🎉 Subscription Active", `You are now on the ${planName} Plan!`, "success");
+            setTimeout(() => window.location.reload(), 1500);
+        } else {
+            showToast("❌ Upgrade Failed", data.error || 'Server rejected request.', "danger");
+        }
+    } catch (e) {
+        showToast("❌ Connection Error", "Failed to contact billing server.", "danger");
+    }
+}
+
 function showPanicAlert(data) {
     const modal = document.getElementById('panicModal');
     const msg = document.getElementById('panicMessage');
@@ -225,6 +314,12 @@ async function loadData() {
             const expDate = new Date(data.subscription.expirationDate);
             const daysLeft = Math.ceil((expDate - new Date()) / (1000 * 60 * 60 * 24));
             document.getElementById('validityDays').innerText = `${daysLeft > 0 ? daysLeft : 0} days left`;
+            
+            // Set plan details and device limits
+            document.getElementById('activePlanName').innerText = data.subscription.planName || 'Trial';
+            document.getElementById('deviceUsage').innerText = `${data.deviceCount} / ${data.subscription.deviceLimit || 1}`;
+            window.pricingConfig = data.pricing;
+            window.currentPlanName = data.subscription.planName || 'Trial';
             
             if(daysLeft <= 0) {
                 document.getElementById('subBanner').style.background = '#fee2e2';
@@ -1008,8 +1103,7 @@ socket.on('device_data', (data) => {
     handleDeviceData(data, true);
 });
 
-initMap();
-loadData();
+
 
 // ==========================================
 // History Playback Logic

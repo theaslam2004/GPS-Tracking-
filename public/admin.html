@@ -125,7 +125,7 @@
 
   /* ── KPI CARDS ── */
   .kpi-grid {
-    display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px;
+    display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px;
     margin-bottom: 28px;
   }
   .kpi {
@@ -293,6 +293,13 @@
         <div id="statExpired" class="val" style="color:var(--red)">0</div>
       </div>
     </div>
+    <div class="kpi">
+      <div class="kpi-icon" style="background: rgba(255,181,71,0.1); color: var(--amber);"><i class="fa-solid fa-indian-rupee-sign"></i></div>
+      <div class="kpi-body">
+        <label>Total Income</label>
+        <div id="statTotalIncome" class="val" style="color:var(--amber)">₹0</div>
+      </div>
+    </div>
   </div>
 
   <!-- MAIN GRID -->
@@ -305,6 +312,9 @@
           <div class="panel-head">
             <div class="panel-title"><i class="fa-solid fa-credit-card"></i> Billing & Subscriptions</div>
             <div style="display:flex;gap:8px;">
+              <button class="btn-new" style="background:linear-gradient(135deg,#e09b10,#b87c08);" onclick="showPricingModal()">
+                <i class="fa-solid fa-gears"></i> Plan Pricing
+              </button>
               <button class="btn-new" style="background:linear-gradient(135deg,#0057ff,#003bb5);" onclick="exportAllCustomers()">
                 <i class="fa-solid fa-file-csv"></i> Export
               </button>
@@ -346,7 +356,29 @@
               <tbody id="requestTableBody"></tbody>
             </table>
           </div>
+          <!-- Recent Payments Log -->
+        <div class="panel" style="grid-column: 1 / -1; margin-top: 10px;">
+          <div class="panel-head">
+            <div class="panel-title"><i class="fa-solid fa-receipt"></i> Recent Transactions (Simulated Income)</div>
+          </div>
+          <div class="table-wrap" style="max-height: 300px; overflow-y: auto;">
+            <table>
+              <thead>
+                <tr>
+                  <th>Txn ID</th>
+                  <th>Customer</th>
+                  <th>Plan Purchased</th>
+                  <th>Amount Paid</th>
+                  <th>Date & Time</th>
+                </tr>
+              </thead>
+              <tbody id="paymentTableBody">
+                <tr><td colspan="5" style="text-align:center; color:var(--muted)">No payments logged yet.</td></tr>
+              </tbody>
+            </table>
+          </div>
         </div>
+      </div>
     </div>
 
     <!-- CUSTOMER DEEP-DIVE VIEW (Hidden by default) -->
@@ -430,12 +462,39 @@
 <div class="modal-overlay" id="validityModal">
     <div class="modal">
         <div class="modal-header">
-            <h2>Extend Validity</h2>
+            <h2>Manage Subscription</h2>
             <button onclick="closeValidityModal()" style="background:none; border:none; color:var(--muted); cursor:pointer"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <input type="hidden" id="valUserId">
-        <div class="form-group"><label>Days to Add</label><input type="number" id="addDays" class="form-control" value="30"></div>
-        <button class="modal-btn" onclick="submitValidity()">Apply Recharge</button>
+        <div class="form-group">
+            <label>Select Plan</label>
+            <select id="valPlanSelect" class="form-control" onchange="onAdminPlanChange()">
+                <option value="Trial">Trial (1 Device - 10 Days)</option>
+                <option value="Basic">Basic (2 Devices - 30 Days)</option>
+                <option value="Standard">Standard (5 Devices - 30 Days)</option>
+                <option value="Premium">Premium (15 Devices - 30 Days)</option>
+                <option value="Enterprise">Enterprise (500 Devices - 30 Days)</option>
+            </select>
+        </div>
+        <div class="form-group">
+            <label>Price Paid (₹)</label>
+            <input type="number" id="valPricePaid" class="form-control" value="0">
+        </div>
+        <button class="modal-btn" onclick="submitValidity()">Update Subscription</button>
+    </div>
+</div>
+
+<div class="modal-overlay" id="pricingModal">
+    <div class="modal" style="width: 500px; max-height: 90vh; overflow-y: auto;">
+        <div class="modal-header">
+            <h2>System Plan Configurations</h2>
+            <button onclick="closePricingModal()" style="background:none; border:none; color:var(--muted); cursor:pointer"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div style="font-size:11px; color:var(--muted); margin-bottom:15px; text-transform:uppercase;">Set prices & limits in Indian Rupees (₹)</div>
+        <div id="pricingConfigContainer" style="display:flex; flex-direction:column; gap:16px; margin-bottom:20px;">
+            <!-- Plan fields will be dynamically injected here -->
+        </div>
+        <button class="modal-btn" onclick="submitPricingSettings()">Save Plan Settings</button>
     </div>
 </div>
 
