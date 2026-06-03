@@ -156,6 +156,14 @@ function showValidityModal(userId) {
     } else {
         document.getElementById('valPricePaid').value = 0;
     }
+
+    if (customer && customer.subscription && customer.subscription.deviceLimit !== undefined) {
+        document.getElementById('valDeviceLimit').value = customer.subscription.deviceLimit;
+    } else if (dashboardCache && dashboardCache.pricing && dashboardCache.pricing[activePlan]) {
+        document.getElementById('valDeviceLimit').value = dashboardCache.pricing[activePlan].deviceLimit;
+    } else {
+        document.getElementById('valDeviceLimit').value = 1;
+    }
     
     document.getElementById('validityModal').classList.add('active');
 }
@@ -165,8 +173,10 @@ function onAdminPlanChange() {
     const selectedPlan = document.getElementById('valPlanSelect').value;
     if (dashboardCache && dashboardCache.pricing && dashboardCache.pricing[selectedPlan]) {
         document.getElementById('valPricePaid').value = dashboardCache.pricing[selectedPlan].price;
+        document.getElementById('valDeviceLimit').value = dashboardCache.pricing[selectedPlan].deviceLimit;
     } else {
         document.getElementById('valPricePaid').value = 0;
+        document.getElementById('valDeviceLimit').value = 1;
     }
 }
 
@@ -398,6 +408,12 @@ function handleResultClick(type, id) {
 async function loadDashboard() {
     try {
         const res = await fetch('/api/admin/dashboard');
+        if (res.status === 401 || res.status === 403) {
+            console.warn('[Dashboard] Unauthorized/Forbidden: Redirecting to login...');
+            localStorage.removeItem('user');
+            window.location.href = 'index.html';
+            return;
+        }
         const data = await res.json();
         dashboardCache = data;
 
@@ -522,10 +538,11 @@ async function submitValidity() {
     const userId = document.getElementById('valUserId').value;
     const planName = document.getElementById('valPlanSelect').value;
     const pricePaid = document.getElementById('valPricePaid').value;
+    const deviceLimit = document.getElementById('valDeviceLimit').value;
     const res = await fetch('/api/admin/update-plan', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ userId, planName, pricePaid })
+        body: JSON.stringify({ userId, planName, pricePaid, deviceLimit })
     });
     const result = await res.json();
     if (result.success) { closeValidityModal(); loadDashboard(); }
@@ -624,8 +641,22 @@ async function submitCustomer() {
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ username, password, phone, email })
     });
+    if (res.status === 401 || res.status === 403) {
+        alert('Session expired or access denied. Please log in again.');
+        window.location.href = 'index.html';
+        return;
+    }
     const result = await res.json();
-    if (result.success) { closeAddCustomerModal(); loadDashboard(); }
+    if (result.success) {
+        closeAddCustomerModal();
+        document.getElementById('newUsername').value = '';
+        document.getElementById('newPassword').value = '';
+        document.getElementById('newPhone').value = '';
+        document.getElementById('newEmail').value = '';
+        loadDashboard();
+    } else {
+        alert(result.error || 'Failed to create customer');
+    }
 }
 
 function downloadDeviceData(imei) {

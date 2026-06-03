@@ -236,6 +236,22 @@ app.get('/api/admin/dashboard', requireAdmin, async (req, res) => {
     });
 });
 
+app.post('/api/admin/create-customer', requireAdmin, async (req, res) => {
+    const { username, password, phone, email } = req.body;
+    try {
+        const user = await store.createUser(username, password, phone, email);
+        if (user) {
+            io.emit('admin_update');
+            res.json({ success: true, user });
+        } else {
+            res.json({ success: false, error: 'Username already exists' });
+        }
+    } catch (e) {
+        console.error('[HTTP] Create Customer Error:', e);
+        res.status(500).json({ success: false, error: 'Internal server error' });
+    }
+});
+
 app.post('/api/admin/approve-request', requireAdmin, async (req, res) => {
     const { imei, ownerId } = req.body;
     const success = await store.approveDeviceRequest(imei, ownerId);
@@ -389,9 +405,9 @@ app.post('/api/admin/pricing', requireAdmin, async (req, res) => {
 
 // Admin Update Customer's plan directly
 app.post('/api/admin/update-plan', requireAdmin, async (req, res) => {
-    const { userId, planName, pricePaid } = req.body;
+    const { userId, planName, pricePaid, deviceLimit } = req.body;
     try {
-        const result = await store.updateCustomerPlan(userId, planName, parseFloat(pricePaid || 0));
+        const result = await store.updateCustomerPlan(userId, planName, parseFloat(pricePaid || 0), deviceLimit);
         if (result) {
             io.emit('admin_update');
             io.emit('customer_update', { userId });

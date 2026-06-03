@@ -701,7 +701,7 @@ module.exports = {
     },
 
     // Subscriptions and Custom Pricing Upgrades
-    updateCustomerPlan: async (userId, planName, pricePaid) => {
+    updateCustomerPlan: async (userId, planName, pricePaid, customDeviceLimit = null) => {
         const user = await User.findOne({ id: userId });
         if (!user) return null;
 
@@ -723,6 +723,10 @@ module.exports = {
             else if (planName === 'Standard') { validityDays = 30; deviceLimit = 5; price = 199; }
             else if (planName === 'Premium') { validityDays = 30; deviceLimit = 15; price = 399; }
             else if (planName === 'Enterprise') { validityDays = 30; deviceLimit = 500; price = 999; }
+        }
+
+        if (customDeviceLimit !== null && customDeviceLimit !== undefined && customDeviceLimit !== '') {
+            deviceLimit = parseInt(customDeviceLimit);
         }
 
         let sub = await Subscription.findOne({ userId });
