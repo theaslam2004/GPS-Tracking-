@@ -820,7 +820,8 @@ function handleDeviceData(data, isLive = true) {
     const popupHTML = buildTelemetryHTML(data, deviceName);
     
     // Check for Harsh Driving Events (only if live packet)
-    if (isLive && data.event) {
+    const ignoredEvents = ['Location Update', 'Health Packet', 'Over the Air Command'];
+    if (isLive && data.event && !ignoredEvents.includes(data.event)) {
         let type = 'info';
         if (data.event.includes('Harsh') || data.event.includes('Rash') || data.event.includes('Emergency')) {
             type = 'danger';
