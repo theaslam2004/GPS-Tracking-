@@ -32,8 +32,11 @@ const UserSchema = new mongoose.Schema({
 const DeviceSchema = new mongoose.Schema({
     imei: { type: String, required: true, unique: true, index: true },
     ownerId: { type: String, required: true, index: true },
-    name: { type: String, required: true },
-    pinned: { type: Boolean, default: false }
+    name: { type: String, required: true, default: '' },
+    pinned: { type: Boolean, default: false },
+    driverName: { type: String, default: 'Unassigned' },
+    vehicleProfile: { type: String, default: 'standard' }, // 'standard' (12V/24V) or 'heavy' (48V)
+    initialOdometer: { type: Number, default: 0 }
 });
 
 // Request Schema
@@ -70,7 +73,19 @@ const DeviceLastSeenSchema = new mongoose.Schema({
     packetType: { type: String, required: true },
     event: { type: String, default: '' },
     odometer: { type: Number, default: 0 },
-    rawHex: { type: String, default: '' }
+    rawHex: { type: String, default: '' },
+    status: { type: String, default: 'offline' }, // 'running', 'idle', 'halt', 'offline'
+    ignitionOnTime: { type: Date, default: null },
+    ignitionOffTime: { type: Date, default: null },
+    powerSource: { type: String, default: 'primary' }, // 'primary' or 'secondary'
+    voltage: { type: Number, default: 12.0 }
+});
+
+// SharedLink Schema (Expiration-aware tracking links)
+const SharedLinkSchema = new mongoose.Schema({
+    id: { type: String, required: true, unique: true, index: true },
+    imei: { type: String, required: true, index: true },
+    expiresAt: { type: Date, required: true }
 });
 
 // DeviceHistoryPoint Schema (Scalable points collection)
@@ -159,6 +174,7 @@ const UserSettings = mongoose.model('UserSettings', UserSettingsSchema);
 const DeviceSettings = mongoose.model('DeviceSettings', DeviceSettingsSchema);
 const SystemSettings = mongoose.model('SystemSettings', SystemSettingsSchema);
 const Payment = mongoose.model('Payment', PaymentSchema);
+const SharedLink = mongoose.model('SharedLink', SharedLinkSchema);
 
 const defaultSettings = {
     odometer: true,
@@ -491,8 +507,48 @@ module.exports = {
 
     // Tracking Telemetry
     updateDeviceLastSeen: async (imei, locationData) => {
+        const prevRecord = await DeviceLastSeen.findOne({ imei });
+        const dev = await Device.findOne({ imei });
+        const initialOdo = dev ? (dev.initialOdometer || 0) : 0;
+
+        let status = 'offline';
+        let ignitionOnTime = prevRecord ? prevRecord.ignitionOnTime : null;
+        let ignitionOffTime = prevRecord ? prevRecord.ignitionOffTime : null;
+        const now = new Date(locationData.timestamp);
+
+        if (locationData.ignition === true) {
+            if (!prevRecord || prevRecord.ignition === false) {
+                ignitionOnTime = now;
+                ignitionOffTime = null;
+            }
+            const durationOn = ignitionOnTime ? (now - new Date(ignitionOnTime)) / 1000 : 0;
+            if (locationData.speed > 2) {
+                status = 'running';
+            } else {
+                status = (durationOn >= 10) ? 'idle' : (prevRecord ? prevRecord.status : 'halt');
+            }
+        } else {
+            if (!prevRecord || prevRecord.ignition === true || prevRecord.ignition === undefined) {
+                ignitionOffTime = now;
+                ignitionOnTime = null;
+            }
+            const durationOff = ignitionOffTime ? (now - new Date(ignitionOffTime)) / 1000 : 0;
+            status = (durationOff >= 60) ? 'halt' : (prevRecord ? prevRecord.status : 'idle');
+        }
+
+        let powerSource = 'primary';
+        let event = locationData.event || '';
+        if (locationData.mainPower === false || (locationData.voltage !== undefined && locationData.voltage < 5.0)) {
+            powerSource = 'secondary';
+            event = 'Backup Battery Warning';
+        }
+
+        let prevOdo = prevRecord ? (prevRecord.odometer || 0) : 0;
+        const deltaDistanceKm = (locationData.deltaDistance || 0) / 1000;
+        let odometer = prevOdo > 0 ? (prevOdo + deltaDistanceKm) : (initialOdo + deltaDistanceKm);
+
         const point = {
-            timestamp: new Date(locationData.timestamp),
+            timestamp: now,
             latitude: locationData.latitude,
             longitude: locationData.longitude,
             speed: locationData.speed,
@@ -502,9 +558,14 @@ module.exports = {
             battery: locationData.battery,
             ignition: locationData.ignition,
             packetType: locationData.packetType,
-            event: locationData.event,
-            odometer: locationData.odometer || 0,
-            rawHex: locationData.rawHex || ''
+            event: event,
+            odometer: odometer,
+            rawHex: locationData.rawHex || '',
+            status: status,
+            ignitionOnTime: ignitionOnTime,
+            ignitionOffTime: ignitionOffTime,
+            powerSource: powerSource,
+            voltage: locationData.voltage !== undefined ? locationData.voltage : 12.0
         };
 
         // Update Last Seen document
@@ -783,5 +844,85 @@ module.exports = {
     getTotalIncome: async () => {
         const list = await Payment.find({});
         return list.reduce((sum, p) => sum + (p.amount || 0), 0);
+    },
+    renameDevice: async (imei, userId, newName) => {
+        const dev = await Device.findOne({ imei, ownerId: userId });
+        if (dev) {
+            dev.name = newName;
+            await dev.save();
+            return true;
+        }
+        return false;
+    },
+    updateDriver: async (imei, userId, driverName) => {
+        const dev = await Device.findOne({ imei, ownerId: userId });
+        if (dev) {
+            dev.driverName = driverName;
+            await dev.save();
+            return true;
+        }
+        return false;
+    },
+    updateVehicleProfile: async (imei, userId, vehicleProfile, initialOdometer) => {
+        const dev = await Device.findOne({ imei, ownerId: userId });
+        if (dev) {
+            dev.vehicleProfile = vehicleProfile;
+            dev.initialOdometer = parseFloat(initialOdometer || 0);
+            await dev.save();
+            
+            // Also reset odometer in LastSeen if they change it
+            const lastSeen = await DeviceLastSeen.findOne({ imei });
+            if (lastSeen) {
+                lastSeen.odometer = parseFloat(initialOdometer || 0);
+                await lastSeen.save();
+            }
+            return true;
+        }
+        return false;
+    },
+    createSharedLink: async (imei, durationMinutes) => {
+        const id = Math.random().toString(36).substring(2, 18);
+        const expiresAt = new Date(Date.now() + durationMinutes * 60 * 1000);
+        const link = await SharedLink.create({ id, imei, expiresAt });
+        return link.toObject();
+    },
+    getSharedLink: async (id) => {
+        const link = await SharedLink.findOne({ id });
+        if (link) {
+            if (new Date() < new Date(link.expiresAt)) {
+                return link.toObject();
+            } else {
+                // Remove expired link
+                await SharedLink.deleteOne({ id });
+            }
+        }
+        return null;
+    },
+    updateCustomerSubscriptionAdmin: async (userId, deviceLimit, extraDays) => {
+        const sub = await Subscription.findOne({ userId });
+        if (sub) {
+            sub.deviceLimit = parseInt(deviceLimit);
+            if (parseInt(extraDays) > 0) {
+                const now = new Date();
+                const baseDate = sub.expirationDate > now ? sub.expirationDate : now;
+                baseDate.setDate(baseDate.getDate() + parseInt(extraDays));
+                sub.expirationDate = baseDate;
+            }
+            await sub.save();
+            return sub.toObject();
+        } else {
+            // Create subscription if not exists
+            const expirationDate = new Date();
+            expirationDate.setDate(expirationDate.getDate() + parseInt(extraDays || 30));
+            const newSub = await Subscription.create({
+                userId,
+                planName: 'Free',
+                deviceLimit: parseInt(deviceLimit || 1),
+                pricePaid: 0,
+                validityDays: parseInt(extraDays || 30),
+                expirationDate
+            });
+            return newSub.toObject();
+        }
     }
 };

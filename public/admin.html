@@ -233,156 +233,271 @@
   .detail-row { display: flex; justify-content: space-between; margin-bottom: 4px; border-bottom: 1px solid rgba(255,255,255,0.03); padding-bottom: 2px; }
   .detail-row span:first-child { color: var(--muted); }
   .detail-row span:last-child { color: var(--text); font-family: monospace; }
+
+  /* ── ADMIN LAYOUT RESTRUCTURE ── */
+  .admin-shell {
+    display: flex;
+    min-height: 100vh;
+    width: 100vw;
+  }
+  .admin-nav-sidebar {
+    width: 280px;
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    flex-shrink: 0;
+    position: fixed;
+    height: 100vh;
+    left: 0;
+    top: 0;
+    z-index: 100;
+  }
+  .admin-main-content {
+    flex: 1;
+    margin-left: 280px;
+    padding: 32px;
+    min-height: 100vh;
+    background: var(--bg);
+  }
+  .nav-links {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 0 16px;
+  }
+  .nav-link {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 12px 16px;
+    background: none;
+    border: 1px solid transparent;
+    border-radius: 8px;
+    color: var(--muted);
+    font-family: var(--font-display);
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    text-align: left;
+    transition: all 0.2s ease;
+    width: 100%;
+  }
+  .nav-link:hover {
+    color: var(--text);
+    background: rgba(255,255,255,0.02);
+    border-color: rgba(255,255,255,0.05);
+  }
+  .nav-link.active {
+    color: #021a14;
+    background: linear-gradient(135deg, #00dcb4, #00a87e);
+    box-shadow: 0 4px 15px rgba(0, 220, 180, 0.25);
+  }
+  .nav-link.active i {
+    color: #021a14;
+  }
+  .admin-page {
+    display: none;
+  }
+  .admin-page.active {
+    display: block;
+    animation: slide-up 0.3s ease;
+  }
+  @keyframes slide-up {
+    from { opacity: 0; transform: translateY(12px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
 </style>
 </head>
 <body>
 
-<div class="shell">
-  <!-- NAV -->
-  <nav>
-    <div class="logo-wrap">
-      <div class="logo-icon" style="background:none; width:auto; height:auto;">
-          <i class="fa-solid fa-shield-halved" style="font-size: 28px; color: var(--accent);"></i>
-      </div>
-      <div class="logo-text">
-        <h1>Fleetly Admin Command</h1>
-        <span>SAAS INFRASTRUCTURE MANAGEMENT</span>
+<div class="admin-shell">
+  <!-- LEFT SIDEBAR NAVIGATION -->
+  <div class="admin-nav-sidebar">
+    <div style="padding: 24px 20px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--border); margin-bottom: 24px;">
+      <i class="fa-solid fa-shield-halved" style="font-size: 26px; color: var(--accent);"></i>
+      <div>
+        <h1 style="font-size: 16px; font-weight: 800; letter-spacing: -0.3px; font-family: var(--font-display);">Fleetly Admin</h1>
+        <span style="font-size: 9px; letter-spacing: 2px; color: var(--muted); text-transform: uppercase;">CONTROL CENTER</span>
       </div>
     </div>
 
-    <div class="search-wrap">
-      <div class="search">
+    <!-- Search in Sidebar -->
+    <div class="search-wrap" style="padding: 0 16px; margin-bottom: 24px; position: relative;">
+      <div class="search" style="margin-left: 0; max-width: 100%;">
         <i class="fa-solid fa-magnifying-glass"></i>
-        <input type="text" id="globalSearch" placeholder="Search IMEI, Customer, or Phone…" onkeyup="handleGlobalSearch(event)">
+        <input type="text" id="globalSearch" placeholder="Search IMEI or User..." onkeyup="handleGlobalSearch(event)">
       </div>
-      <div id="searchResults" class="search-results-dropdown"></div>
+      <div id="searchResults" class="search-results-dropdown" style="left: 16px; right: 16px;"></div>
     </div>
 
-    <div class="spacer"></div>
-
-    <div class="status-pill">
-      <span class="status-dot"></span>
-      System Online
+    <!-- Links -->
+    <div class="nav-links">
+      <button class="nav-link active" id="nav-btn-dashboard" onclick="switchPage('dashboard')"><i class="fa-solid fa-chart-line"></i> Dashboard</button>
+      <button class="nav-link" id="nav-btn-customers" onclick="switchPage('customers')"><i class="fa-solid fa-users"></i> Customers</button>
+      <button class="nav-link" id="nav-btn-requests" onclick="switchPage('requests')"><i class="fa-solid fa-microchip"></i> Link Requests</button>
+      <button class="nav-link" id="nav-btn-payments" onclick="switchPage('payments')"><i class="fa-solid fa-receipt"></i> Transactions</button>
+      <button class="nav-link" id="nav-btn-terminal" onclick="switchPage('terminal')"><i class="fa-solid fa-terminal"></i> System Terminal</button>
     </div>
 
-    <button class="btn-logout" onclick="logout()">
-      <i class="fa-solid fa-power-off"></i>
-    </button>
-  </nav>
+    <div style="flex: 1;"></div>
 
-  <!-- KPI CARDS -->
-  <div class="kpi-grid">
-    <div class="kpi">
-      <div class="kpi-icon green"><i class="fa-solid fa-users"></i></div>
-      <div class="kpi-body">
-        <label>Total Customers</label>
-        <div id="statTotalCustomers" class="val" style="color:var(--accent)">0</div>
+    <!-- Footer status and logout -->
+    <div style="padding: 20px; border-top: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between;">
+      <div class="status-pill">
+        <span class="status-dot"></span> Online
       </div>
-    </div>
-    <div class="kpi">
-      <div class="kpi-icon teal"><i class="fa-solid fa-satellite-dish"></i></div>
-      <div class="kpi-body">
-        <label>Active Trackers</label>
-        <div id="statTotalDevices" class="val" style="color:#00b4ff">0</div>
-      </div>
-    </div>
-    <div class="kpi">
-      <div class="kpi-icon red"><i class="fa-solid fa-lock"></i></div>
-      <div class="kpi-body">
-        <label>Expired Accounts</label>
-        <div id="statExpired" class="val" style="color:var(--red)">0</div>
-      </div>
-    </div>
-    <div class="kpi">
-      <div class="kpi-icon" style="background: rgba(255,181,71,0.1); color: var(--amber);"><i class="fa-solid fa-indian-rupee-sign"></i></div>
-      <div class="kpi-body">
-        <label>Total Income</label>
-        <div id="statTotalIncome" class="val" style="color:var(--amber)">₹0</div>
-      </div>
+      <button class="btn-logout" onclick="logout()"><i class="fa-solid fa-power-off"></i></button>
     </div>
   </div>
 
-  <!-- MAIN GRID -->
-  <div class="main-grid" id="mainDashboardGrid">
+  <!-- MAIN PAGES VIEW AREA -->
+  <div class="admin-main-content">
     
-    <!-- MAIN LIST VIEW (Customers + Requests) -->
-    <div id="mainListView" style="display: contents;">
-        <!-- Customers -->
-        <div class="panel">
-          <div class="panel-head">
-            <div class="panel-title"><i class="fa-solid fa-credit-card"></i> Billing & Subscriptions</div>
-            <div style="display:flex;gap:8px;">
-              <button class="btn-new" style="background:linear-gradient(135deg,#e09b10,#b87c08);" onclick="showPricingModal()">
-                <i class="fa-solid fa-gears"></i> Plan Pricing
-              </button>
-              <button class="btn-new" style="background:linear-gradient(135deg,#0057ff,#003bb5);" onclick="exportAllCustomers()">
-                <i class="fa-solid fa-file-csv"></i> Export
-              </button>
-              <button class="btn-new" onclick="showAddCustomerModal()">
-                <i class="fa-solid fa-plus"></i> New User
-              </button>
-            </div>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Customer</th>
-                  <th>Contact Info</th>
-                  <th>Password</th>
-                  <th style="text-align:center">Validity</th>
-                  <th style="text-align:right">Actions</th>
-                </tr>
-              </thead>
-              <tbody id="customerTableBody"></tbody>
-            </table>
+    <!-- PAGE 1: DASHBOARD OVERVIEW -->
+    <div id="page-dashboard" class="admin-page active">
+      <!-- KPI CARDS -->
+      <div class="kpi-grid">
+        <div class="kpi">
+          <div class="kpi-icon green"><i class="fa-solid fa-users"></i></div>
+          <div class="kpi-body">
+            <label>Total Customers</label>
+            <div id="statTotalCustomers" class="val" style="color:var(--accent)">0</div>
           </div>
         </div>
-
-        <!-- Requests -->
-        <div class="panel">
-          <div class="panel-head">
-            <div class="panel-title"><i class="fa-solid fa-microchip"></i> Device Requests</div>
+        <div class="kpi">
+          <div class="kpi-icon teal"><i class="fa-solid fa-satellite-dish"></i></div>
+          <div class="kpi-body">
+            <label>Active Trackers</label>
+            <div id="statTotalDevices" class="val" style="color:#00b4ff">0</div>
           </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>IMEI</th>
-                  <th>Status</th>
-                  <th style="text-align:right">Action</th>
-                </tr>
-              </thead>
-              <tbody id="requestTableBody"></tbody>
-            </table>
+        </div>
+        <div class="kpi">
+          <div class="kpi-icon red"><i class="fa-solid fa-lock"></i></div>
+          <div class="kpi-body">
+            <label>Expired Accounts</label>
+            <div id="statExpired" class="val" style="color:var(--red)">0</div>
           </div>
-          <!-- Recent Payments Log -->
-        <div class="panel" style="grid-column: 1 / -1; margin-top: 10px;">
-          <div class="panel-head">
-            <div class="panel-title"><i class="fa-solid fa-receipt"></i> Recent Transactions (Simulated Income)</div>
+        </div>
+        <div class="kpi" style="display: none;">
+          <div class="kpi-icon" style="background: rgba(255,181,71,0.1); color: var(--amber);"><i class="fa-solid fa-indian-rupee-sign"></i></div>
+          <div class="kpi-body">
+            <label>Total Income</label>
+            <div id="statTotalIncome" class="val" style="color:var(--amber)">₹0</div>
           </div>
-          <div class="table-wrap" style="max-height: 300px; overflow-y: auto;">
-            <table>
-              <thead>
-                <tr>
-                  <th>Txn ID</th>
-                  <th>Customer</th>
-                  <th>Plan Purchased</th>
-                  <th>Amount Paid</th>
-                  <th>Date & Time</th>
-                </tr>
-              </thead>
-              <tbody id="paymentTableBody">
-                <tr><td colspan="5" style="text-align:center; color:var(--muted)">No payments logged yet.</td></tr>
-              </tbody>
-            </table>
-          </div>
+        </div>
+      </div>
+      
+      <!-- Informational panel -->
+      <div class="panel" style="margin-top: 20px;">
+        <div class="panel-head">
+          <div class="panel-title"><i class="fa-solid fa-shield-halved"></i> SAAS Control panel</div>
+        </div>
+        <div style="padding: 24px; color: var(--text-secondary); line-height: 1.6;">
+          <h2 style="color: #fff; font-size: 1.25rem; font-family: var(--font-display); margin-bottom: 12px;">Fleetly GPS Infrastructure Console</h2>
+          Use the left-hand navigation sidebar to manage customer accounts, approve incoming hardware linking requests, review logs of simulated subscription payments, or view raw TCP data streams inside the System Terminal.
         </div>
       </div>
     </div>
 
-    <!-- CUSTOMER DEEP-DIVE VIEW (Hidden by default) -->
-    <div id="customerDetailView" class="panel" style="display:none; grid-column: span 2;">
+    <!-- PAGE 2: CUSTOMERS GRID -->
+    <div id="page-customers" class="admin-page">
+      <div class="panel" id="customersPanel">
+        <div class="panel-head">
+          <div class="panel-title"><i class="fa-solid fa-credit-card"></i> Customer Subscriptions</div>
+          <div style="display:flex;gap:8px;">
+            <button class="btn-new" style="background:linear-gradient(135deg,#0057ff,#003bb5);" onclick="exportAllCustomers()">
+              <i class="fa-solid fa-file-csv"></i> Export Customers
+            </button>
+            <button class="btn-new" onclick="showAddCustomerModal()">
+              <i class="fa-solid fa-plus"></i> New User Account
+            </button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Customer</th>
+                <th>Contact Info</th>
+                <th>Password</th>
+                <th style="text-align:center">Validity</th>
+                <th style="text-align:right">Actions</th>
+              </tr>
+            </thead>
+            <tbody id="customerTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE 3: DEVICE REQUESTS -->
+    <div id="page-requests" class="admin-page">
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title"><i class="fa-solid fa-microchip"></i> Link Requests</div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>IMEI</th>
+                <th>Status</th>
+                <th style="text-align:right">Action</th>
+              </tr>
+            </thead>
+            <tbody id="requestTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE 4: TRANSACTIONS -->
+    <div id="page-payments" class="admin-page">
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title"><i class="fa-solid fa-receipt"></i> Recent Income Logs</div>
+        </div>
+        <div class="table-wrap" style="max-height: 600px; overflow-y: auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>Txn ID</th>
+                <th>Customer</th>
+                <th>Plan Purchased</th>
+                <th>Amount Paid</th>
+                <th>Date & Time</th>
+              </tr>
+            </thead>
+            <tbody id="paymentTableBody">
+              <tr><td colspan="5" style="text-align:center; color:var(--muted)">No payments logged yet.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- PAGE 5: SYSTEM TERMINAL -->
+    <div id="page-terminal" class="admin-page">
+      <div class="terminal" style="margin-top: 0;">
+        <div class="terminal-head">
+          <div class="terminal-title">
+            <span style="color:var(--accent); font-weight:800; font-family:monospace">>_</span>
+            System Raw Logs
+          </div>
+          <div style="font-family:monospace; font-size:12px; color:var(--accent)">
+            <span class="status-dot" style="display:inline-block; margin-right:5px"></span>
+            TCP Port: 8085 Active
+          </div>
+        </div>
+        <div id="liveLogs" class="terminal-body" style="height: 550px;">
+          <div class="log-entry"><span class="log-time">[SYSTEM]</span> Initialized. Awaiting streams...</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- CUSTOMER DEEP-DIVE VIEW (Shows in place of customers grid when open) -->
+    <div id="customerDetailView" class="panel" style="display:none; margin-top: 0;">
         <div class="panel-head">
           <div class="panel-title">
             <button onclick="closeCustomerDetail()" class="icon-btn" style="margin-right:12px; height: 30px; width: 30px;"><i class="fa-solid fa-arrow-left"></i></button>
@@ -425,23 +540,6 @@
     </div>
 
   </div>
-
-  <!-- TERMINAL -->
-  <div class="terminal">
-    <div class="terminal-head">
-      <div class="terminal-title">
-        <span style="color:var(--accent); font-weight:800; font-family:monospace">>_</span>
-        System Terminal
-      </div>
-      <div style="font-family:monospace; font-size:12px; color:var(--accent)">
-        <span class="status-dot" style="display:inline-block; margin-right:5px"></span>
-        TCP:8080 Active
-      </div>
-    </div>
-    <div id="liveLogs" class="terminal-body">
-      <div class="log-entry"><span class="log-time">[SYSTEM]</span> Initialized. Awaiting streams...</div>
-    </div>
-  </div>
 </div>
 
 <!-- MODALS -->
@@ -467,38 +565,14 @@
         </div>
         <input type="hidden" id="valUserId">
         <div class="form-group">
-            <label>Select Plan</label>
-            <select id="valPlanSelect" class="form-control" onchange="onAdminPlanChange()">
-                <option value="Trial">Trial (1 Device - 10 Days)</option>
-                <option value="Basic">Basic (2 Devices - 30 Days)</option>
-                <option value="Standard">Standard (5 Devices - 30 Days)</option>
-                <option value="Premium">Premium (15 Devices - 30 Days)</option>
-                <option value="Enterprise">Enterprise (500 Devices - 30 Days)</option>
-            </select>
-        </div>
-        <div class="form-group">
-            <label>Price Paid (₹)</label>
-            <input type="number" id="valPricePaid" class="form-control" value="0">
-        </div>
-        <div class="form-group">
             <label>Device Limit</label>
             <input type="number" id="valDeviceLimit" class="form-control" value="1">
         </div>
+        <div class="form-group">
+            <label>Add Validity Days</label>
+            <input type="number" id="valExtraDays" class="form-control" value="30">
+        </div>
         <button class="modal-btn" onclick="submitValidity()">Update Subscription</button>
-    </div>
-</div>
-
-<div class="modal-overlay" id="pricingModal">
-    <div class="modal" style="width: 500px; max-height: 90vh; overflow-y: auto;">
-        <div class="modal-header">
-            <h2>System Plan Configurations</h2>
-            <button onclick="closePricingModal()" style="background:none; border:none; color:var(--muted); cursor:pointer"><i class="fa-solid fa-xmark"></i></button>
-        </div>
-        <div style="font-size:11px; color:var(--muted); margin-bottom:15px; text-transform:uppercase;">Set prices & limits in Indian Rupees (₹)</div>
-        <div id="pricingConfigContainer" style="display:flex; flex-direction:column; gap:16px; margin-bottom:20px;">
-            <!-- Plan fields will be dynamically injected here -->
-        </div>
-        <button class="modal-btn" onclick="submitPricingSettings()">Save Plan Settings</button>
     </div>
 </div>
 

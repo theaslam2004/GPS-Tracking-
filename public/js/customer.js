@@ -616,7 +616,8 @@ function renderDeviceList() {
         // Use live telemetry values if available
         const live = latestData[d.imei] || {};
         const speedVal = live.speed !== undefined ? live.speed : 0;
-        const odoVal = live.odometer !== undefined ? live.odometer.toFixed(1) : (d.odometer || 0);
+        const isOdoVerified = (live.odometer !== undefined && live.odometer > 0);
+        const odoVal = isOdoVerified ? live.odometer.toFixed(1) : '--';
         const timeVal = live.timestamp ? new Date(live.timestamp).toLocaleTimeString() : '--';
         
         // Offline status check
@@ -636,6 +637,7 @@ function renderDeviceList() {
                     <div class="device-title">
                         <i class="fa-solid fa-star" style="color: ${d.pinned ? 'var(--warning)' : 'var(--text-secondary)'}; opacity: ${d.pinned ? '1' : '0.5'}; cursor: pointer; margin-right: 6px; transition: all 0.2s;" onclick="togglePin('${d.imei}', event)" title="${d.pinned ? 'Unpin' : 'Pin to top'}"></i>
                         <i class="fa-solid fa-truck"></i> ${d.name || d.imei}
+                        <i class="fa-solid fa-pen-to-square rename-btn" style="cursor: pointer; opacity: 0.5; margin-left: 8px; font-size: 0.75rem;" onclick="renameDevicePrompt('${d.imei}', '${d.name || ''}', event)" title="Rename vehicle"></i>
                     </div>
                     <div style="font-weight: 700; font-size: 0.8rem; color: ${statusColor};" id="status-${d.imei}">${statusText}</div>
                 </div>
@@ -724,8 +726,53 @@ function focusDevice(imei) {
 function updatePanelData(data, deviceName) {
     const { imei, latitude, longitude, speed, timestamp, odometer, battery, gpsValid, satellites } = data;
     
+    const device = myDevices.find(d => d.imei === imei);
+    
     document.getElementById('panelDeviceName').innerText = deviceName || imei;
     document.getElementById('panelSpeed').innerText = speed;
+    
+    // Populate config fields
+    const driverInput = document.getElementById('cfgDriverName');
+    const profileSelect = document.getElementById('cfgVehicleProfile');
+    const odoInput = document.getElementById('cfgInitialOdometer');
+    
+    if (driverInput && device) driverInput.value = device.driverName || 'Unassigned';
+    if (profileSelect && device) profileSelect.value = device.vehicleProfile || 'standard';
+    if (odoInput && device) odoInput.value = device.initialOdometer || 0;
+    
+    // Voltage profile verification
+    const profile = device ? device.vehicleProfile || 'standard' : 'standard';
+    const volt = data.voltage !== undefined ? data.voltage : 12.0;
+    let voltStatus = 'Normal';
+    let voltColor = 'var(--success)';
+    
+    if (profile === 'heavy') {
+        if (volt < 42.0) {
+            voltStatus = 'Low Voltage';
+            voltColor = 'var(--danger)';
+        } else if (volt > 56.0) {
+            voltStatus = 'Overvoltage';
+            voltColor = 'var(--warning)';
+        }
+    } else {
+        if (volt < 11.0 || (volt > 15.0 && volt < 22.0)) {
+            voltStatus = 'Low Voltage';
+            voltColor = 'var(--danger)';
+        } else if (volt > 30.0) {
+            voltStatus = 'Overvoltage';
+            voltColor = 'var(--warning)';
+        }
+    }
+    const panelVoltEl = document.getElementById('panelVoltage');
+    if (panelVoltEl) {
+        panelVoltEl.innerHTML = `${volt.toFixed(1)} V <span style="font-size: 0.72rem; color: ${voltColor}; font-weight: 700;">(${voltStatus})</span>`;
+    }
+    
+    // Backup battery warning
+    const warningEl = document.getElementById('backupBatteryWarning');
+    if (warningEl) {
+        warningEl.style.display = (data.powerSource === 'secondary') ? 'block' : 'none';
+    }
     
     // Toggle Visibility of Speedometer Gauge based on Admin settings
     const speedGauge = document.querySelector('.panel-speedometer-container');
@@ -749,7 +796,7 @@ function updatePanelData(data, deviceName) {
     // Reverse Geocoding for Address
     const coordsEl = document.getElementById('panelCoords');
     coordsEl.innerText = 'Fetching address...';
-    fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`)
+    fetch(`/api/geocode?lat=${latitude}&lon=${longitude}`)
         .then(res => res.json())
         .then(geo => {
             if(geo && geo.display_name) {
@@ -765,7 +812,11 @@ function updatePanelData(data, deviceName) {
         
     document.getElementById('panelTime').innerText = new Date(timestamp).toLocaleTimeString();
     
-    if(odometer) document.getElementById('panelOdo').innerText = `${odometer.toFixed(1)} km`;
+    const odoEl = document.getElementById('panelOdo');
+    if (odoEl) {
+        const isOdoVerified = (odometer !== undefined && odometer > 0);
+        odoEl.innerText = isOdoVerified ? `${odometer.toFixed(1)} km` : '--';
+    }
     
     // Battery & GPS
     const batteryPercentage = battery !== undefined ? battery : 98;
@@ -800,7 +851,7 @@ function updatePanelData(data, deviceName) {
         document.getElementById('panelIgnition').innerText = 'OFF';
         document.getElementById('panelIgnition').style.color = 'var(--danger)';
     }
-
+    
     // Toggle Visibility of stat boxes based on Admin settings
     const boxes = {
         'panelOdo': isFeatureEnabled(imei, 'odometer'),
@@ -948,20 +999,6 @@ function handleDeviceData(data, isLive = true) {
     const isPinned = device && device.pinned;
     const vehicleIcon = getVehicleIcon(data.heading, status, isPinned);
 
-    // Live polyline breadcrumb path
-    if (!livePaths[imei]) {
-        livePaths[imei] = L.polyline([], {
-            color: 'var(--primary)',
-            weight: 3,
-            opacity: 0.6,
-            dashArray: '5, 5'
-        }).addTo(map);
-    }
-    
-    const latlngs = livePaths[imei].getLatLngs();
-    latlngs.push([latitude, longitude]);
-    if (latlngs.length > 100) latlngs.shift();
-    livePaths[imei].setLatLngs(latlngs);
 
     if(markers[imei]) {
         markers[imei].setLatLng([latitude, longitude]);
@@ -1217,3 +1254,225 @@ function exitHistoryMode() {
     
     if(activeImei) focusDevice(activeImei); // Return to live view
 }
+
+// ── CUSTOM FUNCTIONS FOR ASSET / DRIVER MANAGEMENT ──
+
+async function renameDevicePrompt(imei, currentName, event) {
+    if (event) event.stopPropagation();
+    const newName = prompt("Enter new name for vehicle:", currentName);
+    if (newName === null) return; // cancelled
+    
+    try {
+        const res = await fetch('/api/customer/rename-device', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ userId: user.id, imei, name: newName.trim() })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast("✅ Renamed", "Vehicle renamed successfully.", "success");
+            // update local device array
+            const dev = myDevices.find(d => d.imei === imei);
+            if (dev) dev.name = newName.trim();
+            renderDeviceList();
+            
+            // if this is the active device, update the panel title too
+            if (activeImei === imei) {
+                document.getElementById('panelDeviceName').innerText = newName.trim() || imei;
+            }
+        } else {
+            showToast("❌ Error", "Failed to rename vehicle.", "danger");
+        }
+    } catch(e) {
+        showToast("❌ Error", "Network error while renaming.", "danger");
+    }
+}
+
+async function saveVehicleConfig() {
+    if (!activeImei) return;
+    
+    const driverName = document.getElementById('cfgDriverName').value.trim();
+    const vehicleProfile = document.getElementById('cfgVehicleProfile').value;
+    const initialOdometer = parseFloat(document.getElementById('cfgInitialOdometer').value || 0);
+    
+    try {
+        const res = await fetch('/api/customer/update-vehicle-profile', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                userId: user.id,
+                imei: activeImei,
+                vehicleProfile,
+                initialOdometer
+            })
+        });
+        
+        const resDriver = await fetch('/api/customer/update-driver', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({
+                userId: user.id,
+                imei: activeImei,
+                driverName
+            })
+        });
+        
+        const data = await res.json();
+        const dataDriver = await resDriver.json();
+        
+        if (data.success && dataDriver.success) {
+            showToast("✅ Configuration Saved", "Vehicle profile and driver updated successfully.", "success");
+            
+            // Update local devices array
+            const dev = myDevices.find(d => d.imei === activeImei);
+            if (dev) {
+                dev.driverName = driverName;
+                dev.vehicleProfile = vehicleProfile;
+                dev.initialOdometer = initialOdometer;
+            }
+            
+            // Update lastSeen record locally as well so that next update includes it
+            if (latestData[activeImei]) {
+                latestData[activeImei].odometer = initialOdometer;
+            }
+            
+            renderDeviceList();
+            
+            // Re-render panel
+            if (latestData[activeImei]) {
+                updatePanelData(latestData[activeImei], dev ? dev.name : activeImei);
+            }
+        } else {
+            showToast("❌ Error", "Failed to update configuration.", "danger");
+        }
+    } catch(e) {
+        showToast("❌ Error", "Network error updating configuration.", "danger");
+    }
+}
+
+// ── CUSTOM FUNCTIONS FOR LINK SHARING ──
+
+function openShareModal() {
+    if (!activeImei) return alert('Select a vehicle first.');
+    document.getElementById('shareLinkResultContainer').style.display = 'none';
+    document.getElementById('shareModal').classList.add('active');
+}
+
+function closeShareModal() {
+    document.getElementById('shareModal').classList.remove('active');
+}
+
+async function generateShareLink() {
+    if (!activeImei) return;
+    
+    const duration = document.getElementById('shareDuration').value;
+    try {
+        const res = await fetch('/api/customer/create-share-link', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ imei: activeImei, expiresAfterMinutes: parseInt(duration) })
+        });
+        const data = await res.json();
+        if (data.success && data.link) {
+            const shareUrl = `${window.location.origin}/share.html?id=${data.link.id}`;
+            document.getElementById('shareLinkUrl').value = shareUrl;
+            document.getElementById('shareLinkResultContainer').style.display = 'block';
+            showToast("🔗 Link Generated", "Temporary tracking link generated successfully.", "success");
+        } else {
+            showToast("❌ Error", data.error || "Failed to generate link.", "danger");
+        }
+    } catch(e) {
+        showToast("❌ Error", "Network error generating link.", "danger");
+    }
+}
+
+function copyShareLink() {
+    const input = document.getElementById('shareLinkUrl');
+    navigator.clipboard.writeText(input.value).then(() => {
+        const btn = document.getElementById('copyShareBtn');
+        btn.innerHTML = '<i class="fa-solid fa-check" style="color: var(--success);"></i>';
+        setTimeout(() => {
+            btn.innerHTML = '<i class="fa-regular fa-copy"></i>';
+        }, 2000);
+        showToast("📋 Copied", "Link copied to clipboard.", "info");
+    });
+}
+
+// ── CUSTOM FUNCTIONS FOR CLOCK & DAY/NIGHT THEME ──
+
+let is12HourFormat = true;
+
+function updateClock() {
+    const clockEl = document.getElementById('clockTime');
+    if (!clockEl) return;
+    
+    const now = new Date();
+    let hours = now.getHours();
+    const minutes = String(now.getMinutes()).padStart(2, '0');
+    const seconds = String(now.getSeconds()).padStart(2, '0');
+    
+    if (is12HourFormat) {
+        const ampm = hours >= 12 ? 'PM' : 'AM';
+        hours = hours % 12;
+        hours = hours ? hours : 12;
+        clockEl.innerText = `${String(hours).padStart(2, '0')}:${minutes}:${seconds} ${ampm}`;
+    } else {
+        clockEl.innerText = `${String(hours).padStart(2, '0')}:${minutes}:${seconds}`;
+    }
+}
+
+setInterval(updateClock, 1000);
+
+function toggleClockFormat() {
+    const chk = document.getElementById('toggle12Hour');
+    is12HourFormat = chk ? chk.checked : true;
+    updateClock();
+}
+
+function applyTheme(isNight) {
+    const icon = document.getElementById('themeToggleIcon');
+    if (isNight) {
+        document.body.classList.add('theme-night');
+        document.body.classList.remove('theme-day');
+        if (icon) {
+            icon.className = 'fa-solid fa-sun';
+            icon.style.color = 'var(--warning)';
+        }
+        if (map && currentLayerName !== 'dark') {
+            map.removeLayer(mapLayers[currentLayerName]);
+            currentLayerName = 'dark';
+            mapLayers.dark.addTo(map);
+        }
+    } else {
+        document.body.classList.add('theme-day');
+        document.body.classList.remove('theme-night');
+        if (icon) {
+            icon.className = 'fa-solid fa-moon';
+            icon.style.color = 'var(--text-secondary)';
+        }
+        if (map && currentLayerName !== 'standard') {
+            map.removeLayer(mapLayers[currentLayerName]);
+            currentLayerName = 'standard';
+            mapLayers.standard.addTo(map);
+        }
+    }
+}
+
+function checkAutoTheme() {
+    const hours = new Date().getHours();
+    const isNight = (hours >= 18 || hours < 6);
+    applyTheme(isNight);
+}
+
+function toggleThemeManual() {
+    const isCurrentlyNight = document.body.classList.contains('theme-night');
+    applyTheme(!isCurrentlyNight);
+}
+
+// Initial triggers
+setTimeout(() => {
+    checkAutoTheme();
+    updateClock();
+    const chk = document.getElementById('toggle12Hour');
+    if (chk) chk.checked = is12HourFormat;
+}, 500);

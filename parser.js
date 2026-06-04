@@ -108,6 +108,17 @@ function parseDeviceData(buffer) {
                     ignition = true;
                 }
                 
+                let mainPower = true;
+                if (parts.length > latDirIndex + 11 && parts[latDirIndex + 11] === '0') {
+                    mainPower = false;
+                }
+
+                let voltage = 12.0;
+                if (parts.length > latDirIndex + 12) {
+                    const v = parseFloat(parts[latDirIndex + 12]);
+                    if (!isNaN(v)) voltage = v;
+                }
+
                 let batteryPercentage = 100;
                 if (parts.length > latDirIndex + 13) {
                     const intVolt = parseFloat(parts[latDirIndex + 13]);
@@ -118,13 +129,13 @@ function parseDeviceData(buffer) {
                     }
                 }
                 
-                let odometer = 0;
-                for (let i = parts.length - 1; i > latDirIndex + 5; i--) {
-                    const val = parseFloat(parts[i]);
-                    // Look for a reasonable float value that might be odometer
-                    if (!isNaN(val) && parts[i].includes('.')) {
-                         odometer = val;
-                         break;
+                let deltaDistance = 0;
+                if (parts.length > latDirIndex + 5) {
+                    const lastPart = parts[parts.length - 1];
+                    if (lastPart === '()' || lastPart === '') {
+                        deltaDistance = parseFloat(parts[parts.length - 2]) || 0;
+                    } else {
+                        deltaDistance = parseFloat(lastPart) || 0;
                     }
                 }
 
@@ -135,11 +146,11 @@ function parseDeviceData(buffer) {
                 // Map by Alert ID first
                 switch (alertId) {
                     case 1: event = 'Location Update'; break;
-                    case 3: event = 'Vehicle Battery Disconnected'; parsedPacketType = 'BD'; break;
+                    case 3: event = 'Vehicle Battery Disconnected'; parsedPacketType = 'BD'; mainPower = false; break;
                     case 4: event = 'Internal Battery Low'; parsedPacketType = 'BL'; break;
-                    case 6: event = 'Vehicle Battery Reconnected'; parsedPacketType = 'BR'; break;
-                    case 7: event = 'Ignition ON'; parsedPacketType = 'IN'; break;
-                    case 8: event = 'Ignition OFF'; parsedPacketType = 'IF'; break;
+                    case 6: event = 'Vehicle Battery Reconnected'; parsedPacketType = 'BR'; mainPower = true; break;
+                    case 7: event = 'Ignition ON'; parsedPacketType = 'IN'; ignition = true; break;
+                    case 8: event = 'Ignition OFF'; parsedPacketType = 'IF'; ignition = false; break;
                     case 9: event = 'GPS box opened'; parsedPacketType = 'TA'; break;
                     case 10: event = 'Emergency Alert (SOS)'; parsedPacketType = 'EA'; break;
                     case 11: event = 'Emergency Alert (SOS) Cleared'; break;
@@ -158,10 +169,10 @@ function parseDeviceData(buffer) {
                         case 'EA': event = 'Emergency Alert (SOS)'; break;
                         case 'TA': event = 'Tamper Alert'; break;
                         case 'HP': event = 'Health Packet'; break;
-                        case 'IN': event = 'Ignition ON'; break;
-                        case 'IF': event = 'Ignition OFF'; break;
-                        case 'BD': event = 'Vehicle Battery Disconnected'; break;
-                        case 'BR': event = 'Vehicle Battery Reconnected'; break;
+                        case 'IN': event = 'Ignition ON'; ignition = true; break;
+                        case 'IF': event = 'Ignition OFF'; ignition = false; break;
+                        case 'BD': event = 'Vehicle Battery Disconnected'; mainPower = false; break;
+                        case 'BR': event = 'Vehicle Battery Reconnected'; mainPower = true; break;
                         case 'BL': event = 'Internal Battery Low'; break;
                         case 'HB': event = 'Harsh Braking'; break;
                         case 'HA': event = 'Harsh Acceleration'; break;
@@ -183,8 +194,10 @@ function parseDeviceData(buffer) {
                     satellites: satellites,
                     gpsValid: true,
                     battery: batteryPercentage,
-                    odometer: odometer,
+                    deltaDistance: deltaDistance,
                     ignition: ignition,
+                    mainPower: mainPower,
+                    voltage: voltage,
                     packetType: parsedPacketType,
                     event: event,
                     rawHex: rawString

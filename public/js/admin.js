@@ -145,40 +145,39 @@ function exportAllCustomers() {
     window.location.href = `/api/export/devices?userId=admin&role=admin`;
 }
 
+function switchPage(pageId) {
+    const pages = ['dashboard', 'customers', 'requests', 'payments', 'terminal'];
+    pages.forEach(p => {
+        const pageEl = document.getElementById(`page-${p}`);
+        const btnEl = document.getElementById(`nav-btn-${p}`);
+        if (pageEl) pageEl.classList.remove('active');
+        if (btnEl) btnEl.classList.remove('active');
+    });
+    
+    const targetPage = document.getElementById(`page-${pageId}`);
+    const targetBtn = document.getElementById(`nav-btn-${pageId}`);
+    if (targetPage) targetPage.classList.add('active');
+    if (targetBtn) targetBtn.classList.add('active');
+    
+    if (pageId !== 'customers') {
+        closeCustomerDetail();
+    }
+}
+
 function showValidityModal(userId) {
     document.getElementById('valUserId').value = userId;
     const customer = dashboardCache.customers.find(c => c.id === userId);
-    const activePlan = (customer && customer.subscription && customer.subscription.planName) || 'Trial';
-    document.getElementById('valPlanSelect').value = activePlan;
     
-    if (dashboardCache && dashboardCache.pricing && dashboardCache.pricing[activePlan]) {
-        document.getElementById('valPricePaid').value = dashboardCache.pricing[activePlan].price;
-    } else {
-        document.getElementById('valPricePaid').value = 0;
-    }
-
     if (customer && customer.subscription && customer.subscription.deviceLimit !== undefined) {
         document.getElementById('valDeviceLimit').value = customer.subscription.deviceLimit;
-    } else if (dashboardCache && dashboardCache.pricing && dashboardCache.pricing[activePlan]) {
-        document.getElementById('valDeviceLimit').value = dashboardCache.pricing[activePlan].deviceLimit;
     } else {
         document.getElementById('valDeviceLimit').value = 1;
     }
+    document.getElementById('valExtraDays').value = 30;
     
     document.getElementById('validityModal').classList.add('active');
 }
 function closeValidityModal() { document.getElementById('validityModal').classList.remove('active'); }
-
-function onAdminPlanChange() {
-    const selectedPlan = document.getElementById('valPlanSelect').value;
-    if (dashboardCache && dashboardCache.pricing && dashboardCache.pricing[selectedPlan]) {
-        document.getElementById('valPricePaid').value = dashboardCache.pricing[selectedPlan].price;
-        document.getElementById('valDeviceLimit').value = dashboardCache.pricing[selectedPlan].deviceLimit;
-    } else {
-        document.getElementById('valPricePaid').value = 0;
-        document.getElementById('valDeviceLimit').value = 1;
-    }
-}
 
 function showContactModal(userId, phone, email) {
     document.getElementById('contactUserId').value = userId;
@@ -536,13 +535,12 @@ async function deleteCustomer(userId) {
 
 async function submitValidity() {
     const userId = document.getElementById('valUserId').value;
-    const planName = document.getElementById('valPlanSelect').value;
-    const pricePaid = document.getElementById('valPricePaid').value;
     const deviceLimit = document.getElementById('valDeviceLimit').value;
+    const extraDays = document.getElementById('valExtraDays').value;
     const res = await fetch('/api/admin/update-plan', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ userId, planName, pricePaid, deviceLimit })
+        body: JSON.stringify({ userId, deviceLimit, extraDays })
     });
     const result = await res.json();
     if (result.success) { closeValidityModal(); loadDashboard(); }

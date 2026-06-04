@@ -3,12 +3,31 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 const path = require('path');
+const axios = require('axios');
 const parseDeviceData = require('./parser');
 const store = require('./store');
 const emailService = require('./emailService');
 const smsService = require('./smsService');
 const session = require('express-session');
 require('dotenv').config();
+
+const geocodeCache = new Map();
+
+// Helper for geocoding distance
+function getDistanceInMeters(lat1, lon1, lat2, lon2) {
+    const R = 6371e3; // metres
+    const phi1 = lat1 * Math.PI/180;
+    const phi2 = lat2 * Math.PI/180;
+    const deltaPhi = (lat2-lat1) * Math.PI/180;
+    const deltaLambda = (lon2-lon1) * Math.PI/180;
+
+    const a = Math.sin(deltaPhi/2) * Math.sin(deltaPhi/2) +
+              Math.cos(phi1) * Math.cos(phi2) *
+              Math.sin(deltaLambda/2) * Math.sin(deltaLambda/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+    return R * c;
+}
 
 const TCP_PORT = process.env.TCP_PORT ? parseInt(process.env.TCP_PORT) : 8080;
 const HTTP_PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
@@ -137,6 +156,101 @@ app.get('/api/customer/history', requireLogin, async (req, res) => {
     res.json({
         history: await store.getHistory(imei)
     });
+});
+
+app.get('/api/geocode', async (req, res) => {
+    const lat = parseFloat(req.query.lat);
+    const lon = parseFloat(req.query.lon);
+    if (isNaN(lat) || isNaN(lon)) {
+        return res.status(400).json({ error: 'Invalid coordinates' });
+    }
+    
+    // Check in cache
+    for (const [key, value] of geocodeCache.entries()) {
+        const [cLat, cLon] = key.split(',').map(parseFloat);
+        const dist = getDistanceInMeters(lat, lon, cLat, cLon);
+        if (dist < 50) {
+            return res.json({ display_name: value });
+        }
+    }
+    
+    try {
+        const response = await axios.get(`https://nominatim.openstreetmap.org/reverse`, {
+            params: {
+                format: 'json',
+                lat,
+                lon
+            },
+            headers: {
+                'User-Agent': 'FleetlyGPS/1.0 (aslam.gemini.antigravity)'
+            },
+            timeout: 3000
+        });
+        
+        if (response.data && response.data.display_name) {
+            const displayName = response.data.display_name;
+            geocodeCache.set(`${lat},${lon}`, displayName);
+            return res.json({ display_name: displayName });
+        }
+    } catch (e) {
+        console.error('Reverse geocode error:', e.message);
+    }
+    
+    return res.json({ display_name: `${lat.toFixed(5)}, ${lon.toFixed(5)}` });
+});
+
+app.post('/api/customer/rename-device', requireLogin, async (req, res) => {
+    const { userId, imei, name } = req.body;
+    const success = await store.renameDevice(imei, userId, name);
+    res.json({ success });
+});
+
+app.post('/api/customer/update-driver', requireLogin, async (req, res) => {
+    const { userId, imei, driverName } = req.body;
+    const success = await store.updateDriver(imei, userId, driverName);
+    res.json({ success });
+});
+
+app.post('/api/customer/update-vehicle-profile', requireLogin, async (req, res) => {
+    const { userId, imei, vehicleProfile, initialOdometer } = req.body;
+    const success = await store.updateVehicleProfile(imei, userId, vehicleProfile, initialOdometer);
+    res.json({ success });
+});
+
+app.post('/api/customer/create-share-link', requireLogin, async (req, res) => {
+    const { imei, expiresAfterMinutes } = req.body;
+    try {
+        const link = await store.createSharedLink(imei, parseInt(expiresAfterMinutes || 60));
+        res.json({ success: true, link });
+    } catch(e) {
+        res.json({ success: false, error: e.message });
+    }
+});
+
+app.get('/api/share-link/:id', async (req, res) => {
+    const link = await store.getSharedLink(req.params.id);
+    if (link) {
+        const dataStore = await store.getData();
+        const lastSeen = (dataStore.deviceLastSeen || {})[link.imei] || null;
+        
+        // Also fetch vehicle profile if needed for details
+        const dev = dataStore.devices.find(d => d.imei === link.imei);
+        const name = dev ? dev.name : link.imei;
+        const driverName = dev ? dev.driverName : 'Unassigned';
+        const vehicleProfile = dev ? dev.vehicleProfile : 'standard';
+
+        res.json({ 
+            success: true, 
+            imei: link.imei, 
+            name, 
+            driverName,
+            vehicleProfile,
+            lastSeen, 
+            expiresAt: link.expiresAt 
+        });
+    } else {
+        res.json({ success: false, error: 'Link expired or invalid' });
+    }
 });
 
 app.get('/api/customer/settings', requireLogin, async (req, res) => {
@@ -405,15 +519,15 @@ app.post('/api/admin/pricing', requireAdmin, async (req, res) => {
 
 // Admin Update Customer's plan directly
 app.post('/api/admin/update-plan', requireAdmin, async (req, res) => {
-    const { userId, planName, pricePaid, deviceLimit } = req.body;
+    const { userId, deviceLimit, extraDays } = req.body;
     try {
-        const result = await store.updateCustomerPlan(userId, planName, parseFloat(pricePaid || 0), deviceLimit);
+        const result = await store.updateCustomerSubscriptionAdmin(userId, deviceLimit, extraDays);
         if (result) {
             io.emit('admin_update');
             io.emit('customer_update', { userId });
             res.json({ success: true, subscription: result });
         } else {
-            res.json({ success: false, error: 'Could not update user plan.' });
+            res.json({ success: false, error: 'Could not update user subscription.' });
         }
     } catch (e) {
         res.status(500).json({ success: false, error: 'Server error' });
