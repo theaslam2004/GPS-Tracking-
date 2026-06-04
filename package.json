@@ -19,9 +19,5 @@
     "mongoose": "^9.6.3",
     "nodemailer": "^8.0.7",
     "socket.io": "^4.8.3"
-  },
-  "devDependencies": {
-    "markdown-pdf": "^11.0.0",
-    "pdf-parse": "^1.1.1"
   }
 }
