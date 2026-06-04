@@ -6,6 +6,9 @@ dotenv.config();
 
 const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/fleetly';
 
+// Disable query buffering so that requests fail-fast if database is down/not connected
+mongoose.set('bufferCommands', false);
+
 mongoose.connect(MONGODB_URI)
     .then(() => console.log('[Database] Connected to MongoDB.'))
     .catch(err => {

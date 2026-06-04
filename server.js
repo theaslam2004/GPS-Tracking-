@@ -29,8 +29,8 @@ function getDistanceInMeters(lat1, lon1, lat2, lon2) {
     return R * c;
 }
 
-const TCP_PORT = process.env.TCP_PORT ? parseInt(process.env.TCP_PORT) : 8080;
 const HTTP_PORT = process.env.PORT ? parseInt(process.env.PORT) : 3000;
+const TCP_PORT = process.env.TCP_PORT ? parseInt(process.env.TCP_PORT) : (HTTP_PORT === 8080 ? 8081 : 8080);
 
 // Setup Express and HTTP server for the Frontend
 const app = express();
@@ -696,6 +696,10 @@ const tcpServer = net.createServer((socket) => {
     socket.on('close', () => {
         console.log(`[TCP] Device disconnected: ${clientAddress}`);
     });
+});
+
+tcpServer.on('error', (err) => {
+    console.error(`[TCP] Server error:`, err.message);
 });
 
 tcpServer.listen(TCP_PORT, () => {
