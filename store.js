@@ -13,15 +13,23 @@ mongoose.connection.on('error', err => {
     console.error('[Database] connection error event:', err);
 });
 
-mongoose.connect(MONGODB_URI)
-    .then(() => console.log('[Database] Connected to MongoDB.'))
-    .catch(err => {
-        console.error('[Database] MongoDB Connection Error:', err);
-        console.log('[Database] Retrying connection in 5 seconds...');
-        setTimeout(() => {
-            mongoose.connect(MONGODB_URI).catch(e => console.error('[Database] Retry failed:', e));
-        }, 5000);
-    });
+try {
+    mongoose.connect(MONGODB_URI)
+        .then(() => console.log('[Database] Connected to MongoDB.'))
+        .catch(err => {
+            console.error('[Database] MongoDB Connection Error:', err);
+            console.log('[Database] Retrying connection in 5 seconds...');
+            setTimeout(() => {
+                try {
+                    mongoose.connect(MONGODB_URI).catch(e => console.error('[Database] Retry failed:', e));
+                } catch (retryErr) {
+                    console.error('[Database] Synchronous MongoDB Retry Connection Error:', retryErr);
+                }
+            }, 5000);
+        });
+} catch (syncErr) {
+    console.error('[Database] Synchronous MongoDB Connection Error:', syncErr);
+}
 
 // ── SCHEMAS & MODELS ──
 
