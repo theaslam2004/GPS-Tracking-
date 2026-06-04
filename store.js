@@ -440,9 +440,12 @@ module.exports = {
 
         data.deviceLastSeen[imei] = point;
 
-        if (!data.deviceHistory[imei]) data.deviceHistory[imei] = [];
-        data.deviceHistory[imei].push(point);
-        if (data.deviceHistory[imei].length > 500) data.deviceHistory[imei].shift();
+        // Prevent saving invalid 0,0 coordinates to history path
+        if (locationData.latitude && locationData.longitude && locationData.latitude !== 0 && locationData.longitude !== 0) {
+            if (!data.deviceHistory[imei]) data.deviceHistory[imei] = [];
+            data.deviceHistory[imei].push(point);
+            if (data.deviceHistory[imei].length > 500) data.deviceHistory[imei].shift();
+        }
 
         writeData(data);
         return [];

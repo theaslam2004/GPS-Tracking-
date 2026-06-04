@@ -954,6 +954,14 @@ socket.on('subscription_expired', (data) => {
     }
 });
 
+// Auto-refresh when customer details or device approvals are modified by admin
+socket.on('customer_update', (data) => {
+    if (data.userId === user.id) {
+        console.log('[Socket] Customer profile updated, reloading dashboard data.');
+        loadData();
+    }
+});
+
 // Dynamic Device Data and Map Rendering Handler
 function handleDeviceData(data, isLive = true) {
     if (data.ownerId != user.id) return;
@@ -1173,11 +1181,17 @@ async function startHistoryMode() {
             return;
         }
         
-        // Draw Polyline
-        const latlngs = historyData.map(p => [p.latitude, p.longitude]);
+        // Draw Polyline (Filtering out invalid 0,0 coordinates)
+        const latlngs = historyData
+            .filter(p => p.latitude && p.longitude && p.latitude !== 0 && p.longitude !== 0)
+            .map(p => [p.latitude, p.longitude]);
         if(historyPolyline) map.removeLayer(historyPolyline);
-        historyPolyline = L.polyline(latlngs, {color: 'var(--primary)', weight: 4, opacity: 0.8}).addTo(map);
-        map.fitBounds(historyPolyline.getBounds());
+        if (latlngs.length > 0) {
+            historyPolyline = L.polyline(latlngs, {color: 'var(--primary)', weight: 4, opacity: 0.8}).addTo(map);
+            map.fitBounds(historyPolyline.getBounds());
+        } else {
+            console.warn('[History] No valid coordinates to render history polyline.');
+        }
         
         // Setup Marker
         if(historyMarker) map.removeLayer(historyMarker);

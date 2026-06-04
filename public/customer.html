@@ -39,6 +39,13 @@
             height: 100vh !important;
             z-index: 1 !important;
         }
+        .bottom-filter {
+            position: absolute !important;
+            bottom: 2rem !important;
+            left: 50% !important;
+            transform: translateX(-50%) !important;
+            z-index: 1000 !important;
+        }
         
         /* Premium Day/Night Theme overrides */
         body.theme-night {
@@ -117,7 +124,7 @@
         /* Mobile adjustment */
         @media (max-width: 900px) {
             .app-layout {
-                flex-direction: column !important;
+                flex-direction: column-reverse !important;
             }
             .sidebar-wrapper {
                 width: 100% !important;
@@ -136,60 +143,7 @@
             <i class="fa-solid fa-bars"></i>
         </div>
         
-        <!-- Map Area (Background) -->
-        <div class="map-container">
-            <div id="map"></div>
-            
-            <!-- Geofence Mode Top Bar (Hidden by default) -->
-            <div id="geofenceHeader" class="glass-panel" style="position: absolute; top: -100px; left: 50%; transform: translateX(-50%); z-index: 1000; padding: 1rem 1.5rem; border-radius: var(--radius-full); display: flex; justify-content: space-between; align-items: center; width: 90%; max-width: 600px; transition: top 0.4s ease; border: 1px solid var(--primary);">
-                <div>
-                    <h3 style="margin: 0; color: var(--primary); font-size: 1.1rem;"><i class="fa-solid fa-draw-polygon"></i> Geofence Mode</h3>
-                    <span style="font-size: 0.8rem; color: var(--text-secondary);">Use the drawing tools on the right to mark an area.</span>
-                </div>
-                <button class="btn btn-outline" onclick="exitGeofenceMode()" style="border-radius: var(--radius-full); padding: 0.4rem 1rem; border-color: rgba(255,255,255,0.2);">Cancel</button>
-            </div>
-            
-            <!-- Map Layer Controls (Moved to a cleaner spot later or integrated) -->
-            <div class="map-layer-control glass-panel" title="Toggle Map Style" onclick="toggleMapStyle()" style="top: 20px; right: 20px;">
-                <i class="fa-solid fa-layer-group"></i>
-            </div>
-
-            
-            <!-- Bottom Filter Bar -->
-            <div class="bottom-filter glass-panel" style="padding: 0.5rem 1rem; border-radius: 16px;">
-                <div class="filter-pill filter-all active" onclick="setFilter('all')">
-                    <span class="count" id="countAll" style="font-family: 'Outfit', monospace;">0</span>
-                    <span class="label">FLEET</span>
-                </div>
-                <div class="filter-pill filter-running" onclick="setFilter('running')">
-                    <span class="count" id="countActive" style="font-family: 'Outfit', monospace; color: var(--success);">0</span>
-                    <span class="label">ACTIVE</span>
-                </div>
-                <div class="filter-pill filter-idle" onclick="setFilter('idle')">
-                    <span class="count" id="countIdle" style="font-family: 'Outfit', monospace; color: var(--warning);">0</span>
-                    <span class="label">IDLE</span>
-                </div>
-                <div class="filter-pill filter-offline" onclick="setFilter('offline')">
-                    <span class="count" id="countOffline" style="font-family: 'Outfit', monospace; color: var(--danger);">0</span>
-                    <span class="label">OFFLINE</span>
-                </div>
-            </div>
-            
-            <!-- History Playback Controls (Hidden by default) -->
-            <div id="playbackControls" class="glass-panel" style="display: none; position: absolute; bottom: 2rem; left: 50%; transform: translateX(-50%); z-index: 1000; padding: 1rem 1.5rem; border-radius: var(--radius-full); align-items: center; gap: 1.5rem; width: 90%; max-width: 600px;">
-                <button class="btn btn-primary" id="playBtn" onclick="togglePlayback()" style="border-radius: 50%; width: 45px; height: 45px; padding: 0; flex-shrink: 0; font-size: 1.2rem;"><i class="fa-solid fa-play"></i></button>
-                <div style="flex: 1; display: flex; flex-direction: column; gap: 6px;">
-                    <div style="display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: 700; font-family: 'Outfit', monospace;">
-                        <span id="pbTime" style="color: var(--text-secondary);">--:--:--</span>
-                        <span id="pbSpeed" style="color: var(--primary);">0 km/h</span>
-                    </div>
-                    <input type="range" id="pbSlider" min="0" max="100" value="0" style="width: 100%; cursor: pointer; accent-color: var(--primary);" oninput="seekPlayback(this.value)">
-                </div>
-                <button class="btn btn-outline" onclick="exitHistoryMode()" style="border-radius: var(--radius-full); padding: 0.5rem 1rem; font-size: 0.85rem; flex-shrink: 0; border-color: rgba(255,255,255,0.2);"><i class="fa-solid fa-xmark"></i> Exit</button>
-            </div>
-        </div>
-
-        <!-- Floating Sidebar -->
+        <!-- Floating Sidebar (Placed FIRST for Left sidebar alignment) -->
         <div class="sidebar-wrapper">
             <div class="sidebar glass-panel">
                 <div class="sidebar-header" style="background: rgba(0,0,0,0.5); border-bottom: 2px solid rgba(255,255,255,0.05);">
@@ -281,6 +235,59 @@
                         Syncing Fleet Data...
                     </div>
                 </div>
+            </div>
+        </div>
+
+        <!-- Map Area (Placed SECOND for Center/Right layout alignment) -->
+        <div class="map-container">
+            <div id="map"></div>
+            
+            <!-- Geofence Mode Top Bar (Hidden by default) -->
+            <div id="geofenceHeader" class="glass-panel" style="position: absolute; top: -100px; left: 50%; transform: translateX(-50%); z-index: 1000; padding: 1rem 1.5rem; border-radius: var(--radius-full); display: flex; justify-content: space-between; align-items: center; width: 90%; max-width: 600px; transition: top 0.4s ease; border: 1px solid var(--primary);">
+                <div>
+                    <h3 style="margin: 0; color: var(--primary); font-size: 1.1rem;"><i class="fa-solid fa-draw-polygon"></i> Geofence Mode</h3>
+                    <span style="font-size: 0.8rem; color: var(--text-secondary);">Use the drawing tools on the right to mark an area.</span>
+                </div>
+                <button class="btn btn-outline" onclick="exitGeofenceMode()" style="border-radius: var(--radius-full); padding: 0.4rem 1rem; border-color: rgba(255,255,255,0.2);">Cancel</button>
+            </div>
+            
+            <!-- Map Layer Controls (Moved to a cleaner spot later or integrated) -->
+            <div class="map-layer-control glass-panel" title="Toggle Map Style" onclick="toggleMapStyle()" style="top: 20px; right: 20px;">
+                <i class="fa-solid fa-layer-group"></i>
+            </div>
+
+            
+            <!-- Bottom Filter Bar -->
+            <div class="bottom-filter glass-panel" style="padding: 0.5rem 1rem; border-radius: 16px;">
+                <div class="filter-pill filter-all active" onclick="setFilter('all')">
+                    <span class="count" id="countAll" style="font-family: 'Outfit', monospace;">0</span>
+                    <span class="label">FLEET</span>
+                </div>
+                <div class="filter-pill filter-running" onclick="setFilter('running')">
+                    <span class="count" id="countActive" style="font-family: 'Outfit', monospace; color: var(--success);">0</span>
+                    <span class="label">ACTIVE</span>
+                </div>
+                <div class="filter-pill filter-idle" onclick="setFilter('idle')">
+                    <span class="count" id="countIdle" style="font-family: 'Outfit', monospace; color: var(--warning);">0</span>
+                    <span class="label">IDLE</span>
+                </div>
+                <div class="filter-pill filter-offline" onclick="setFilter('offline')">
+                    <span class="count" id="countOffline" style="font-family: 'Outfit', monospace; color: var(--danger);">0</span>
+                    <span class="label">OFFLINE</span>
+                </div>
+            </div>
+            
+            <!-- History Playback Controls (Hidden by default) -->
+            <div id="playbackControls" class="glass-panel" style="display: none; position: absolute; bottom: 2rem; left: 50%; transform: translateX(-50%); z-index: 1000; padding: 1rem 1.5rem; border-radius: var(--radius-full); align-items: center; gap: 1.5rem; width: 90%; max-width: 600px;">
+                <button class="btn btn-primary" id="playBtn" onclick="togglePlayback()" style="border-radius: 50%; width: 45px; height: 45px; padding: 0; flex-shrink: 0; font-size: 1.2rem;"><i class="fa-solid fa-play"></i></button>
+                <div style="flex: 1; display: flex; flex-direction: column; gap: 6px;">
+                    <div style="display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: 700; font-family: 'Outfit', monospace;">
+                        <span id="pbTime" style="color: var(--text-secondary);">--:--:--</span>
+                        <span id="pbSpeed" style="color: var(--primary);">0 km/h</span>
+                    </div>
+                    <input type="range" id="pbSlider" min="0" max="100" value="0" style="width: 100%; cursor: pointer; accent-color: var(--primary);" oninput="seekPlayback(this.value)">
+                </div>
+                <button class="btn btn-outline" onclick="exitHistoryMode()" style="border-radius: var(--radius-full); padding: 0.5rem 1rem; font-size: 0.85rem; flex-shrink: 0; border-color: rgba(255,255,255,0.2);"><i class="fa-solid fa-xmark"></i> Exit</button>
             </div>
         </div>
     </div>
