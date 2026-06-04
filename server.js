@@ -543,7 +543,7 @@ io.on('connection', (socket) => {
     });
 });
 
-server.listen(HTTP_PORT, () => {
+server.listen(HTTP_PORT, '0.0.0.0', () => {
     console.log(`[HTTP] Web Interface listening on http://localhost:${HTTP_PORT}`);
 });
 
@@ -702,7 +702,7 @@ tcpServer.on('error', (err) => {
     console.error(`[TCP] Server error:`, err.message);
 });
 
-tcpServer.listen(TCP_PORT, () => {
+tcpServer.listen(TCP_PORT, '0.0.0.0', () => {
     console.log(`[TCP] GPS Tracker Server listening on port ${TCP_PORT}`);
     console.log(`[TCP] Point your device to this IP/Port!`);
 });
