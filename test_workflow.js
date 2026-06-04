@@ -7,7 +7,9 @@ const path = require('path');
     headless: true,
     executablePath: 'C:/Program Files/Google/Chrome/Application/chrome.exe'
   });
-  const context = await browser.newContext();
+  const context = await browser.newContext({
+    viewport: { width: 1920, height: 1080 }
+  });
   const page = await context.newPage();
 
   page.on('console', msg => {
@@ -41,6 +43,9 @@ const path = require('path');
 
   // Step 2: Create a Customer
   console.log('Step 2: Creating a new customer...');
+  console.log('Navigating to Customers page tab...');
+  await page.click('#nav-btn-customers');
+  await page.waitForSelector('#page-customers.active', { timeout: 5000 });
   await page.click('button:has-text("New User")');
   await page.waitForSelector('#addCustomerModal.active', { timeout: 5000 });
 
@@ -119,7 +124,7 @@ const path = require('path');
 
   // Logout from Customer
   console.log('Logging out from customer...');
-  await page.click('.sidebar-header button.btn-outline');
+  await page.click('.menu-logout-btn');
   await page.waitForURL('**/index.html', { timeout: 5000 });
 
   // Step 5: Admin Login and Verify Metrics
