@@ -9,6 +9,10 @@ const MONGODB_URI = process.env.MONGODB_URI || 'mongodb://localhost:27017/fleetl
 // Disable query buffering so that requests fail-fast if database is down/not connected
 mongoose.set('bufferCommands', false);
 
+mongoose.connection.on('error', err => {
+    console.error('[Database] connection error event:', err);
+});
+
 mongoose.connect(MONGODB_URI)
     .then(() => console.log('[Database] Connected to MongoDB.'))
     .catch(err => {
