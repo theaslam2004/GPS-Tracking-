@@ -652,6 +652,7 @@ function renderDeviceList() {
     
     document.getElementById('countAll').innerText = myDevices.length;
     updateFleetCounts();
+    if (typeof filterVehicleList === 'function') filterVehicleList();
 }
 
 function updateFleetCounts() {
@@ -1167,7 +1168,14 @@ async function startHistoryMode() {
     document.querySelector('.bottom-filter').style.display = 'none';
     document.getElementById('playbackControls').style.display = 'flex';
     document.getElementById('vehiclePanel').classList.remove('open');
-    document.querySelector('.sidebar-wrapper').style.transform = 'translateX(-110%)'; // Hide sidebar
+    
+    // Keep sidebar open, select the Replay tab
+    const tabLive = document.getElementById('tabLive');
+    const tabReplay = document.getElementById('tabReplay');
+    if (tabLive && tabReplay) {
+        tabLive.classList.remove('active');
+        tabReplay.classList.add('active');
+    }
     
     // Fetch History
     try {
@@ -1264,7 +1272,14 @@ function exitHistoryMode() {
     
     document.querySelector('.bottom-filter').style.display = 'flex';
     document.getElementById('playbackControls').style.display = 'none';
-    document.querySelector('.sidebar-wrapper').style.transform = ''; // Show sidebar
+    
+    // Keep sidebar open, select the Live tab
+    const tabLive = document.getElementById('tabLive');
+    const tabReplay = document.getElementById('tabReplay');
+    if (tabLive && tabReplay) {
+        tabLive.classList.add('active');
+        tabReplay.classList.remove('active');
+    }
     
     if(activeImei) focusDevice(activeImei); // Return to live view
 }
@@ -1473,9 +1488,8 @@ function applyTheme(isNight) {
 }
 
 function checkAutoTheme() {
-    const hours = new Date().getHours();
-    const isNight = (hours >= 18 || hours < 6);
-    applyTheme(isNight);
+    // Default to day (light) mode as requested by user
+    applyTheme(false);
 }
 
 function toggleThemeManual() {
@@ -1490,3 +1504,50 @@ setTimeout(() => {
     const chk = document.getElementById('toggle12Hour');
     if (chk) chk.checked = is12HourFormat;
 }, 500);
+
+// Search & filter vehicle cards helper functions
+function filterVehicleList() {
+    const input = document.getElementById('vehicleSearchInput');
+    if (!input) return;
+    const filter = input.value.trim().toLowerCase();
+    const cards = document.querySelectorAll('.device-card');
+    const clearBtn = document.getElementById('vehicleSearchClear');
+    
+    if (clearBtn) {
+        clearBtn.style.display = filter ? 'block' : 'none';
+    }
+    
+    cards.forEach(card => {
+        const text = card.innerText.toLowerCase();
+        if (text.includes(filter)) {
+            card.style.display = 'block';
+        } else {
+            card.style.display = 'none';
+        }
+    });
+}
+
+function clearVehicleSearch() {
+    const input = document.getElementById('vehicleSearchInput');
+    if (input) {
+        input.value = '';
+        filterVehicleList();
+    }
+}
+
+// Map tab selector (Live Tracking / Travel Replay)
+function switchMapTab(mode) {
+    const tabLive = document.getElementById('tabLive');
+    const tabReplay = document.getElementById('tabReplay');
+    if (!tabLive || !tabReplay) return;
+    
+    if (mode === 'live') {
+        tabLive.classList.add('active');
+        tabReplay.classList.remove('active');
+        exitHistoryMode();
+    } else {
+        tabLive.classList.remove('active');
+        tabReplay.classList.add('active');
+        startHistoryMode();
+    }
+}
