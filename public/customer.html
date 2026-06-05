@@ -671,13 +671,10 @@
                     </div>
                 </div>
 
-                <div class="sidebar-controls">
+                <div class="sidebar-controls" id="sidebarControlsContainer" style="display: none;">
                     <div style="display: flex; gap: 0.5rem;">
-                        <button class="btn btn-primary" onclick="showAddDeviceModal()" style="font-size: 0.82rem; padding: 0.6rem; flex: 1; font-weight: 700;">
-                            <i class="fa-solid fa-plus"></i> Add Tracker
-                        </button>
-                        <button class="btn btn-outline" id="geofenceToggleBtn" onclick="toggleGeofenceMode()" style="font-size: 0.82rem; padding: 0.6rem; width: 40px; flex-shrink: 0; display: none !important;" title="Geofence Zones">
-                            <i class="fa-solid fa-draw-polygon"></i>
+                        <button class="btn btn-outline" id="geofenceToggleBtn" onclick="toggleGeofenceMode()" style="font-size: 0.82rem; padding: 0.6rem; flex: 1; font-weight: 700; display: none !important;" title="Geofence Zones">
+                            <i class="fa-solid fa-draw-polygon"></i> Geofence Zones
                         </button>
                     </div>
 
@@ -1025,8 +1022,9 @@
             <div id="trackerConfigInfo" style="margin-top: 1rem; margin-bottom: 1.5rem; padding: 12px; background: rgba(255, 59, 112, 0.05); border: 1px solid rgba(255, 59, 112, 0.15); border-radius: var(--radius-md); font-size: 0.8rem; line-height: 1.5; color: var(--text-primary); text-align: left;">
                 <div style="font-weight: 700; color: var(--primary); margin-bottom: 6px;"><i class="fa-solid fa-gear"></i> Tracker Configuration Info</div>
                 Configure your GPS hardware using these settings:
-                <div style="margin-top: 6px; font-family: monospace; font-size: 0.82rem; background: var(--bg-surface); padding: 8px; border-radius: 4px; border: 1px solid var(--border);">
-                    IP/Host: <span id="cfgIp" style="font-weight: 700;">loading...</span><br>
+                <div style="margin-top: 6px; font-family: monospace; font-size: 0.82rem; background: var(--bg-surface); padding: 8px; border-radius: 4px; border: 1px solid var(--border); line-height: 1.6;">
+                    Domain/Host: <span id="cfgIp" style="font-weight: 700;">loading...</span><br>
+                    IP Address: <span id="cfgIpAddress" style="font-weight: 700;">loading...</span><br>
                     Port: <span id="cfgPort" style="font-weight: 700;">loading...</span>
                 </div>
                 <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 6px; font-style: italic;">

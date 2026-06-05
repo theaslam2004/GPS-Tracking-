@@ -199,12 +199,14 @@ async function loadTrackerConfig() {
     try {
         const res = await fetch('/api/tracker-config');
         const config = await res.json();
-        document.getElementById('cfgIp').innerText = window.location.hostname;
-        document.getElementById('cfgPort').innerText = config.port;
+        document.getElementById('cfgIp').innerText = config.ip || 'acela.proxy.rlwy.net';
+        document.getElementById('cfgIpAddress').innerText = config.ipAddress || '66.33.22.226';
+        document.getElementById('cfgPort').innerText = config.port || '24706';
     } catch (err) {
         console.error('Failed to load tracker config:', err);
-        document.getElementById('cfgIp').innerText = window.location.hostname;
-        document.getElementById('cfgPort').innerText = '8080';
+        document.getElementById('cfgIp').innerText = 'acela.proxy.rlwy.net';
+        document.getElementById('cfgIpAddress').innerText = '66.33.22.226';
+        document.getElementById('cfgPort').innerText = '24706';
     }
 }
 
@@ -398,11 +400,15 @@ async function loadData() {
         const anyGeofenceEnabled = myDevices.some(d => isFeatureEnabled(d.imei, 'geofenceAlert'));
         const geofenceBtn = document.getElementById('geofenceToggleBtn');
         const geofenceMenu = document.getElementById('menu-item-geofence');
+        const controlsContainer = document.getElementById('sidebarControlsContainer');
         if (geofenceBtn) {
             geofenceBtn.style.setProperty('display', anyGeofenceEnabled ? 'block' : 'none', 'important');
         }
         if (geofenceMenu) {
             geofenceMenu.style.setProperty('display', anyGeofenceEnabled ? 'flex' : 'none', 'important');
+        }
+        if (controlsContainer) {
+            controlsContainer.style.display = anyGeofenceEnabled ? 'block' : 'none';
         }
     } catch(err) {
         console.error('[loadData] Error:', err);
@@ -1221,6 +1227,10 @@ socket.on('settings_updated', (data) => {
         if (geofenceBtn) geofenceBtn.style.setProperty('display', anyGeofenceEnabled ? 'block' : 'none', 'important');
         const geofenceMenu = document.getElementById('menu-item-geofence');
         if (geofenceMenu) geofenceMenu.style.setProperty('display', anyGeofenceEnabled ? 'flex' : 'none', 'important');
+        const controlsContainer = document.getElementById('sidebarControlsContainer');
+        if (controlsContainer) {
+            controlsContainer.style.display = anyGeofenceEnabled ? 'block' : 'none';
+        }
 
         // Update popup HTML content of existing marker
         if (markers[imei] && latestData[imei]) {

@@ -274,8 +274,9 @@ app.get('/api/customer/settings', requireLogin, async (req, res) => {
 
 app.get('/api/tracker-config', (req, res) => {
     res.json({
-        ip: req.hostname === 'localhost' ? '127.0.0.1' : req.hostname,
-        port: TCP_PORT
+        ip: 'acela.proxy.rlwy.net',
+        ipAddress: '66.33.22.226',
+        port: 24706
     });
 });
 
