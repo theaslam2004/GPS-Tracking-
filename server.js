@@ -48,6 +48,15 @@ app.use(session({
     }
 }));
 
+// Setup infrastructure telemetry logging (last 10 minutes)
+let telemetryHistory = [12, 19, 15, 8, 14, 20, 24, 18, 22, 28]; // Start with baseline
+let currentMinutePackets = 0;
+setInterval(() => {
+    telemetryHistory.push(currentMinutePackets);
+    telemetryHistory.shift();
+    currentMinutePackets = 0;
+}, 60000);
+
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
@@ -263,6 +272,13 @@ app.get('/api/customer/settings', requireLogin, async (req, res) => {
     res.json(settingsMap);
 });
 
+app.get('/api/tracker-config', (req, res) => {
+    res.json({
+        ip: req.hostname === 'localhost' ? '127.0.0.1' : req.hostname,
+        port: TCP_PORT
+    });
+});
+
 // API: Geofences
 app.get('/api/customer/geofences', requireLogin, async (req, res) => {
     const userId = req.query.userId;
@@ -294,6 +310,19 @@ app.get('/api/export/devices', requireLogin, async (req, res) => {
         devices = await store.getCustomerDevices(userId);
     }
     
+    // Filter out devices with csvExport === false (if client request)
+    if (req.session.user.role !== 'admin') {
+        const filtered = [];
+        for (let d of devices) {
+            const settings = await store.getDeviceSettings(d.imei);
+            if (settings && settings.csvExport === false) {
+                continue;
+            }
+            filtered.push(d);
+        }
+        devices = filtered;
+    }
+    
     const dataStore = await store.getData();
     const lastSeen = dataStore.deviceLastSeen;
     
@@ -310,6 +339,15 @@ app.get('/api/export/devices', requireLogin, async (req, res) => {
 
 app.get('/api/export/history/:imei', requireLogin, async (req, res) => {
     const imei = req.params.imei;
+    
+    // Enforce csvExport permission (except for admin)
+    if (req.session.user.role !== 'admin') {
+        const settings = await store.getDeviceSettings(imei);
+        if (settings && settings.csvExport === false) {
+            return res.status(403).send('CSV export is disabled for this device by Administrator.');
+        }
+    }
+    
     const history = await store.getHistory(imei);
     
     let csv = "Timestamp,Latitude,Longitude,Speed,Odometer,RawData\n";
@@ -346,7 +384,8 @@ app.get('/api/admin/dashboard', requireAdmin, async (req, res) => {
         payments,
         totalIncome,
         pricing,
-        planStats
+        planStats,
+        telemetryHistory
     });
 });
 
@@ -372,6 +411,15 @@ app.post('/api/admin/approve-request', requireAdmin, async (req, res) => {
     if (success) {
         io.emit('admin_update');
         io.emit('customer_update', { userId: ownerId });
+    }
+    res.json({ success });
+});
+
+app.post('/api/admin/reject-request', requireAdmin, async (req, res) => {
+    const { imei } = req.body;
+    const success = await store.rejectDeviceRequest(imei);
+    if (success) {
+        io.emit('admin_update');
     }
     res.json({ success });
 });
@@ -668,6 +716,7 @@ const tcpServer = net.createServer((socket) => {
             }
 
             // Send live log to admin
+            currentMinutePackets++;
             io.emit('admin_live_log', {
                 time: parsedData.timestamp,
                 imei: parsedData.imei,
@@ -676,6 +725,7 @@ const tcpServer = net.createServer((socket) => {
             });
         } else {
             console.log(`[TCP] Could not parse data (or not a location packet). Sending raw to UI.`);
+            currentMinutePackets++;
             io.emit('raw_log', {
                 time: new Date().toISOString(),
                 hex: data.toString('ascii')

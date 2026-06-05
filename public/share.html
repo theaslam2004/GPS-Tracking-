@@ -11,13 +11,14 @@
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         
         :root {
-            --bg: #06090e;
-            --surface: #0a0e14;
-            --border: rgba(255, 255, 255, 0.05);
-            --primary: #00D4FF;
-            --text: #ffffff;
-            --muted: #7e8e9f;
-            --danger: #FF3D00;
+            --bg: #f4f5f8;
+            --surface: #ffffff;
+            --border: rgba(0, 0, 0, 0.06);
+            --primary: #ff3b70;
+            --text: #2b354e;
+            --muted: #64748b;
+            --danger: #ff3d00;
+            --warning: #ffab00;
         }
 
         body {
@@ -37,13 +38,14 @@
             width: 100%;
         }
 
-        /* Dark Theme Leaflet Customization */
+        /* Dark Theme Leaflet Customization (Disabled for Light Theme)
         .leaflet-layer,
         .leaflet-control-zoom-in,
         .leaflet-control-zoom-out,
         .leaflet-control-attribution {
             filter: invert(100%) hue-rotate(180deg) brightness(95%) contrast(90%);
         }
+        */
 
         .header-bar {
             background: var(--surface);
@@ -64,7 +66,7 @@
         .logo-icon {
             width: 32px;
             height: 32px;
-            background: linear-gradient(135deg, #00dcb4, #0057ff);
+            background: var(--primary);
             border-radius: 8px;
             display: grid;
             place-items: center;
@@ -85,9 +87,9 @@
         }
 
         .status-badge {
-            background: rgba(0, 212, 255, 0.1);
+            background: rgba(255, 59, 112, 0.08);
             color: var(--primary);
-            border: 1px solid rgba(0, 212, 255, 0.2);
+            border: 1px solid rgba(255, 59, 112, 0.15);
             border-radius: 20px;
             padding: 4px 12px;
             font-size: 0.8rem;
@@ -115,7 +117,7 @@
         .error-overlay {
             position: fixed;
             inset: 0;
-            background: rgba(6, 9, 14, 0.95);
+            background: rgba(244, 245, 248, 0.95);
             backdrop-filter: blur(10px);
             z-index: 10000;
             display: none;
@@ -125,12 +127,12 @@
 
         .error-card {
             background: var(--surface);
-            border: 1px solid rgba(255, 61, 0, 0.2);
+            border: 1px solid var(--border);
             border-radius: 16px;
             padding: 40px;
             text-align: center;
             max-width: 450px;
-            box-shadow: 0 10px 45px rgba(0, 0, 0, 0.6);
+            box-shadow: 0 10px 45px rgba(0, 0, 0, 0.05);
         }
 
         .error-icon {
@@ -182,17 +184,17 @@
             width: 320px;
             padding: 16px;
             border-radius: 12px;
-            background: rgba(10, 14, 20, 0.9);
+            background: rgba(255, 255, 255, 0.9);
             backdrop-filter: blur(12px);
             border: 1px solid var(--border);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.05);
             display: none;
         }
         .info-row {
             display: flex;
             justify-content: space-between;
             padding: 6px 0;
-            border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+            border-bottom: 1px solid rgba(0, 0, 0, 0.03);
             font-size: 0.85rem;
         }
         .info-row span:first-child {
@@ -208,7 +210,7 @@
     <div class="header-bar">
         <div class="logo-wrap">
             <div class="logo-icon">
-                <i class="fa-solid fa-truck-fast" style="color: #021a14; font-size: 1.1rem;"></i>
+                <i class="fa-solid fa-truck-fast" style="color: #ffffff; font-size: 1.1rem;"></i>
             </div>
             <div class="logo-text">
                 <h1 id="vehicleName">Vehicle</h1>

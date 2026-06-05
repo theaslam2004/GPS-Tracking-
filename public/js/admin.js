@@ -21,6 +21,18 @@ let user = null;
         user = data.user;
         localStorage.setItem('user', JSON.stringify(user));
         
+        // Initialize Charts and start live updates
+        initCharts();
+        setInterval(() => {
+            if (telemetryChartInstance) {
+                packetsReceivedThisMinute = 0;
+                telemetryHistory.push(0);
+                telemetryHistory.shift();
+                telemetryChartInstance.data.datasets[0].data = telemetryHistory;
+                telemetryChartInstance.update();
+            }
+        }, 60000);
+        
         // Load Dashboard
         loadDashboard();
     } catch (e) {
@@ -38,6 +50,81 @@ function logout() {
 let dashboardCache = null;
 let currentViewUserId = null;
 let currentViewSettings = null;
+
+let telemetryChartInstance = null;
+let statusChartInstance = null;
+let packetsReceivedThisMinute = 0;
+let telemetryHistory = [12, 19, 15, 8, 14, 20, 24, 18, 22, 28];
+let telemetryLabels = ['-9m', '-8m', '-7m', '-6m', '-5m', '-4m', '-3m', '-2m', '-1m', 'Now'];
+
+function initCharts() {
+    const statusCtx = document.getElementById('statusChart');
+    if (statusCtx) {
+        statusChartInstance = new Chart(statusCtx, {
+            type: 'doughnut',
+            data: {
+                labels: ['Active (Moving)', 'Idle (Stationary)', 'Offline (Halt)'],
+                datasets: [{
+                    data: [0, 0, 0],
+                    backgroundColor: ['#ff3b70', '#ffab00', '#ff3d00'],
+                    borderWidth: 0
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            color: '#2b354e',
+                            font: { family: 'Outfit', size: 10, weight: '600' }
+                        }
+                    }
+                },
+                cutout: '70%'
+            }
+        });
+    }
+
+    const telCtx = document.getElementById('telemetryChart');
+    if (telCtx) {
+        telemetryChartInstance = new Chart(telCtx, {
+            type: 'line',
+            data: {
+                labels: telemetryLabels,
+                datasets: [{
+                    label: 'Packets',
+                    data: telemetryHistory,
+                    borderColor: '#ff3b70',
+                    backgroundColor: 'rgba(255, 59, 112, 0.05)',
+                    borderWidth: 2,
+                    fill: true,
+                    tension: 0.4,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#ff3b70'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                scales: {
+                    y: {
+                        grid: { color: 'rgba(0,0,0,0.03)' },
+                        ticks: { color: '#64748b', font: { family: 'Outfit', size: 10 } }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: '#64748b', font: { family: 'Outfit', size: 10 } }
+                    }
+                }
+            }
+        });
+    }
+}
 
 // -----------------------------------------------------------------------
 // Modal Controls
@@ -197,7 +284,7 @@ function showFeaturesModal(userId, imei = null) {
     fetch(url)
         .then(res => res.json())
         .then(settings => {
-            const keys = ['odometer', 'speedAlert', 'ignitionAlert', 'healthStats', 'panicAlert', 'harshAlerts', 'towingAlert'];
+            const keys = ['odometer', 'speedAlert', 'ignitionAlert', 'healthStats', 'panicAlert', 'harshAlerts', 'towingAlert', 'geofenceAlert', 'csvExport'];
             keys.forEach(key => {
                 const el = document.getElementById(`f-${key}`);
                 if (el) el.checked = settings[key] !== false;
@@ -211,7 +298,7 @@ function closeFeaturesModal() {
 
 async function openCustomerDetail(userId, username) {
     currentViewUserId = userId;
-    document.getElementById('mainListView').style.display = 'none';
+    document.getElementById('customersPanel').style.display = 'none';
     document.getElementById('customerDetailView').style.display = 'block';
     document.getElementById('detailCustomerName').innerText = `${username}'s Fleet`;
     
@@ -225,8 +312,10 @@ async function openCustomerDetail(userId, username) {
 function closeCustomerDetail() {
     currentViewUserId = null;
     currentViewSettings = null;
-    document.getElementById('mainListView').style.display = 'contents';
+    document.getElementById('customersPanel').style.display = '';
     document.getElementById('customerDetailView').style.display = 'none';
+    const logBox = document.getElementById('customerLiveLogs');
+    if (logBox) logBox.innerHTML = '<div style="color: var(--muted); text-align: center; margin-top: 50px;">Waiting for tracker packet streams...</div>';
 }
 
 function renderCustomerFleet(userId) {
@@ -249,14 +338,19 @@ function renderCustomerFleet(userId) {
         let status = 'Halt';
         let statusColor = 'var(--red)';
         if (isOnline) {
-            if (speed > 5) {
+            const s = ls.status || 'halt';
+            if (s === 'running') {
                 status = 'Active';
                 statusColor = 'var(--accent)';
                 active++;
-            } else {
+            } else if (s === 'idle') {
                 status = 'Idle';
                 statusColor = 'var(--amber)';
                 idle++;
+            } else {
+                status = 'Halt';
+                statusColor = 'var(--red)';
+                halt++;
             }
         } else {
             halt++;
@@ -317,7 +411,9 @@ async function submitFeatures() {
         healthStats: document.getElementById('f-healthStats').checked,
         panicAlert: document.getElementById('f-panicAlert').checked,
         harshAlerts: document.getElementById('f-harshAlerts').checked,
-        towingAlert: document.getElementById('f-towingAlert').checked
+        towingAlert: document.getElementById('f-towingAlert').checked,
+        geofenceAlert: document.getElementById('f-geofenceAlert').checked,
+        csvExport: document.getElementById('f-csvExport').checked
     };
 
     const url = imei ? '/api/admin/update-device-settings' : '/api/admin/update-customer-settings';
@@ -371,7 +467,7 @@ function handleGlobalSearch(event) {
 
     if (matches.length > 0) {
         resultsContainer.innerHTML = matches.map(m => `
-            <div class="search-result-item" onclick="handleResultClick('${m.type}', '${m.id}')">
+            <div class="search-result-item" onclick="handleResultClick('${m.type}', '${m.id}', '${m.title.replace(/'/g, "\\'")}')">
                 <div class="result-icon"><i class="fa-solid fa-${m.icon}"></i></div>
                 <div class="result-info">
                     <div class="result-title">${m.title} <span class="result-tag">${m.type}</span></div>
@@ -385,19 +481,32 @@ function handleGlobalSearch(event) {
     }
 }
 
-function handleResultClick(type, id) {
+function handleResultClick(type, id, title) {
     document.getElementById('searchResults').classList.remove('active');
     document.getElementById('globalSearch').value = '';
     
     if (type === 'Customer') {
-        const row = Array.from(document.querySelectorAll('#customerTableBody tr')).find(r => r.innerText.includes(id));
-        if (row) {
-            row.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            row.style.background = 'var(--accent-dim)';
-            setTimeout(() => row.style.background = '', 2500);
-        }
+        switchPage('customers');
+        openCustomerDetail(id, title);
     } else {
-        alert(`Jump to ${type}: ${id}`);
+        const dev = dashboardCache.allDevices.find(d => d.imei === id);
+        if (dev) {
+            const cust = dashboardCache.customers.find(c => c.id === dev.ownerId);
+            if (cust) {
+                switchPage('customers');
+                openCustomerDetail(cust.id, cust.username);
+                setTimeout(() => {
+                    const row = document.getElementById(`row-${id}`);
+                    if (row) {
+                        row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                        row.style.background = 'var(--accent-dim)';
+                        setTimeout(() => row.style.background = '', 2500);
+                    }
+                }, 150);
+            }
+        } else {
+            alert(`Jump to ${type}: ${id}`);
+        }
     }
 }
 
@@ -421,14 +530,63 @@ async function loadDashboard() {
         document.getElementById('statTotalDevices').innerText = data.allDevices.length;
         document.getElementById('statTotalIncome').innerText = `₹${data.totalIncome || 0}`;
         
+        let activeCount = 0;
+        let idleCount = 0;
+        let haltCount = 0;
+        const now = Date.now();
+        const lastSeen = data.lastSeen || {};
+        
+        data.allDevices.forEach(d => {
+            const ls = lastSeen[d.imei] || {};
+            const isOnline = ls.timestamp && (now - new Date(ls.timestamp)) < 60000;
+            if (isOnline) {
+                const s = ls.status || 'halt';
+                if (s === 'running') {
+                    activeCount++;
+                } else if (s === 'idle') {
+                    idleCount++;
+                } else {
+                    haltCount++;
+                }
+            } else {
+                haltCount++;
+            }
+        });
+        
+        const activeEl = document.getElementById('statOnlineActive');
+        if (activeEl) activeEl.innerText = activeCount;
+        
+        const idleEl = document.getElementById('statOnlineIdle');
+        if (idleEl) idleEl.innerText = idleCount;
+        
+        const offlineEl = document.getElementById('statOfflineDevices');
+        if (offlineEl) offlineEl.innerText = haltCount;
+        
+        // Update Doughnut Status Chart
+        if (statusChartInstance) {
+            statusChartInstance.data.datasets[0].data = [activeCount, idleCount, haltCount];
+            statusChartInstance.update();
+        }
+
+        // Sync Telemetry History from Server
+        if (data.telemetryHistory && telemetryChartInstance) {
+            telemetryHistory = data.telemetryHistory;
+            telemetryChartInstance.data.datasets[0].data = telemetryHistory;
+            telemetryChartInstance.update();
+        }
+        
+        const pendingReqsCount = data.requests.filter(r => r.status === 'pending').length;
+        const pendingReqsEl = document.getElementById('statPendingRequests');
+        if (pendingReqsEl) pendingReqsEl.innerText = pendingReqsCount;
+        
         let expiredCount = 0;
-        const now = new Date();
+        const dateNow = new Date();
 
         // Render Billing Table
         const customerBody = document.getElementById('customerTableBody');
         customerBody.innerHTML = data.customers.map(c => {
             const expDate = c.subscription ? new Date(c.subscription.expirationDate) : null;
-            const daysLeft = expDate ? Math.ceil((expDate - now) / (1000 * 60 * 60 * 24)) : 0;
+            const daysLeft = expDate ? Math.ceil((expDate - dateNow) / (1000 * 60 * 60 * 24)) : 0;
             const isExpired = daysLeft <= 0;
             if (isExpired) expiredCount++;
 
@@ -439,15 +597,13 @@ async function loadDashboard() {
 
             return `
                 <tr>
-                    <td>
-                        <div style="cursor:pointer" onclick="openCustomerDetail('${c.id}', '${c.username}')">
-                            <div class="cust-name" style="color:var(--accent);font-weight:700;">${c.username} <i class="fa-solid fa-arrow-right" style="font-size:10px;margin-left:5px;"></i></div>
-                            <div style="font-size:10px;color:var(--muted);margin-top:2px;">
-                                <i class="fa-solid fa-satellite-dish" style="margin-right:4px;"></i>${numDevices} / ${deviceLimit} device${numDevices !== 1 ? 's' : ''} [${planName}]
-                            </div>
+                    <td style="cursor:pointer;" onclick="openCustomerDetail('${c.id}', '${c.username}')">
+                        <div class="cust-name" style="color:var(--accent);font-weight:700;">${c.username} <i class="fa-solid fa-arrow-right" style="font-size:10px;margin-left:5px;"></i></div>
+                        <div style="font-size:10px;color:var(--muted);margin-top:2px;">
+                            <i class="fa-solid fa-satellite-dish" style="margin-right:4px;"></i>${numDevices} / ${deviceLimit} device${numDevices !== 1 ? 's' : ''} [${planName}]
                         </div>
                     </td>
-                    <td>
+                    <td style="cursor:pointer;" onclick="openCustomerDetail('${c.id}', '${c.username}')">
                         <div class="contact-cell">
                             <div class="contact-row"><i class="fa-solid fa-phone" style="width:12px;"></i> ${c.phone || '<span style="color:var(--muted)">N/A</span>'}</div>
                             <div class="contact-row"><i class="fa-solid fa-envelope" style="width:12px;"></i> ${c.email || '<span style="color:var(--muted)">N/A</span>'}</div>
@@ -475,21 +631,73 @@ async function loadDashboard() {
             `;
         }).join('');
 
-        // Render Requests Table
+        // Render Active Requests Table
+        const activeRequests = data.requests.filter(r => r.status === 'pending');
         const requestBody = document.getElementById('requestTableBody');
-        requestBody.innerHTML = data.requests.map(r => `
-            <tr>
-                <td><code style="color:var(--accent); font-weight:700">${r.imei}</code></td>
-                <td><span class="badge amber">Pending</span></td>
-                <td style="text-align:right">
-                    <select id="ownerSelect-${r.imei}" style="background:var(--surface-2); color:var(--text); border:1px solid var(--border); padding:5px; border-radius:5px; margin-right:8px; font-size:11px;">
-                        <option value="">Assign to...</option>
-                        ${data.customers.map(cust => `<option value="${cust.id}">${cust.username}</option>`).join('')}
-                    </select>
-                    <button class="icon-btn" style="display:inline-flex" onclick="approveRequest('${r.imei}')"><i class="fa-solid fa-check"></i></button>
-                </td>
-            </tr>
-        `).join('');
+        if (activeRequests.length > 0) {
+            requestBody.innerHTML = activeRequests.map(r => {
+                const ls = data.lastSeen && data.lastSeen[r.imei];
+                const isOnline = ls && ls.timestamp && (Date.now() - new Date(ls.timestamp)) < 60000;
+                const dataStatus = ls && ls.timestamp ? 
+                    (isOnline ? `<span class="badge green" style="font-size:10px;"><i class="fa-solid fa-signal"></i> Receiving</span>` : `<span class="badge red" style="font-size:10px;"><i class="fa-solid fa-signal"></i> Offline</span>`) : 
+                    `<span class="badge red" style="font-size:10px; background: rgba(0,0,0,0.03); color: var(--muted); border-color: var(--border);"><i class="fa-solid fa-signal"></i> No Data</span>`;
+                
+                return `
+                    <tr>
+                        <td><code style="color:var(--accent); font-weight:700">${r.imei}</code></td>
+                        <td><span class="badge amber">Pending</span></td>
+                        <td>
+                            ${dataStatus}
+                            ${ls && ls.timestamp ? `<div style="font-size:9px;color:var(--muted);margin-top:2px;">Last: ${new Date(ls.timestamp).toLocaleTimeString()}</div>` : ''}
+                        </td>
+                        <td style="text-align:right; display:flex; align-items:center; justify-content:flex-end; gap:8px;">
+                            <select id="ownerSelect-${r.imei}" style="background:var(--surface-2); color:var(--text); border:1px solid var(--border); padding:5px; border-radius:5px; margin-right:4px; font-size:11px; font-family:var(--font-body);">
+                                <option value="">Assign to...</option>
+                                ${data.customers.map(cust => `<option value="${cust.id}">${cust.username}</option>`).join('')}
+                            </select>
+                            <button class="icon-btn" style="display:inline-flex; border-color: rgba(0, 230, 118, 0.3); color: var(--success); background: rgba(0, 230, 118, 0.05);" onclick="approveRequest('${r.imei}')" title="Approve"><i class="fa-solid fa-check"></i></button>
+                            <button class="icon-btn" style="display:inline-flex; border-color: rgba(255, 61, 0, 0.3); color: var(--red); background: rgba(255, 61, 0, 0.05);" onclick="declineRequest('${r.imei}')" title="Decline"><i class="fa-solid fa-xmark"></i></button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        } else {
+            requestBody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--muted)">No pending requests.</td></tr>`;
+        }
+
+        // Render History Requests Table
+        const historyRequests = data.requests.filter(r => r.status !== 'pending');
+        const historyBody = document.getElementById('requestHistoryTableBody');
+        if (historyBody) {
+            if (historyRequests.length > 0) {
+                historyBody.innerHTML = historyRequests.map(r => {
+                    const cust = data.customers.find(c => c.id === r.userId);
+                    const statusClass = r.status === 'approved' ? 'green' : 'red';
+                    const timeStr = r.timestamp ? new Date(r.timestamp).toLocaleString() : 'N/A';
+                    
+                    const ls = data.lastSeen && data.lastSeen[r.imei];
+                    const isOnline = ls && ls.timestamp && (Date.now() - new Date(ls.timestamp)) < 60000;
+                    const dataStatus = ls && ls.timestamp ? 
+                        (isOnline ? `<span class="badge green" style="font-size:10px;"><i class="fa-solid fa-signal"></i> Receiving</span>` : `<span class="badge red" style="font-size:10px;"><i class="fa-solid fa-signal"></i> Offline</span>`) : 
+                        `<span class="badge red" style="font-size:10px; background: rgba(0,0,0,0.03); color: var(--muted); border-color: var(--border);"><i class="fa-solid fa-signal"></i> No Data</span>`;
+
+                    return `
+                        <tr>
+                            <td><code style="color:var(--accent); font-weight:700">${r.imei}</code></td>
+                            <td><span class="badge ${statusClass}">${r.status}</span></td>
+                            <td style="font-weight: 600;">${cust ? cust.username : 'Unknown User'}</td>
+                            <td>
+                                ${dataStatus}
+                                ${ls && ls.timestamp ? `<div style="font-size:9px;color:var(--muted);margin-top:2px;">Last: ${new Date(ls.timestamp).toLocaleTimeString()}</div>` : ''}
+                            </td>
+                            <td style="text-align:right; font-size:11px; color:var(--muted);">${timeStr}</td>
+                        </tr>
+                    `;
+                }).join('');
+            } else {
+                historyBody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--muted)">No requests history logged yet.</td></tr>`;
+            }
+        }
 
         // Render Recent Payments Log
         const paymentBody = document.getElementById('paymentTableBody');
@@ -509,7 +717,8 @@ async function loadDashboard() {
             }
         }
 
-        document.getElementById('statExpired').innerText = expiredCount;
+        const expiredEl = document.getElementById('statExpired');
+        if (expiredEl) expiredEl.innerText = expiredCount;
 
     } catch (err) { console.error('Dashboard Sync Error:', err); }
 }
@@ -521,6 +730,17 @@ async function approveRequest(imei) {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ imei, ownerId })
+    });
+    const result = await res.json();
+    if (result.success) loadDashboard();
+}
+
+async function declineRequest(imei) {
+    if (!confirm(`Decline and reject link request for IMEI ${imei}?`)) return;
+    const res = await fetch('/api/admin/reject-request', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ imei })
     });
     const result = await res.json();
     if (result.success) loadDashboard();
@@ -661,6 +881,11 @@ function downloadDeviceData(imei) {
     window.location.href = `/api/export/history/${imei}`;
 }
 
+function exportCurrentCustomerFleet() {
+    if (!currentViewUserId) return;
+    window.location.href = `/api/export/devices?userId=${currentViewUserId}&role=customer`;
+}
+
 // -----------------------------------------------------------------------
 // Real-time Terminal Logic
 // -----------------------------------------------------------------------
@@ -690,15 +915,36 @@ socket.on('device_data', (data) => {
             
             // Update badge
             const badge = document.getElementById(`status-badge-${imei}`);
-            let status = 'Idle';
-            let color = 'var(--amber)';
-            if (speed > 5) {
+            let status = 'Halt';
+            let color = 'var(--red)';
+            const s = data.status || 'halt';
+            if (s === 'running') {
                 status = 'Active';
                 color = 'var(--accent)';
+            } else if (s === 'idle') {
+                status = 'Idle';
+                color = 'var(--amber)';
             }
-            badge.innerText = status;
-            badge.style.color = color;
-            badge.style.borderColor = color + '44';
+            if (badge) {
+                badge.innerText = status;
+                badge.style.color = color;
+                badge.style.borderColor = color + '44';
+            }
+
+            // Append to raw telemetry stream box
+            const logBox = document.getElementById('customerLiveLogs');
+            if (logBox) {
+                if (logBox.innerText.includes('Waiting for tracker')) {
+                    logBox.innerHTML = '';
+                }
+                const timeStr = new Date(timestamp).toLocaleTimeString();
+                const logEntry = document.createElement('div');
+                logEntry.style.borderBottom = '1px solid rgba(0,0,0,0.03)';
+                logEntry.style.padding = '4px 0';
+                logEntry.innerHTML = `<span style="color:var(--muted)">[${timeStr}]</span> <b style="color:var(--text);">${data.name || imei}:</b> Lat:${latitude.toFixed(6)} Lng:${longitude.toFixed(6)} Speed:${speed}km/h Odo:${odometer.toFixed(2)}km Hex:[<span style="color:var(--accent); font-family:monospace; font-weight:700;">${data.rawHex || 'N/A'}</span>]`;
+                logBox.appendChild(logEntry);
+                logBox.scrollTop = logBox.scrollHeight;
+            }
         }
         
         // Also update the dashboardCache so if they close/open it's fresh
@@ -707,14 +953,40 @@ socket.on('device_data', (data) => {
         }
     }
 });
+
 socket.on('admin_live_log', (log) => {
+    packetsReceivedThisMinute++;
+    if (telemetryChartInstance) {
+        telemetryHistory[telemetryHistory.length - 1] = packetsReceivedThisMinute;
+        telemetryChartInstance.update();
+    }
     const container = document.getElementById('liveLogs');
-    if(!container) return;
-    const line = document.createElement('div');
-    line.className = 'log-entry';
-    line.innerHTML = `<span class="log-time">[${new Date().toLocaleTimeString()}]</span> <span style="color:var(--accent); font-weight:700">IMEI:${log.imei}</span> <span style="color:#8ba4b8">> ${log.hex}</span>`;
-    container.prepend(line);
-    if(container.children.length > 50) container.lastElementChild.remove();
+    if(container) {
+        const line = document.createElement('div');
+        line.className = 'log-entry';
+        line.innerHTML = `<span class="log-time">[${new Date().toLocaleTimeString()}]</span> <span style="color:var(--accent); font-weight:700">IMEI:${log.imei}</span> <span style="color:var(--muted)">> ${log.hex}</span>`;
+        container.prepend(line);
+        if(container.children.length > 50) container.lastElementChild.remove();
+    }
+
+    if (currentViewUserId && dashboardCache) {
+        const isCustomerDevice = dashboardCache.allDevices.some(d => d.imei === log.imei && d.ownerId === currentViewUserId);
+        if (isCustomerDevice) {
+            const logBox = document.getElementById('customerLiveLogs');
+            if (logBox) {
+                if (logBox.innerText.includes('Waiting for tracker')) {
+                    logBox.innerHTML = '';
+                }
+                const timeStr = new Date().toLocaleTimeString();
+                const logEntry = document.createElement('div');
+                logEntry.style.borderBottom = '1px solid rgba(0,0,0,0.03)';
+                logEntry.style.padding = '4px 0';
+                logEntry.innerHTML = `<span style="color:var(--muted)">[${timeStr}]</span> <b style="color:var(--text);">${log.imei}:</b> Raw HEX Received - Hex:[<span style="color:var(--accent); font-family:monospace; font-weight:700;">${log.hex || 'N/A'}</span>]`;
+                logBox.appendChild(logEntry);
+                logBox.scrollTop = logBox.scrollHeight;
+            }
+        }
+    }
 });
 
 document.addEventListener('click', (e) => {

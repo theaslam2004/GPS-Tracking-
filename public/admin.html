@@ -10,22 +10,22 @@
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   :root {
-    --bg: #080c10;
-    --surface: #0d1318;
-    --surface-2: #111820;
-    --border: rgba(255,255,255,0.06);
-    --border-hover: rgba(0,220,180,0.25);
-    --text: #e8edf2;
-    --muted: #5a6a7a;
-    --accent: #00dcb4;
-    --accent-dim: rgba(0,220,180,0.12);
-    --accent-glow: rgba(0,220,180,0.3);
-    --red: #ff4d5a;
-    --red-dim: rgba(255,77,90,0.12);
-    --amber: #ffb547;
-    --amber-dim: rgba(255,181,71,0.12);
-    --font-display: 'Syne', sans-serif;
-    --font-body: 'DM Sans', sans-serif;
+    --bg: #f4f5f8;
+    --surface: #ffffff;
+    --surface-2: #fafbfc;
+    --border: rgba(0, 0, 0, 0.06);
+    --border-hover: rgba(255, 59, 112, 0.25);
+    --text: #2b354e;
+    --muted: #64748b;
+    --accent: #ff3b70; /* Hot Pink */
+    --accent-dim: rgba(255, 59, 112, 0.08);
+    --accent-glow: rgba(255, 59, 112, 0.2);
+    --red: #ff3d00;
+    --red-dim: rgba(255, 61, 0, 0.08);
+    --amber: #ffab00;
+    --amber-dim: rgba(255, 171, 0, 0.08);
+    --font-display: 'Outfit', 'Syne', sans-serif;
+    --font-body: 'Outfit', 'DM Sans', sans-serif;
     --r: 12px;
   }
 
@@ -60,7 +60,7 @@
   .logo-wrap { display: flex; align-items: center; gap: 12px; }
   .logo-icon {
     width: 38px; height: 38px;
-    background: linear-gradient(135deg, #00dcb4, #0057ff);
+    background: linear-gradient(135deg, #ff3b70, #ff7300);
     border-radius: 10px;
     display: grid; place-items: center;
   }
@@ -70,12 +70,12 @@
 
   /* ── SEARCH ── */
   .search-wrap {
-    flex: 1; max-width: 380px; margin-left: 32px;
+    flex: none; max-width: 380px; margin-left: 32px;
     position: relative; z-index: 1000;
   }
   .search {
     display: flex; align-items: center; gap: 10px;
-    background: var(--surface); border: 1px solid var(--border);
+    background: var(--bg); border: 1px solid var(--border);
     border-radius: 8px; padding: 0 14px; height: 38px;
     transition: all .2s;
   }
@@ -133,6 +133,15 @@
     border-radius: var(--r); padding: 22px 24px;
     display: flex; align-items: center; gap: 18px;
   }
+  .kpi.interactive {
+    cursor: pointer;
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+  }
+  .kpi.interactive:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    border-color: var(--accent);
+  }
   .kpi-icon { width: 46px; height: 46px; border-radius: 10px; display: grid; place-items: center; }
   .kpi-icon.green  { background: var(--accent-dim); color: var(--accent); }
   .kpi-icon.teal   { background: rgba(0,180,255,0.1); color: #00b4ff; }
@@ -147,9 +156,9 @@
   .panel-title { display: flex; align-items: center; gap: 10px; font-family: var(--font-display); font-size: 15px; font-weight: 700; }
   
   .btn-new {
-    background: linear-gradient(135deg, #00dcb4, #00a87e);
+    background: linear-gradient(135deg, #ff3b70, #ff7300);
     border: none; border-radius: 7px; padding: 8px 16px;
-    color: #021a14; font-family: var(--font-display); font-size: 12px; font-weight: 700;
+    color: #ffffff; font-family: var(--font-display); font-size: 12px; font-weight: 700;
     cursor: pointer; display: flex; align-items: center; gap: 7px;
   }
 
@@ -204,10 +213,10 @@
   .icon-btn:hover { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); transform: translateY(-2px); }
 
   /* ── TERMINAL ── */
-  .terminal { margin-top: 20px; background: #060a0d; border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
-  .terminal-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; background: var(--surface); border-bottom: 1px solid var(--border); }
+  .terminal { margin-top: 20px; background: #ffffff; border: 1px solid var(--border); border-radius: var(--r); overflow: hidden; }
+  .terminal-head { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; background: var(--surface-2); border-bottom: 1px solid var(--border); }
   .terminal-title { display: flex; align-items: center; gap: 10px; font-family: var(--font-display); font-size: 14px; font-weight: 700; }
-  .terminal-body { padding: 18px 22px; height: 220px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 12.5px; }
+  .terminal-body { padding: 18px 22px; height: 220px; overflow-y: auto; font-family: 'Courier New', monospace; font-size: 12.5px; color: var(--text); }
   .log-entry { margin-bottom: 6px; }
   .log-time { color: var(--muted); margin-right: 10px; }
 
@@ -289,12 +298,12 @@
     border-color: rgba(255,255,255,0.05);
   }
   .nav-link.active {
-    color: #021a14;
-    background: linear-gradient(135deg, #00dcb4, #00a87e);
-    box-shadow: 0 4px 15px rgba(0, 220, 180, 0.25);
+    color: #ffffff;
+    background: linear-gradient(135deg, var(--accent), #e91e63);
+    box-shadow: 0 4px 15px rgba(255, 59, 112, 0.25);
   }
   .nav-link.active i {
-    color: #021a14;
+    color: #ffffff;
   }
   .admin-page {
     display: none;
@@ -314,7 +323,7 @@
 <div class="admin-shell">
   <!-- LEFT SIDEBAR NAVIGATION -->
   <div class="admin-nav-sidebar">
-    <div style="padding: 24px 20px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--border); margin-bottom: 24px;">
+    <div style="padding: 20px 20px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid var(--border); margin-bottom: 16px;">
       <i class="fa-solid fa-shield-halved" style="font-size: 26px; color: var(--accent);"></i>
       <div>
         <h1 style="font-size: 16px; font-weight: 800; letter-spacing: -0.3px; font-family: var(--font-display);">Fleetly Admin</h1>
@@ -323,7 +332,7 @@
     </div>
 
     <!-- Search in Sidebar -->
-    <div class="search-wrap" style="padding: 0 16px; margin-bottom: 24px; position: relative;">
+    <div class="search-wrap" style="padding: 0 16px; margin-bottom: 16px; position: relative;">
       <div class="search" style="margin-left: 0; max-width: 100%;">
         <i class="fa-solid fa-magnifying-glass"></i>
         <input type="text" id="globalSearch" placeholder="Search IMEI or User..." onkeyup="handleGlobalSearch(event)">
@@ -336,7 +345,7 @@
       <button class="nav-link active" id="nav-btn-dashboard" onclick="switchPage('dashboard')"><i class="fa-solid fa-chart-line"></i> Dashboard</button>
       <button class="nav-link" id="nav-btn-customers" onclick="switchPage('customers')"><i class="fa-solid fa-users"></i> Customers</button>
       <button class="nav-link" id="nav-btn-requests" onclick="switchPage('requests')"><i class="fa-solid fa-microchip"></i> Link Requests</button>
-      <button class="nav-link" id="nav-btn-payments" onclick="switchPage('payments')"><i class="fa-solid fa-receipt"></i> Transactions</button>
+      <button class="nav-link" id="nav-btn-payments" onclick="switchPage('payments')" style="display: none !important;"><i class="fa-solid fa-receipt"></i> Transactions</button>
       <button class="nav-link" id="nav-btn-terminal" onclick="switchPage('terminal')"><i class="fa-solid fa-terminal"></i> System Terminal</button>
     </div>
 
@@ -356,57 +365,107 @@
     
     <!-- PAGE 1: DASHBOARD OVERVIEW -->
     <div id="page-dashboard" class="admin-page active">
+      <div class="page-header" style="margin-bottom: 24px;">
+        <h2 style="font-family: var(--font-display); font-size: 24px; font-weight: 800; color: var(--text);">Dashboard Overview</h2>
+        <p style="font-size: 13px; color: var(--muted);">Real-time monitoring metrics and fleet statistics.</p>
+      </div>
+
       <!-- KPI CARDS -->
-      <div class="kpi-grid">
-        <div class="kpi">
-          <div class="kpi-icon green"><i class="fa-solid fa-users"></i></div>
+      <div class="kpi-grid" style="grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 16px; margin-bottom: 28px;">
+        <div class="kpi interactive" onclick="switchPage('customers')">
+          <div class="kpi-icon teal" style="background: rgba(0, 180, 255, 0.08); color: #00b4ff;"><i class="fa-solid fa-users"></i></div>
           <div class="kpi-body">
             <label>Total Customers</label>
-            <div id="statTotalCustomers" class="val" style="color:var(--accent)">0</div>
+            <div id="statTotalCustomers" class="val">0</div>
           </div>
         </div>
-        <div class="kpi">
-          <div class="kpi-icon teal"><i class="fa-solid fa-satellite-dish"></i></div>
+        <div class="kpi interactive" onclick="switchPage('customers')">
+          <div class="kpi-icon green" style="background: rgba(255, 59, 112, 0.08); color: var(--accent);"><i class="fa-solid fa-microchip"></i></div>
           <div class="kpi-body">
-            <label>Active Trackers</label>
-            <div id="statTotalDevices" class="val" style="color:#00b4ff">0</div>
+            <label>Total Devices</label>
+            <div id="statTotalDevices" class="val">0</div>
           </div>
         </div>
-        <div class="kpi">
+        <div class="kpi interactive" onclick="switchPage('customers')">
+          <div class="kpi-icon" style="background: rgba(255, 59, 112, 0.08); color: var(--accent);"><i class="fa-solid fa-gauge-high"></i></div>
+          <div class="kpi-body">
+            <label>Active (Moving)</label>
+            <div id="statOnlineActive" class="val" style="color: var(--accent);">0</div>
+          </div>
+        </div>
+        <div class="kpi interactive" onclick="switchPage('customers')">
+          <div class="kpi-icon" style="background: rgba(255, 171, 0, 0.08); color: var(--amber);"><i class="fa-solid fa-circle-dot"></i></div>
+          <div class="kpi-body">
+            <label>Idle (Stationary)</label>
+            <div id="statOnlineIdle" class="val" style="color: var(--amber);">0</div>
+          </div>
+        </div>
+        <div class="kpi interactive" onclick="switchPage('customers')">
+          <div class="kpi-icon" style="background: rgba(255, 61, 0, 0.08); color: var(--red);"><i class="fa-solid fa-phone-slash"></i></div>
+          <div class="kpi-body">
+            <label>Offline / Halt</label>
+            <div id="statOfflineDevices" class="val" style="color: var(--red);">0</div>
+          </div>
+        </div>
+        <div class="kpi" id="kpiTotalIncomeCard" style="display: none !important;">
+          <div class="kpi-icon green" style="background: rgba(255, 171, 0, 0.08); color: #ffab00;"><i class="fa-solid fa-indian-rupee-sign"></i></div>
+          <div class="kpi-body">
+            <label>Total Income</label>
+            <div id="statTotalIncome" class="val" style="color: #ffab00;">₹0</div>
+          </div>
+        </div>
+        <div class="kpi interactive" onclick="switchPage('requests')">
+          <div class="kpi-icon red" style="background: rgba(233, 30, 99, 0.08); color: #ff3b70;"><i class="fa-solid fa-bell"></i></div>
+          <div class="kpi-body">
+            <label>Pending Requests</label>
+            <div id="statPendingRequests" class="val" style="color: #ff3b70;">0</div>
+          </div>
+        </div>
+        <div class="kpi" id="kpiExpiredCard" style="display: none;">
           <div class="kpi-icon red"><i class="fa-solid fa-lock"></i></div>
           <div class="kpi-body">
             <label>Expired Accounts</label>
             <div id="statExpired" class="val" style="color:var(--red)">0</div>
           </div>
         </div>
-        <div class="kpi" style="display: none;">
-          <div class="kpi-icon" style="background: rgba(255,181,71,0.1); color: var(--amber);"><i class="fa-solid fa-indian-rupee-sign"></i></div>
-          <div class="kpi-body">
-            <label>Total Income</label>
-            <div id="statTotalIncome" class="val" style="color:var(--amber)">₹0</div>
+      </div>
+
+      <!-- Charts Section -->
+      <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(400px, 1fr)); gap: 20px; margin-top: 20px;">
+        <!-- Chart 1: Active Telemetry Data Streams -->
+        <div class="panel" style="background: var(--surface); border: 1px solid var(--border);">
+          <div class="panel-head">
+            <div class="panel-title" style="color: var(--accent); font-family: var(--font-display); font-size: 13px; font-weight: 700;"><i class="fa-solid fa-chart-line"></i> Active Telemetry (Data Packets / min)</div>
+          </div>
+          <div style="padding: 20px; height: 260px; position: relative;">
+            <canvas id="telemetryChart"></canvas>
           </div>
         </div>
-      </div>
-      
-      <!-- Informational panel -->
-      <div class="panel" style="margin-top: 20px;">
-        <div class="panel-head">
-          <div class="panel-title"><i class="fa-solid fa-shield-halved"></i> SAAS Control panel</div>
-        </div>
-        <div style="padding: 24px; color: var(--text-secondary); line-height: 1.6;">
-          <h2 style="color: #fff; font-size: 1.25rem; font-family: var(--font-display); margin-bottom: 12px;">Fleetly GPS Infrastructure Console</h2>
-          Use the left-hand navigation sidebar to manage customer accounts, approve incoming hardware linking requests, review logs of simulated subscription payments, or view raw TCP data streams inside the System Terminal.
+
+        <!-- Chart 2: Fleet Status & Distribution -->
+        <div class="panel" style="background: var(--surface); border: 1px solid var(--border);">
+          <div class="panel-head">
+            <div class="panel-title" style="color: var(--accent); font-family: var(--font-display); font-size: 13px; font-weight: 700;"><i class="fa-solid fa-chart-pie"></i> Device Status Breakdown</div>
+          </div>
+          <div style="padding: 20px; height: 260px; position: relative; display: flex; justify-content: center; align-items: center;">
+            <canvas id="statusChart" style="max-height: 220px; max-width: 220px;"></canvas>
+          </div>
         </div>
       </div>
     </div>
 
     <!-- PAGE 2: CUSTOMERS GRID -->
     <div id="page-customers" class="admin-page">
+      <div class="page-header" style="margin-bottom: 24px;">
+        <h2 style="font-family: var(--font-display); font-size: 24px; font-weight: 800; color: var(--text);">Customers Management</h2>
+        <p style="font-size: 13px; color: var(--muted);">View customer subscriptions, register accounts, and inspect raw device data.</p>
+      </div>
+
       <div class="panel" id="customersPanel">
         <div class="panel-head">
           <div class="panel-title"><i class="fa-solid fa-credit-card"></i> Customer Subscriptions</div>
           <div style="display:flex;gap:8px;">
-            <button class="btn-new" style="background:linear-gradient(135deg,#0057ff,#003bb5);" onclick="exportAllCustomers()">
+            <button class="btn-new" onclick="exportAllCustomers()">
               <i class="fa-solid fa-file-csv"></i> Export Customers
             </button>
             <button class="btn-new" onclick="showAddCustomerModal()">
@@ -433,20 +492,48 @@
 
     <!-- PAGE 3: DEVICE REQUESTS -->
     <div id="page-requests" class="admin-page">
-      <div class="panel">
+      <div class="page-header" style="margin-bottom: 24px;">
+        <h2 style="font-family: var(--font-display); font-size: 24px; font-weight: 800; color: var(--text);">Device Link Requests</h2>
+        <p style="font-size: 13px; color: var(--muted);">Approve or decline tracker device mapping requests from customers.</p>
+      </div>
+
+      <div class="panel" style="margin-bottom: 24px;">
         <div class="panel-head">
-          <div class="panel-title"><i class="fa-solid fa-microchip"></i> Link Requests</div>
+          <div class="panel-title"><i class="fa-solid fa-microchip"></i> Active Requests</div>
         </div>
         <div class="table-wrap">
           <table>
             <thead>
               <tr>
                 <th>IMEI</th>
-                <th>Status</th>
+                <th>Request Status</th>
+                <th>Signal / Data Status</th>
                 <th style="text-align:right">Action</th>
               </tr>
             </thead>
             <tbody id="requestTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">
+          <div class="panel-title"><i class="fa-solid fa-clock-rotate-left"></i> Requests History Log</div>
+        </div>
+        <div class="table-wrap" style="max-height: 300px; overflow-y: auto;">
+          <table>
+            <thead>
+              <tr>
+                <th>IMEI</th>
+                <th>Processed Status</th>
+                <th>Assigned User</th>
+                <th>Signal / Data Status</th>
+                <th style="text-align:right">Processed At</th>
+              </tr>
+            </thead>
+            <tbody id="requestHistoryTableBody">
+              <tr><td colspan="5" style="text-align:center; color:var(--muted)">No requests history logged yet.</td></tr>
+            </tbody>
           </table>
         </div>
       </div>
@@ -479,6 +566,11 @@
 
     <!-- PAGE 5: SYSTEM TERMINAL -->
     <div id="page-terminal" class="admin-page">
+      <div class="page-header" style="margin-bottom: 24px;">
+        <h2 style="font-family: var(--font-display); font-size: 24px; font-weight: 800; color: var(--text);">System Terminal</h2>
+        <p style="font-size: 13px; color: var(--muted);">Send command packets directly to online trackers and watch binary streams.</p>
+      </div>
+
       <div class="terminal" style="margin-top: 0;">
         <div class="terminal-head">
           <div class="terminal-title">
@@ -498,12 +590,17 @@
 
     <!-- CUSTOMER DEEP-DIVE VIEW (Shows in place of customers grid when open) -->
     <div id="customerDetailView" class="panel" style="display:none; margin-top: 0;">
-        <div class="panel-head">
-          <div class="panel-title">
+        <div class="panel-head" style="display:flex; justify-content:space-between; align-items:center;">
+          <div class="panel-title" style="display:flex; align-items:center;">
             <button onclick="closeCustomerDetail()" class="icon-btn" style="margin-right:12px; height: 30px; width: 30px;"><i class="fa-solid fa-arrow-left"></i></button>
             <span id="detailCustomerName">Customer Fleet</span>
           </div>
-          <div class="status-pill" style="font-size: 10px; padding: 4px 12px;"><span class="status-dot"></span> LIVE DATA</div>
+          <div style="display:flex; gap:10px; align-items:center;">
+            <button class="btn-new" onclick="exportCurrentCustomerFleet()" style="height:30px; font-size:11px; padding: 0 12px; display:flex; align-items:center; gap:6px;">
+              <i class="fa-solid fa-file-csv"></i> Export Fleet (CSV)
+            </button>
+            <div class="status-pill" style="font-size: 10px; padding: 4px 12px;"><span class="status-dot"></span> LIVE DATA</div>
+          </div>
         </div>
 
         <div style="padding: 20px;">
@@ -535,6 +632,17 @@
                 </thead>
                 <tbody id="deviceDetailTableBody"></tbody>
               </table>
+            </div>
+
+            <!-- Live Raw Telemetry Stream for this Customer's Fleet -->
+            <div class="panel" style="margin-top: 20px; background: #fafbfc; border: 1px solid var(--border);">
+                <div class="panel-head" style="background: rgba(0,0,0,0.02); padding: 12px 18px;">
+                    <div class="panel-title" style="color: var(--accent); font-family: monospace; font-size: 13px;"><i class="fa-solid fa-terminal"></i> Live Raw Telemetry Stream</div>
+                    <button class="icon-btn" onclick="document.getElementById('customerLiveLogs').innerHTML=''" title="Clear Logs" style="height: 28px; width: 28px; font-size: 11px;"><i class="fa-solid fa-trash"></i></button>
+                </div>
+                <div id="customerLiveLogs" style="height: 180px; overflow-y: auto; padding: 15px; font-family: monospace; font-size: 11px; background: #ffffff; color: var(--text); line-height: 1.5; border-top: 1px solid var(--border);">
+                    <div style="color: var(--muted); text-align: center; margin-top: 50px;">Waiting for tracker packet streams...</div>
+                </div>
             </div>
         </div>
     </div>
@@ -679,6 +787,29 @@
                 </div>
                 <label class="switch"><input type="checkbox" id="f-towingAlert"><span class="slider"></span></label>
             </div>
+
+            <div class="feature-item" style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: var(--surface-2); border-radius: 10px; border: 1px solid var(--border);">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <i class="fa-solid fa-draw-polygon" style="color: var(--accent); width: 16px;"></i>
+                    <div>
+                        <div style="font-size: 13px; font-weight: 600;">Geofencing Zones</div>
+                        <div style="font-size: 10px; color: var(--muted);">Enable drawing and monitoring geofences</div>
+                    </div>
+                </div>
+                <label class="switch"><input type="checkbox" id="f-geofenceAlert"><span class="slider"></span></label>
+            </div>
+
+            <div class="feature-item" style="display: flex; align-items: center; justify-content: space-between; padding: 12px; background: var(--surface-2); border-radius: 10px; border: 1px solid var(--border);">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <i class="fa-solid fa-file-csv" style="color: var(--accent); width: 16px;"></i>
+                    <div>
+                        <div style="font-size: 13px; font-weight: 600;">CSV Export</div>
+                        <div style="font-size: 10px; color: var(--muted);">Enable downloading vehicle data to CSV files</div>
+                    </div>
+                </div>
+                <label class="switch"><input type="checkbox" id="f-csvExport"><span class="slider"></span></label>
+            </div>
+
         </div>
         
         <button class="modal-btn" onclick="submitFeatures()">Apply Configuration</button>
@@ -743,7 +874,7 @@
 /* iOS Style Toggle Switches */
 .switch { position: relative; display: inline-block; width: 34px; height: 20px; }
 .switch input { opacity: 0; width: 0; height: 0; }
-.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: rgba(255,255,255,0.1); transition: .4s; border-radius: 20px; }
+.slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #cbd5e1; transition: .4s; border-radius: 20px; }
 .slider:before { position: absolute; content: ""; height: 14px; width: 14px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
 input:checked + .slider { background-color: var(--accent); }
 input:checked + .slider:before { transform: translateX(14px); }
@@ -832,6 +963,7 @@ input:checked + .slider:before { transform: translateX(14px); }
 
 
 <script src="/socket.io/socket.io.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="js/admin.js"></script>
 </body>
 </html>

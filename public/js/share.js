@@ -4,7 +4,7 @@ let marker;
 let targetImei = null;
 let currentLayerName = 'standard';
 const mapLayers = {
-    standard: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' }),
+    standard: L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; OpenStreetMap &copy; CARTO' }),
     dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; CARTO' })
 };
 
@@ -37,8 +37,8 @@ async function initTracking() {
         
         // Initialize Map
         map = L.map('map').setView([20.5937, 78.9629], 5);
-        mapLayers.dark.addTo(map); // Default to premium dark layer
-        currentLayerName = 'dark';
+        mapLayers.standard.addTo(map); // Default to daylight layer
+        currentLayerName = 'standard';
         
         // Show info panel
         document.getElementById('infoPanel').style.display = 'block';

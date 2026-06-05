@@ -99,7 +99,7 @@ const path = require('path');
 
   // Step 4: Upgrade plan
   console.log('Step 4: Upgrading plan...');
-  await page.click('#subBanner');
+  await page.evaluate(() => showUpgradeModal());
   await page.waitForSelector('#upgradeModal.active', { timeout: 5000 });
 
   console.log('Upgrading to Basic Plan...');
@@ -142,6 +142,13 @@ const path = require('path');
   const adminScreenshotPath = 'C:/Users/aslam/.gemini/antigravity/brain/68839d32-018b-47d5-bebb-6ca1e0830db0/admin_revenue_dashboard.png';
   await page.screenshot({ path: adminScreenshotPath, fullPage: true });
   console.log('Admin final dashboard screenshot saved to:', adminScreenshotPath);
+
+  // Clean up the created test user so the DB doesn't get cluttered
+  console.log('Cleaning up test customer from database...');
+  await page.evaluate(async (userId) => {
+    await fetch(`/api/admin/delete-customer/${userId}`, { method: 'DELETE' });
+  }, createResult.user.id);
+  console.log('Test customer deleted successfully.');
 
   await browser.close();
   console.log('Workflow Integration Test completed successfully!');

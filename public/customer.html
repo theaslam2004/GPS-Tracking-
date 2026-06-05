@@ -51,6 +51,82 @@
             --text-secondary: #94a3b8;
         }
 
+        /* Remove gray backgrounds in fleet card metrics */
+        .device-stats {
+            background: transparent !important;
+            border: none !important;
+            padding: 4px 0 0 0 !important;
+            box-shadow: none !important;
+        }
+        .device-stats .stat-item {
+            color: var(--text-secondary) !important;
+            font-size: 0.75rem !important;
+        }
+        .device-stats .stat-item i {
+            color: var(--primary) !important;
+            opacity: 0.7 !important;
+        }
+
+        /* Light-theme Leaflet popups override */
+        .leaflet-popup-content-wrapper {
+            background: var(--bg-surface) !important;
+            color: var(--text-primary) !important;
+            border: 1px solid var(--border) !important;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.08) !important;
+        }
+        .leaflet-popup-tip {
+            background: var(--bg-surface) !important;
+            border: 1px solid var(--border) !important;
+        }
+        .telemetry-title {
+            color: var(--text-primary) !important;
+        }
+        .telemetry-grid {
+            background: var(--bg-main) !important;
+            border: 1px solid var(--border) !important;
+        }
+        .telemetry-footer {
+            border-top: 1px solid var(--border) !important;
+            color: var(--text-secondary) !important;
+        }
+        .leaflet-container a.leaflet-popup-close-button {
+            color: var(--text-secondary) !important;
+            background: rgba(0,0,0,0.03) !important;
+        }
+        .leaflet-container a.leaflet-popup-close-button:hover {
+            color: var(--text-primary) !important;
+            background: rgba(0,0,0,0.08) !important;
+        }
+
+        /* Glassmorphic overrides for sidebar vehicle details panel */
+        .vehicle-details-panel .panel-header {
+            background: rgba(255, 255, 255, 0.45) !important;
+            backdrop-filter: blur(12px) !important;
+            -webkit-backdrop-filter: blur(12px) !important;
+            border-bottom: 1px solid var(--border-light) !important;
+            padding: 1.25rem 1.5rem !important;
+            margin: -1.5rem -1.5rem 1rem -1.5rem !important;
+            border-radius: 0;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        body.theme-night .vehicle-details-panel .panel-header {
+            background: rgba(20, 24, 34, 0.45) !important;
+        }
+
+        /* Glassmorphic telemetry stats box and current location indicators */
+        .stat-box, .panel-location {
+            background: rgba(255, 255, 255, 0.45) !important;
+            backdrop-filter: blur(12px) !important;
+            -webkit-backdrop-filter: blur(12px) !important;
+            border: 1px solid var(--border-light) !important;
+            border-radius: var(--radius-md) !important;
+        }
+        body.theme-night .stat-box, body.theme-night .panel-location {
+            background: rgba(20, 24, 34, 0.45) !important;
+        }
+
         /* App Layout */
         .app-layout {
             display: flex !important;
@@ -252,31 +328,78 @@
             box-shadow: 0 4px 16px rgba(255, 59, 112, 0.08) !important;
         }
 
-        /* Selected Vehicle details panel inside middle column */
+        /* Selected Vehicle details panel inside right sidebar */
+        .right-sidebar-wrapper {
+            width: 350px !important;
+            height: 100vh !important;
+            background: var(--bg-surface) !important;
+            border-left: 1px solid var(--border) !important;
+            display: flex !important;
+            flex-direction: column !important;
+            flex-shrink: 0 !important;
+            z-index: 90 !important;
+            position: relative !important;
+            overflow: hidden !important;
+        }
+
+        #vehiclePlaceholder {
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+            height: 100% !important;
+            padding: 2rem !important;
+            text-align: center !important;
+            color: var(--text-secondary) !important;
+            background: var(--bg-surface) !important;
+        }
+
+        #vehiclePlaceholder i {
+            font-size: 3rem !important;
+            color: var(--primary) !important;
+            opacity: 0.8 !important;
+            margin-bottom: 1.5rem !important;
+            animation: pulseGlow 2.5s infinite ease-in-out !important;
+        }
+
+        @keyframes pulseGlow {
+            0%, 100% { transform: scale(1); opacity: 0.6; }
+            50% { transform: scale(1.1); opacity: 1; filter: drop-shadow(0 0 8px var(--primary-glow)); }
+        }
+
+        #vehiclePlaceholder h3 {
+            font-size: 1.1rem !important;
+            font-weight: 800 !important;
+            color: var(--text-primary) !important;
+            margin: 0 0 0.5rem 0 !important;
+            letter-spacing: 0.5px !important;
+        }
+
+        #vehiclePlaceholder p {
+            font-size: 0.8rem !important;
+            line-height: 1.5 !important;
+            margin: 0 !important;
+        }
+
         .vehicle-details-panel {
             position: relative !important;
-            top: auto !important;
-            right: auto !important;
-            bottom: auto !important;
-            left: auto !important;
             width: 100% !important;
-            height: auto !important;
-            max-height: 52vh !important;
+            height: 100% !important;
+            max-height: 100% !important;
             overflow-y: auto !important;
             border: none !important;
-            border-top: 1px solid var(--border) !important;
-            border-radius: 0 !important;
             background: var(--bg-surface) !important;
-            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.02) !important;
-            padding: 1.2rem 1.2rem !important;
+            padding: 1.5rem !important;
             display: none !important;
             flex-direction: column !important;
-            gap: 12px !important;
+            gap: 14px !important;
             z-index: 95 !important;
-            transform: none !important;
         }
         .vehicle-details-panel.open {
             display: flex !important;
+        }
+        .vehicle-details-panel.open ~ #vehiclePlaceholder {
+            display: none !important;
         }
         .vehicle-details-panel .panel-close {
             position: absolute !important;
@@ -463,6 +586,30 @@
             .map-container {
                 height: 50vh !important;
             }
+            .right-sidebar-wrapper {
+                position: absolute !important;
+                bottom: 0 !important;
+                right: 0 !important;
+                width: 100% !important;
+                height: auto !important;
+                max-height: 48vh !important;
+                z-index: 1100 !important;
+                border-left: none !important;
+                border-top: 1px solid var(--border) !important;
+                box-shadow: 0 -4px 20px rgba(0,0,0,0.1) !important;
+                transform: translateY(100%);
+                transition: transform 0.3s ease !important;
+            }
+            .right-sidebar-wrapper:has(.vehicle-details-panel.open) {
+                transform: translateY(0);
+            }
+            #vehiclePlaceholder {
+                display: none !important;
+            }
+            .vehicle-details-panel {
+                height: auto !important;
+                padding: 1.2rem !important;
+            }
         }
     </style>
 </head>
@@ -478,21 +625,25 @@
                     <i class="fa-solid fa-gauge-high"></i>
                     <span>Dashboard</span>
                 </a>
-                <a class="menu-item" href="#" title="Live Tracking" onclick="switchMapTab('live')">
-                    <i class="fa-solid fa-crosshairs"></i>
-                    <span>Tracking</span>
+                <a class="menu-item" href="#" title="Add Device" onclick="showAddDeviceModal()">
+                    <i class="fa-solid fa-circle-plus"></i>
+                    <span>Add Device</span>
                 </a>
                 <a class="menu-item" href="#" title="Travel Replay" onclick="switchMapTab('replay')">
                     <i class="fa-solid fa-clock-rotate-left"></i>
                     <span>Replay</span>
                 </a>
-                <a class="menu-item" href="#" title="Geofences" onclick="toggleGeofenceMode()">
+                <a class="menu-item" href="#" id="menu-item-geofence" title="Geofences" onclick="toggleGeofenceMode()" style="display: none !important;">
                     <i class="fa-solid fa-draw-polygon"></i>
                     <span>Geofence</span>
                 </a>
-                <a class="menu-item" href="#" title="Upgrade Plan" onclick="showUpgradeModal()">
+                <a class="menu-item" href="#" id="menu-item-upgrade" title="Upgrade Plan" onclick="showUpgradeModal()" style="display: none !important;">
                     <i class="fa-solid fa-arrow-up-from-bracket"></i>
                     <span>Upgrade</span>
+                </a>
+                <a class="menu-item" href="#" id="menu-item-settings" title="Settings" onclick="showSettingsModal()">
+                    <i class="fa-solid fa-gear"></i>
+                    <span>Settings</span>
                 </a>
             </div>
             <div class="menu-footer">
@@ -513,25 +664,10 @@
                             <i class="fa-regular fa-clock"></i> <span id="clockTime">--:--:-- PM</span>
                         </div>
                     </div>
-                    
                     <div class="search-container">
                         <i class="fa-solid fa-magnifying-glass search-icon"></i>
                         <input type="text" id="vehicleSearchInput" placeholder="Search vehicle number..." onkeyup="filterVehicleList()">
                         <i class="fa-solid fa-circle-xmark clear-icon" id="vehicleSearchClear" onclick="clearVehicleSearch()"></i>
-                    </div>
-
-                    <div style="display: flex; gap: 0.5rem; align-items: center; justify-content: space-between; font-size: 0.78rem; color: var(--text-secondary); margin-top: 2px;">
-                        <div style="display: flex; align-items: center; gap: 12px;">
-                            <button onclick="toggleThemeManual()" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 0.78rem; display: flex; align-items: center; gap: 4px;" title="Toggle Day/Night Mode">
-                                <i id="themeToggleIcon" class="fa-solid fa-moon"></i> Theme
-                            </button>
-                            <label style="display: flex; align-items: center; gap: 4px; cursor: pointer;">
-                                <input type="checkbox" id="toggle12Hour" onchange="toggleClockFormat()" style="accent-color: var(--primary); cursor: pointer;"> 12H
-                            </label>
-                        </div>
-                        <a href="#" id="exportBtn" style="color: var(--text-primary); text-decoration: none; display: flex; align-items: center; gap: 4px; font-weight: 700;">
-                            <i class="fa-solid fa-download"></i> Export
-                        </a>
                     </div>
                 </div>
 
@@ -540,7 +676,7 @@
                         <button class="btn btn-primary" onclick="showAddDeviceModal()" style="font-size: 0.82rem; padding: 0.6rem; flex: 1; font-weight: 700;">
                             <i class="fa-solid fa-plus"></i> Add Tracker
                         </button>
-                        <button class="btn btn-outline" id="geofenceToggleBtn" onclick="toggleGeofenceMode()" style="font-size: 0.82rem; padding: 0.6rem; width: 40px; flex-shrink: 0;" title="Geofence Zones">
+                        <button class="btn btn-outline" id="geofenceToggleBtn" onclick="toggleGeofenceMode()" style="font-size: 0.82rem; padding: 0.6rem; width: 40px; flex-shrink: 0; display: none !important;" title="Geofence Zones">
                             <i class="fa-solid fa-draw-polygon"></i>
                         </button>
                     </div>
@@ -570,7 +706,7 @@
                     </div>
 
                     <!-- Subscription Banner -->
-                    <div class="subscription-banner" id="subBanner" onclick="showUpgradeModal()" style="display: flex; flex-direction: column; gap: 4px; padding: 10px; border-radius: var(--radius-md); font-size: 0.8rem; margin-top: 0.2rem; cursor: pointer;">
+                    <div class="subscription-banner" id="subBanner" onclick="showUpgradeModal()" style="display: none !important; flex-direction: column; gap: 4px; padding: 10px; border-radius: var(--radius-md); font-size: 0.8rem; margin-top: 0.2rem; cursor: pointer;">
                         <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                             <span style="font-weight: 700;"><i class="fa-solid fa-shield-halved" style="color: var(--primary); margin-right: 4px;"></i> <span id="activePlanName" style="color: var(--primary);">--</span></span>
                             <span id="validityDays" style="font-weight: 700; color: var(--primary);">-- Days</span>
@@ -590,115 +726,7 @@
                     </div>
                 </div>
 
-                <!-- Selected Device Telemetry Panel -->
-                <div class="vehicle-details-panel" id="vehiclePanel">
-                    <button class="panel-close" onclick="closeVehiclePanel()"><i class="fa-solid fa-xmark"></i></button>
-                    
-                    <div class="panel-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 4px;">
-                        <div class="telemetry-icon running" id="panelIcon" style="width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(255,59,112,0.1); color: var(--primary); font-size: 1.1rem; flex-shrink: 0;">
-                            <i class="fa-solid fa-truck-fast"></i>
-                        </div>
-                        <div>
-                            <h2 id="panelDeviceName" style="font-weight: 800; font-size: 1.15rem; margin: 0; color: var(--text-primary); letter-spacing: 0.5px;">VEHICLE</h2>
-                            <div id="panelStatus" style="font-weight: 700; font-size: 0.75rem; text-transform: uppercase; color: var(--success); letter-spacing: 0.3px;">Running</div>
-                        </div>
-                    </div>
-                    
-                    <!-- Speedometer (Gauge) -->
-                    <div class="panel-speedometer-container" style="display: flex; justify-content: center; margin: 6px 0;">
-                        <div class="speedometer" style="position: relative; width: 110px; height: 55px;">
-                            <svg class="speed-svg" viewBox="0 0 100 50" style="width: 100%; height: 100%;">
-                                <path class="speed-bg" d="M 10 50 A 40 40 0 0 1 90 50" style="fill: none; stroke: var(--border-light); stroke-width: 8; stroke-linecap: round;" />
-                                <path class="speed-fill" id="speedFill" d="M 10 50 A 40 40 0 0 1 90 50" style="fill: none; stroke: var(--primary); stroke-width: 8; stroke-linecap: round; stroke-dasharray: 125.6; stroke-dashoffset: 125.6; transition: stroke-dashoffset 0.4s ease, stroke 0.4s ease;" />
-                            </svg>
-                            <div class="speed-value" style="position: absolute; bottom: 0; left: 50%; transform: translate(-50%, 0); text-align: center;">
-                                <span id="panelSpeed" style="font-size: 1.5rem; font-weight: 800; font-family: 'Outfit', sans-serif;">0</span>
-                                <span style="font-size: 0.65rem; color: var(--text-secondary); display: block; margin-top: -4px;">km/h</span>
-                            </div>
-                        </div>
-                    </div>
 
-                    <!-- Telematics Stats Grid -->
-                    <div class="panel-stats-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                        <div class="stat-box" style="display: flex; align-items: center; gap: 8px;">
-                            <i class="fa-solid fa-road" style="color: var(--primary); font-size: 0.95rem;"></i>
-                            <div class="stat-data">
-                                <div class="stat-label" style="font-size: 0.62rem; text-transform: uppercase;">Odometer</div>
-                                <div class="stat-val" id="panelOdo" style="font-size: 0.78rem;">0 km</div>
-                            </div>
-                        </div>
-                        <div class="stat-box" style="display: flex; align-items: center; gap: 8px;">
-                            <i class="fa-solid fa-key" style="color: var(--success); font-size: 0.95rem;"></i>
-                            <div class="stat-data">
-                                <div class="stat-label" style="font-size: 0.62rem; text-transform: uppercase;">Ignition</div>
-                                <div class="stat-val" id="panelIgnition" style="font-size: 0.78rem;">ON</div>
-                            </div>
-                        </div>
-                        <div class="stat-box" style="display: flex; align-items: center; gap: 8px;">
-                            <i class="fa-solid fa-battery-full" style="color: var(--warning); font-size: 0.95rem;"></i>
-                            <div class="stat-data">
-                                <div class="stat-label" style="font-size: 0.62rem; text-transform: uppercase;">Battery</div>
-                                <div class="stat-val" id="panelBattery" style="font-size: 0.78rem;">98%</div>
-                            </div>
-                        </div>
-                        <div class="stat-box" style="display: flex; align-items: center; gap: 8px;">
-                            <i class="fa-solid fa-satellite" style="color: var(--accent); font-size: 0.95rem;"></i>
-                            <div class="stat-data">
-                                <div class="stat-label" style="font-size: 0.62rem; text-transform: uppercase;">GPS Fix</div>
-                                <div class="stat-val" id="panelGps" style="font-size: 0.78rem;">3D Fix</div>
-                            </div>
-                        </div>
-                    </div>
-                    
-                    <div id="backupBatteryWarning" style="display: none; padding: 6px; margin-top: 4px; background: rgba(255,61,0,0.08); border: 1px solid var(--danger); border-radius: var(--radius-md); text-align: center; font-weight: 700; color: var(--danger); font-size: 0.72rem;">
-                        ⚠️ Backup Battery Mode - Check Power Source!
-                    </div>
-
-                    <!-- Configuration Form -->
-                    <div class="panel-config" style="padding: 8px; margin-top: 4px; background: var(--bg-main); border: 1px solid var(--border-light); border-radius: var(--radius-md); display: flex; flex-direction: column; gap: 6px;">
-                        <div style="font-size: 0.72rem; color: var(--text-secondary); font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border-light); padding-bottom: 4px;">Configuration</div>
-                        
-                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-                            <span style="font-size: 0.72rem; color: var(--text-secondary);">Driver:</span>
-                            <input type="text" id="cfgDriverName" style="background: var(--bg-surface); border: 1px solid var(--border-light); border-radius: 4px; padding: 3px 6px; color: var(--text-primary); font-size: 0.72rem; width: 110px;" placeholder="Unassigned">
-                        </div>
-                        
-                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-                            <span style="font-size: 0.72rem; color: var(--text-secondary);">Voltage Profile:</span>
-                            <select id="cfgVehicleProfile" style="background: var(--bg-surface); border: 1px solid var(--border-light); border-radius: 4px; padding: 3px 6px; color: var(--text-primary); font-size: 0.72rem; width: 110px; cursor: pointer;">
-                                <option value="standard">Standard (12V/24V)</option>
-                                <option value="heavy">Heavy (48V)</option>
-                            </select>
-                        </div>
-                        
-                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-                            <span style="font-size: 0.72rem; color: var(--text-secondary);">Initial Odo (km):</span>
-                            <input type="number" id="cfgInitialOdometer" style="background: var(--bg-surface); border: 1px solid var(--border-light); border-radius: 4px; padding: 3px 6px; color: var(--text-primary); font-size: 0.72rem; width: 110px;" placeholder="0" step="any">
-                        </div>
-                        
-                        <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 0.72rem; border-top: 1px solid var(--border-light); padding-top: 4px;">
-                            <span style="color: var(--text-secondary);">Voltage:</span>
-                            <span id="panelVoltage" style="font-weight: 700; color: var(--primary);">-- V</span>
-                        </div>
-
-                        <button class="btn btn-primary" onclick="saveVehicleConfig()" style="padding: 5px; font-size: 0.72rem; font-weight: 700; width: 100%; border-radius: 4px; margin-top: 2px;">
-                            Save Vehicle Config
-                        </button>
-                    </div>
-
-                    <!-- Current Address -->
-                    <div class="panel-location" style="margin-top: 4px; padding: 8px; background: var(--bg-main); border: 1px solid var(--border-light); border-radius: var(--radius-md);">
-                        <div style="font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 0.2rem;"><i class="fa-solid fa-location-dot" style="color: var(--primary);"></i> Current Address</div>
-                        <div id="panelCoords" style="font-size: 0.8rem; font-weight: 700; line-height: 1.3; color: var(--text-primary);">0.0000, 0.0000</div>
-                        <div style="font-size: 0.68rem; color: var(--text-secondary); margin-top: 0.3rem;">Last update: <span id="panelTime">Just now</span></div>
-                    </div>
-                    
-                    <!-- Actions -->
-                    <div class="panel-actions" style="margin-top: 4px; display: flex; gap: 6px;">
-                        <button class="btn btn-outline" style="flex: 1; padding: 5px 8px; font-size: 0.72rem;" onclick="startHistoryMode()"><i class="fa-solid fa-clock-rotate-left"></i> History</button>
-                        <button class="btn btn-primary" style="flex: 1; padding: 5px 8px; font-size: 0.72rem;" onclick="openShareModal()"><i class="fa-solid fa-share-nodes"></i> Share</button>
-                    </div>
-                </div>
             </div>
         </div>
 
@@ -750,16 +778,145 @@
             </div>
             
             <!-- History Playback Controls (Hidden by default) -->
-            <div id="playbackControls" class="glass-panel" style="display: none; position: absolute; bottom: 2rem; left: 50%; transform: translateX(-50%); z-index: 1000; padding: 1rem 1.5rem; border-radius: var(--radius-full); align-items: center; gap: 1.5rem; width: 90%; max-width: 600px; background: var(--bg-surface); border: 1px solid var(--border); box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
+            <div id="playbackControls" class="glass-panel" style="display: none; position: absolute; bottom: 2rem; left: 50%; transform: translateX(-50%); z-index: 1000; padding: 1rem 1.5rem; border-radius: var(--radius-full); align-items: center; gap: 1.5rem; width: 90%; max-width: 650px; background: var(--bg-surface); border: 1px solid var(--border); box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
                 <button class="btn btn-primary" id="playBtn" onclick="togglePlayback()" style="border-radius: 50%; width: 45px; height: 45px; padding: 0; flex-shrink: 0; font-size: 1.2rem;"><i class="fa-solid fa-play"></i></button>
+                
+                <input type="date" id="pbDateInput" style="background: var(--bg-main); border: 1px solid var(--border-light); border-radius: 6px; padding: 6px 8px; color: var(--text-primary); font-size: 0.78rem; font-family: 'Outfit', sans-serif; cursor: pointer; outline: none; font-weight: 700; flex-shrink: 0;">
+                
                 <div style="flex: 1; display: flex; flex-direction: column; gap: 6px;">
                     <div style="display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: 700; font-family: 'Outfit', monospace;">
-                        <span id="pbTime" style="color: var(--text-secondary);">--:--:--</span>
+                        <span id="pbTime" style="color: var(--text-secondary);">--/--/---- --:--:--</span>
                         <span id="pbSpeed" style="color: var(--primary);">0 km/h</span>
                     </div>
                     <input type="range" id="pbSlider" min="0" max="100" value="0" style="width: 100%; cursor: pointer; accent-color: var(--primary);" oninput="seekPlayback(this.value)">
                 </div>
                 <button class="btn btn-outline" onclick="exitHistoryMode()" style="border-radius: var(--radius-full); padding: 0.5rem 1rem; font-size: 0.85rem; flex-shrink: 0;"><i class="fa-solid fa-xmark"></i> Exit</button>
+            </div>
+        </div>
+
+        <!-- Right Details Column -->
+        <div class="right-sidebar-wrapper">
+            <!-- Selected Device Telemetry Panel -->
+            <div class="vehicle-details-panel" id="vehiclePanel">
+                <button class="panel-close" onclick="closeVehiclePanel()"><i class="fa-solid fa-xmark"></i></button>
+                
+                <div class="panel-header" style="display: flex; align-items: center; gap: 12px; margin-bottom: 4px;">
+                    <div class="telemetry-icon running" id="panelIcon" style="width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; background: rgba(255,59,112,0.1); color: var(--primary); font-size: 1.1rem; flex-shrink: 0;">
+                        <i class="fa-solid fa-truck-fast"></i>
+                    </div>
+                    <div>
+                        <h2 id="panelDeviceName" style="font-weight: 800; font-size: 1.15rem; margin: 0; color: var(--text-primary); letter-spacing: 0.5px;">VEHICLE</h2>
+                        <div id="panelStatus" style="font-weight: 700; font-size: 0.75rem; text-transform: uppercase; color: var(--success); letter-spacing: 0.3px;">Running</div>
+                    </div>
+                </div>
+                
+                <!-- Speedometer (Gauge) -->
+                <div class="panel-speedometer-container" style="display: flex; justify-content: center; margin: 6px 0;">
+                    <div class="speedometer" style="position: relative; width: 110px; height: 55px;">
+                        <svg class="speed-svg" viewBox="0 0 100 50" style="width: 100%; height: 100%;">
+                            <path class="speed-bg" d="M 10 50 A 40 40 0 0 1 90 50" style="fill: none; stroke: var(--border-light); stroke-width: 8; stroke-linecap: round;" />
+                            <path class="speed-fill" id="speedFill" d="M 10 50 A 40 40 0 0 1 90 50" style="fill: none; stroke: var(--primary); stroke-width: 8; stroke-linecap: round; stroke-dasharray: 125.6; stroke-dashoffset: 125.6; transition: stroke-dashoffset 0.4s ease, stroke 0.4s ease;" />
+                        </svg>
+                        <div class="speed-value" style="position: absolute; bottom: 0; left: 50%; transform: translate(-50%, 0); text-align: center;">
+                            <span id="panelSpeed" style="font-size: 1.5rem; font-weight: 800; font-family: 'Outfit', sans-serif;">0</span>
+                            <span style="font-size: 0.65rem; color: var(--text-secondary); display: block; margin-top: -4px;">km/h</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Telematics Stats Grid -->
+                <div class="panel-stats-grid" style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                    <div class="stat-box" style="display: flex; align-items: center; gap: 8px;">
+                        <i class="fa-solid fa-road" style="color: var(--primary); font-size: 0.95rem;"></i>
+                        <div class="stat-data">
+                            <div class="stat-label" style="font-size: 0.62rem; text-transform: uppercase;">Odometer</div>
+                            <div class="stat-val" id="panelOdo" style="font-size: 0.78rem;">0 km</div>
+                        </div>
+                    </div>
+                    <div class="stat-box" style="display: flex; align-items: center; gap: 8px;">
+                        <i class="fa-solid fa-key" style="color: var(--success); font-size: 0.95rem;"></i>
+                        <div class="stat-data">
+                            <div class="stat-label" style="font-size: 0.62rem; text-transform: uppercase;">Ignition</div>
+                            <div class="stat-val" id="panelIgnition" style="font-size: 0.78rem;">ON</div>
+                        </div>
+                    </div>
+                    <div class="stat-box" style="display: flex; align-items: center; gap: 8px;">
+                        <i class="fa-solid fa-battery-full" style="color: var(--warning); font-size: 0.95rem;"></i>
+                        <div class="stat-data">
+                            <div class="stat-label" style="font-size: 0.62rem; text-transform: uppercase;">Battery</div>
+                            <div class="stat-val" id="panelBattery" style="font-size: 0.78rem;">98%</div>
+                        </div>
+                    </div>
+                    <div class="stat-box" style="display: flex; align-items: center; gap: 8px;">
+                        <i class="fa-solid fa-satellite" style="color: var(--accent); font-size: 0.95rem;"></i>
+                        <div class="stat-data">
+                            <div class="stat-label" style="font-size: 0.62rem; text-transform: uppercase;">GPS Fix</div>
+                            <div class="stat-val" id="panelGps" style="font-size: 0.78rem;">3D Fix</div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div id="backupBatteryWarning" style="display: none; padding: 6px; margin-top: 4px; background: rgba(255,61,0,0.08); border: 1px solid var(--danger); border-radius: var(--radius-md); text-align: center; font-weight: 700; color: var(--danger); font-size: 0.72rem;">
+                    ⚠️ Backup Battery Mode - Check Power Source!
+                </div>
+
+                <!-- Configuration Form (Hidden) -->
+                <div class="panel-config" style="padding: 8px; margin-top: 4px; background: var(--bg-main); border: 1px solid var(--border-light); border-radius: var(--radius-md); display: none !important; flex-direction: column; gap: 6px;">
+                    <div style="font-size: 0.72rem; color: var(--text-secondary); font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border-light); padding-bottom: 4px;">Configuration</div>
+                    
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                        <span style="font-size: 0.72rem; color: var(--text-secondary);">Driver:</span>
+                        <input type="text" id="cfgDriverName" style="background: var(--bg-surface); border: 1px solid var(--border-light); border-radius: 4px; padding: 3px 6px; color: var(--text-primary); font-size: 0.72rem; width: 110px;" placeholder="Unassigned">
+                    </div>
+                    
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                        <span style="font-size: 0.72rem; color: var(--text-secondary);">Voltage Profile:</span>
+                        <select id="cfgVehicleProfile" style="background: var(--bg-surface); border: 1px solid var(--border-light); border-radius: 4px; padding: 3px 6px; color: var(--text-primary); font-size: 0.72rem; width: 110px; cursor: pointer;">
+                            <option value="standard">Standard (12V/24V)</option>
+                            <option value="heavy">Heavy (48V)</option>
+                        </select>
+                    </div>
+                    
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
+                        <span style="font-size: 0.72rem; color: var(--text-secondary);">Initial Odo (km):</span>
+                        <input type="number" id="cfgInitialOdometer" style="background: var(--bg-surface); border: 1px solid var(--border-light); border-radius: 4px; padding: 3px 6px; color: var(--text-primary); font-size: 0.72rem; width: 110px;" placeholder="0" step="any">
+                    </div>
+                    
+                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 0.72rem; border-top: 1px solid var(--border-light); padding-top: 4px;">
+                        <span style="color: var(--text-secondary);">Voltage:</span>
+                        <span id="panelVoltage" style="font-weight: 700; color: var(--primary);">-- V</span>
+                    </div>
+
+                    <button class="btn btn-primary" onclick="saveVehicleConfig()" style="padding: 5px; font-size: 0.72rem; font-weight: 700; width: 100%; border-radius: 4px; margin-top: 2px;">
+                        Save Vehicle Config
+                    </button>
+                </div>
+
+                <!-- Current Address -->
+                <div class="panel-location" style="margin-top: 4px; padding: 8px; background: var(--bg-main); border: 1px solid var(--border-light); border-radius: var(--radius-md);">
+                    <div style="font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 0.2rem;"><i class="fa-solid fa-location-dot" style="color: var(--primary);"></i> Current Address</div>
+                    <div id="panelCoords" style="font-size: 0.8rem; font-weight: 700; line-height: 1.3; color: var(--text-primary);">0.0000, 0.0000</div>
+                    <div style="font-size: 0.68rem; color: var(--text-secondary); margin-top: 0.3rem;">Last update: <span id="panelTime">Just now</span></div>
+                </div>
+                
+                <!-- Actions -->
+                <div class="panel-actions" style="margin-top: 4px; display: flex; gap: 6px;">
+                    <button class="btn btn-outline" style="flex: 1; padding: 5px 8px; font-size: 0.72rem;" onclick="startHistoryMode()"><i class="fa-solid fa-clock-rotate-left"></i> History</button>
+                    <button class="btn btn-primary" style="flex: 1; padding: 5px 8px; font-size: 0.72rem;" onclick="openShareModal()"><i class="fa-solid fa-share-nodes"></i> Share</button>
+                </div>
+                
+                <div style="margin-top: 6px;">
+                    <a href="#" id="deviceExportBtn" class="btn btn-outline" style="display: none; align-items: center; justify-content: center; gap: 6px; padding: 6px; font-size: 0.72rem; width: 100%; text-decoration: none; font-weight: 700;">
+                        <i class="fa-solid fa-file-csv" style="color: var(--primary);"></i> Download Device History (CSV)
+                    </a>
+                </div>
+            </div>
+
+            <!-- Telemetry Placeholder -->
+            <div id="vehiclePlaceholder">
+                <i class="fa-solid fa-satellite-dish"></i>
+                <h3>Asset Telemetry 360</h3>
+                <p>Select a vehicle from your fleet list or click on a map marker to view live travel speeds, coordinates, and share tracking links.</p>
             </div>
         </div>
     </div>
@@ -810,26 +967,160 @@
             </p>
             
             <div class="form-group" style="position: relative; margin-bottom: 1.5rem;">
-                <select id="shareDuration" class="form-control" style="cursor: pointer; background: rgba(0,0,0,0.3); border: 1px solid var(--border); color: #fff;">
+                <select id="shareDuration" class="form-control" onchange="toggleCustomDuration(this.value)" style="cursor: pointer; background: var(--bg-main); border: 1px solid var(--border-light); color: var(--text-primary);">
                     <option value="15">15 Minutes</option>
                     <option value="60" selected>1 Hour</option>
                     <option value="360">6 Hours</option>
                     <option value="1440">24 Hours</option>
+                    <option value="custom">Custom...</option>
                 </select>
                 <label for="shareDuration" style="position: absolute; top: -20px; left: 0; font-size: 0.8rem; color: var(--primary);">Link Expiry</label>
+            </div>
+
+            <div id="customDurationContainer" style="display: none; position: relative; margin-bottom: 1.5rem;">
+                <input type="number" id="customShareMinutes" class="form-control" value="120" min="1" placeholder=" " style="background: var(--bg-main); border: 1px solid var(--border-light); color: var(--text-primary);">
+                <label for="customShareMinutes" style="position: absolute; top: -20px; left: 0; font-size: 0.8rem; color: var(--primary);">Expiry (Minutes)</label>
             </div>
             
             <button class="btn btn-primary" onclick="generateShareLink()" style="margin-top: 1rem; width: 100%;">
                 <i class="fa-solid fa-link"></i> Generate Link
             </button>
             
-            <div id="shareLinkResultContainer" style="display: none; margin-top: 1.5rem; border-top: 1px solid rgba(255,255,255,0.05); padding-top: 1rem;">
+            <div id="shareLinkResultContainer" style="display: none; margin-top: 1.5rem; border-top: 1px solid var(--border-light); padding-top: 1rem;">
                 <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 0.5rem;">Public Tracking Link</div>
                 <div style="display: flex; gap: 8px;">
-                    <input type="text" id="shareLinkUrl" class="form-control" readonly style="font-size: 0.8rem; padding: 8px 12px; background: rgba(0,0,0,0.4); color: #fff;">
-                    <button class="btn btn-outline" onclick="copyShareLink()" id="copyShareBtn" style="padding: 0.5rem; width: 42px; border-color: rgba(255,255,255,0.2);" title="Copy Link"><i class="fa-regular fa-copy"></i></button>
+                    <input type="text" id="shareLinkUrl" class="form-control" readonly style="font-size: 0.8rem; padding: 8px 12px; background: var(--bg-main); border: 1px solid var(--border-light); color: var(--text-primary);">
+                    <button class="btn btn-outline" onclick="copyShareLink()" id="copyShareBtn" style="padding: 0.5rem; width: 42px; border-color: var(--border-light); color: var(--text-primary);" title="Copy Link"><i class="fa-regular fa-copy"></i></button>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- Add Device Modal -->
+    <div class="modal-overlay" id="addDeviceModal">
+        <div class="modal glass-panel">
+            <div class="modal-header">
+                <h2>Add New Tracker</h2>
+                <button class="modal-close" onclick="closeAddDeviceModal()">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <p style="margin-bottom: 1.5rem; color: var(--text-secondary); font-size: 0.9rem; line-height: 1.5;">
+                Enter the IMEI number of your tracker device to request/link it to your account.
+            </p>
+            <div class="form-group" style="position: relative; margin-bottom: 1.5rem;">
+                <input type="text" id="newImei" class="form-control" placeholder=" " required>
+                <label for="newImei" style="position: absolute; top: -20px; left: 0; font-size: 0.8rem; color: var(--primary);">IMEI Number</label>
+            </div>
+            
+            <!-- IP & PORT Configuration Info -->
+            <div id="trackerConfigInfo" style="margin-top: 1rem; margin-bottom: 1.5rem; padding: 12px; background: rgba(255, 59, 112, 0.05); border: 1px solid rgba(255, 59, 112, 0.15); border-radius: var(--radius-md); font-size: 0.8rem; line-height: 1.5; color: var(--text-primary); text-align: left;">
+                <div style="font-weight: 700; color: var(--primary); margin-bottom: 6px;"><i class="fa-solid fa-gear"></i> Tracker Configuration Info</div>
+                Configure your GPS hardware using these settings:
+                <div style="margin-top: 6px; font-family: monospace; font-size: 0.82rem; background: var(--bg-surface); padding: 8px; border-radius: 4px; border: 1px solid var(--border);">
+                    IP/Host: <span id="cfgIp" style="font-weight: 700;">loading...</span><br>
+                    Port: <span id="cfgPort" style="font-weight: 700;">loading...</span>
+                </div>
+                <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 6px; font-style: italic;">
+                    Note: iTriangle / Bharat 101 protocol is supported.
+                </div>
+            </div>
+            
+            <button class="btn btn-primary" onclick="submitDeviceRequest()" style="margin-top: 1rem; width: 100%;">
+                <i class="fa-solid fa-plus"></i> Submit Request
+            </button>
+        </div>
+    </div>
+
+    <!-- Settings Modal -->
+    <div class="modal-overlay" id="settingsModal">
+        <div class="modal glass-panel" style="width: 380px;">
+            <div class="modal-header">
+                <h2>Settings</h2>
+                <button class="modal-close" onclick="closeSettingsModal()">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div style="display: flex; flex-direction: column; gap: 1.25rem; margin-top: 1rem;">
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: var(--bg-main); border-radius: var(--radius-md); border: 1px solid var(--border);">
+                    <div style="font-weight: 600; font-size: 0.9rem; color: var(--text-primary);">
+                        <i class="fa-solid fa-moon" style="margin-right: 8px; color: var(--primary);"></i> Map Theme
+                    </div>
+                    <button onclick="toggleThemeManual()" style="background: var(--bg-surface); border: 1px solid var(--border); color: var(--text-primary); cursor: pointer; padding: 6px 12px; border-radius: var(--radius-sm); font-size: 0.8rem; font-weight: 700; display: flex; align-items: center; gap: 4px;" title="Toggle Day/Night Mode">
+                        <i id="themeToggleIcon" class="fa-solid fa-moon"></i> Toggle
+                    </button>
+                </div>
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: var(--bg-main); border-radius: var(--radius-md); border: 1px solid var(--border);">
+                    <div style="font-weight: 600; font-size: 0.9rem; color: var(--text-primary);">
+                        <i class="fa-regular fa-clock" style="margin-right: 8px; color: var(--primary);"></i> Time Format
+                    </div>
+                    <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 700; font-size: 0.85rem; color: var(--text-primary);">
+                        <input type="checkbox" id="toggle12Hour" onchange="toggleClockFormat()" style="accent-color: var(--primary); width: 16px; height: 16px; cursor: pointer;"> 12H Format
+                    </label>
+                </div>
+                
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: var(--bg-main); border-radius: var(--radius-md); border: 1px solid var(--border);">
+                    <div style="font-weight: 600; font-size: 0.9rem; color: var(--text-primary);">
+                        <i class="fa-solid fa-file-csv" style="margin-right: 8px; color: var(--primary);"></i> Export Fleet
+                    </div>
+                    <a href="#" id="exportBtn" style="background: var(--bg-surface); border: 1px solid var(--border); color: var(--text-primary); text-decoration: none; cursor: pointer; padding: 6px 12px; border-radius: var(--radius-sm); font-size: 0.8rem; font-weight: 700; display: flex; align-items: center; gap: 4px;">
+                        <i class="fa-solid fa-download"></i> CSV
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Geofence Modal -->
+    <div class="modal-overlay" id="editGeofenceModal">
+        <div class="modal glass-panel">
+            <div class="modal-header">
+                <h2>Rename Geofence Zone</h2>
+                <button class="modal-close" onclick="closeEditGeofenceModal()">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <input type="hidden" id="editGfId">
+            <div class="form-group" style="position: relative; margin-bottom: 1.5rem;">
+                <input type="text" id="editGfName" class="form-control" placeholder=" " required>
+                <label for="editGfName" style="position: absolute; top: -20px; left: 0; font-size: 0.8rem; color: var(--primary);">Zone Name</label>
+            </div>
+            <button class="btn btn-primary" onclick="submitEditGeofence()" style="margin-top: 1rem; width: 100%;">
+                Save Changes
+            </button>
+        </div>
+    </div>
+
+    <!-- Manual Geofence Modal -->
+    <div class="modal-overlay" id="manualGeofenceModal">
+        <div class="modal glass-panel">
+            <div class="modal-header">
+                <h2>Create Geofence Manually</h2>
+                <button class="modal-close" onclick="closeManualGeofenceModal()">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="form-group" style="position: relative; margin-bottom: 1rem;">
+                <input type="text" id="manualGfName" class="form-control" placeholder=" " required>
+                <label for="manualGfName" style="position: absolute; top: -20px; left: 0; font-size: 0.8rem; color: var(--primary);">Zone Name</label>
+            </div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 1rem;">
+                <div class="form-group" style="position: relative; margin-bottom: 0;">
+                    <input type="number" step="any" id="manualLat" class="form-control" placeholder=" " required>
+                    <label for="manualLat" style="position: absolute; top: -20px; left: 0; font-size: 0.8rem; color: var(--primary);">Latitude</label>
+                </div>
+                <div class="form-group" style="position: relative; margin-bottom: 0;">
+                    <input type="number" step="any" id="manualLng" class="form-control" placeholder=" " required>
+                    <label for="manualLng" style="position: absolute; top: -20px; left: 0; font-size: 0.8rem; color: var(--primary);">Longitude</label>
+                </div>
+            </div>
+            <div class="form-group" style="position: relative; margin-bottom: 1.5rem;">
+                <input type="number" id="manualRadius" class="form-control" value="500" placeholder=" " required>
+                <label for="manualRadius" style="position: absolute; top: -20px; left: 0; font-size: 0.8rem; color: var(--primary);">Radius (meters)</label>
+            </div>
+            <button class="btn btn-primary" onclick="submitManualGeofence()" style="margin-top: 1rem; width: 100%;">
+                Create Zone
+            </button>
         </div>
     </div>
 

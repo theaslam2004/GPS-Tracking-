@@ -55,7 +55,7 @@ const defaultData = {
     payments: [],
     sharedLinks: [],
     systemSettings: {
-        'Trial': { name: 'Trial', price: 0, deviceLimit: 1, validityDays: 10 },
+        'Trial': { name: 'Trial', price: 0, deviceLimit: 100, validityDays: 10 },
         'Basic': { name: 'Basic', price: 99, deviceLimit: 2, validityDays: 30 },
         'Standard': { name: 'Standard', price: 199, deviceLimit: 5, validityDays: 30 },
         'Premium': { name: 'Premium', price: 399, deviceLimit: 15, validityDays: 30 },
@@ -189,14 +189,14 @@ module.exports = {
         data.users.push(newUser);
 
         const pricing = data.systemSettings || defaultData.systemSettings;
-        const trialPlan = pricing['Trial'] || { validityDays: 10, deviceLimit: 1 };
+        const trialPlan = pricing['Trial'] || { validityDays: 10, deviceLimit: 100 };
         const expirationDate = new Date();
         expirationDate.setDate(expirationDate.getDate() + (trialPlan.validityDays || 10));
 
         data.subscriptions.push({
             userId,
             planName: 'Trial',
-            deviceLimit: trialPlan.deviceLimit || 1,
+            deviceLimit: trialPlan.deviceLimit || 100,
             pricePaid: 0,
             validityDays: trialPlan.validityDays || 10,
             expirationDate: expirationDate.toISOString()
@@ -255,7 +255,9 @@ module.exports = {
         if (!user) return { error: 'User not found' };
 
         const deviceExists = data.devices.find(d => d.imei === imei);
-        if (deviceExists) return { error: 'Device is already registered' };
+        if (deviceExists && deviceExists.ownerId === userId) {
+            return { error: 'Device is already registered to your account' };
+        }
 
         const pendingRequest = data.deviceRequests.find(r => r.imei === imei && r.status === 'pending');
         if (pendingRequest) return { error: 'A request is already pending for this device' };
@@ -264,7 +266,7 @@ module.exports = {
         const pendingCount = data.deviceRequests.filter(r => r.userId === userId && r.status === 'pending').length;
 
         const sub = data.subscriptions.find(s => s.userId === userId);
-        const limit = sub ? (sub.deviceLimit || 1) : 1;
+        const limit = sub ? (sub.deviceLimit || 100) : 100;
 
         if (activeCount + pendingCount >= limit) {
             return { error: `Device limit reached. Your current plan allows up to ${limit} device(s). Please contact admin to increase your limit.` };
@@ -281,10 +283,37 @@ module.exports = {
         writeData(data);
         return req;
     },
+    rejectDeviceRequest: async (imei) => {
+        const data = readData();
+        const req = data.deviceRequests.find(r => r.imei === imei && r.status === 'pending');
+        if (req) {
+            req.status = 'rejected';
+            req.timestamp = new Date().toISOString();
+            writeData(data);
+            return true;
+        }
+        return false;
+    },
     approveDeviceRequest: async (imei, userId) => {
         const data = readData();
-        data.deviceRequests = data.deviceRequests.filter(r => r.imei !== imei);
-        if (!data.devices.find(d => d.imei === imei)) {
+        const req = data.deviceRequests.find(r => r.imei === imei && r.status === 'pending');
+        if (req) {
+            req.status = 'approved';
+            req.userId = userId;
+            req.timestamp = new Date().toISOString();
+        } else {
+            data.deviceRequests.push({
+                id: Date.now().toString(),
+                imei,
+                userId,
+                status: 'approved',
+                timestamp: new Date().toISOString()
+            });
+        }
+        const existingDevice = data.devices.find(d => d.imei === imei);
+        if (existingDevice) {
+            existingDevice.ownerId = userId;
+        } else {
             data.devices.push({
                 imei,
                 ownerId: userId,
@@ -327,7 +356,7 @@ module.exports = {
             sub = {
                 userId,
                 planName: 'Trial',
-                deviceLimit: 1,
+                deviceLimit: 100,
                 pricePaid: 0,
                 validityDays: days,
                 expirationDate: expDate.toISOString()
@@ -392,7 +421,7 @@ module.exports = {
                 ignitionOffTime = null;
             }
             const durationOn = ignitionOnTime ? (now - new Date(ignitionOnTime)) / 1000 : 0;
-            if (locationData.speed > 2) {
+            if (locationData.speed > 5) {
                 status = 'running';
             } else {
                 status = (durationOn >= 10) ? 'idle' : (prevRecord ? prevRecord.status : 'halt');
@@ -766,7 +795,7 @@ module.exports = {
             const newSub = {
                 userId,
                 planName: 'Free',
-                deviceLimit: parseInt(deviceLimit || 1),
+                deviceLimit: parseInt(deviceLimit || 100),
                 pricePaid: 0,
                 validityDays: parseInt(extraDays || 30),
                 expirationDate: expirationDate.toISOString()
