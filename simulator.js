@@ -128,7 +128,8 @@ async function startSimulation() {
                 
                 prevSpeed = speed;
                 
-                // Random Alert Packets simulation (only if not towed)
+                // Random Alert Packets simulation disabled for clean demo
+                /*
                 if (!isTowed && eventType === 'NR') {
                     const r = Math.random();
                     if (r < 0.006) {
@@ -141,6 +142,7 @@ async function startSimulation() {
                         eventType = 'BL'; // Internal Battery Low
                     }
                 }
+                */
 
                 if (speed > 0) {
                     lat += (Math.random() - 0.5) * 0.001;

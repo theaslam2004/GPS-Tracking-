@@ -768,8 +768,12 @@
                     <span class="count" id="countIdle" style="font-family: 'Outfit', monospace; color: var(--warning);">0</span>
                     <span class="label">IDLE</span>
                 </div>
+                <div class="filter-pill filter-halt" onclick="setFilter('halt')">
+                    <span class="count" id="countHalt" style="font-family: 'Outfit', monospace; color: var(--danger);">0</span>
+                    <span class="label">HALT</span>
+                </div>
                 <div class="filter-pill filter-offline" onclick="setFilter('offline')">
-                    <span class="count" id="countOffline" style="font-family: 'Outfit', monospace; color: var(--danger);">0</span>
+                    <span class="count" id="countOffline" style="font-family: 'Outfit', monospace; color: #94a3b8;">0</span>
                     <span class="label">OFFLINE</span>
                 </div>
             </div>
@@ -846,10 +850,10 @@
                         </div>
                     </div>
                     <div class="stat-box" style="display: flex; align-items: center; gap: 8px;">
-                        <i class="fa-solid fa-battery-full" style="color: var(--warning); font-size: 0.95rem;"></i>
+                        <i class="fa-solid fa-car-battery" style="color: var(--warning); font-size: 0.95rem;"></i>
                         <div class="stat-data">
-                            <div class="stat-label" style="font-size: 0.62rem; text-transform: uppercase;">Battery</div>
-                            <div class="stat-val" id="panelBattery" style="font-size: 0.78rem;">98%</div>
+                            <div class="stat-label" style="font-size: 0.62rem; text-transform: uppercase;">Voltage</div>
+                            <div class="stat-val" id="panelBattery" style="font-size: 0.78rem;">-- V</div>
                         </div>
                     </div>
                     <div class="stat-box" style="display: flex; align-items: center; gap: 8px;">

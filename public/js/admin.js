@@ -377,7 +377,7 @@ function renderCustomerFleet(userId) {
                             <span>Odo</span> <span id="odo-${d.imei}">${ls.odometer ? ls.odometer.toFixed(2) : '0.00'} km</span>
                         </div>
                         <div class="detail-row">
-                            <span>Battery</span> <span id="bat-${d.imei}" style="${ls.powerSource === 'secondary' ? 'color: var(--red); font-weight: bold;' : ''}">${ls.battery || 'N/A'}%${ls.powerSource === 'secondary' ? ' (Backup ⚠️)' : ''}</span>
+                            <span>Voltage</span> <span id="bat-${d.imei}" style="${ls.powerSource === 'secondary' ? 'color: var(--red); font-weight: bold;' : ''}">${ls.voltage !== undefined ? ls.voltage.toFixed(1) : '12.0'} V${ls.powerSource === 'secondary' ? ' (Backup ⚠️)' : ''}</span>
                         </div>
                         <div class="detail-row">
                             <span>Lat/Lng</span> <span id="coords-${d.imei}">${ls.latitude ? ls.latitude.toFixed(4) : '0'}, ${ls.longitude ? ls.longitude.toFixed(4) : '0'}</span>
@@ -904,10 +904,11 @@ socket.on('device_data', (data) => {
             if (odometer && document.getElementById(`odo-${imei}`)) {
                 document.getElementById(`odo-${imei}`).innerText = `${odometer.toFixed(2)} km`;
             }
-            if (battery && document.getElementById(`bat-${imei}`)) {
+            if (document.getElementById(`bat-${imei}`)) {
                 const isSecondary = (data.powerSource === 'secondary');
                 const batEl = document.getElementById(`bat-${imei}`);
-                batEl.innerText = isSecondary ? `${battery}% (Backup ⚠️)` : `${battery}%`;
+                const voltVal = data.voltage !== undefined ? data.voltage.toFixed(1) : '12.0';
+                batEl.innerText = isSecondary ? `${voltVal} V (Backup ⚠️)` : `${voltVal} V`;
                 batEl.style.color = isSecondary ? 'var(--red)' : '';
                 batEl.style.fontWeight = isSecondary ? 'bold' : '';
             }

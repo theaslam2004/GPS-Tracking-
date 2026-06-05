@@ -697,8 +697,11 @@ function renderDeviceList() {
         if (currentFilter === 'idle') {
             return statusText === 'idle';
         }
+        if (currentFilter === 'halt') {
+            return statusText === 'halt';
+        }
         if (currentFilter === 'offline') {
-            return statusText === 'offline' || statusText === 'halt';
+            return statusText === 'offline';
         }
         return true;
     });
@@ -767,6 +770,7 @@ function renderDeviceList() {
 function updateFleetCounts() {
     let active = 0;
     let idle = 0;
+    let halt = 0;
     let offline = 0;
     
     // Scan all devices for current status
@@ -785,7 +789,7 @@ function updateFleetCounts() {
                 } else if (s === 'idle') {
                     idle++;
                 } else {
-                    offline++; // Halt counts as offline in the tab count
+                    halt++;
                 }
             }
         } else {
@@ -796,11 +800,13 @@ function updateFleetCounts() {
 
     const activeEl = document.getElementById('countActive');
     const idleEl = document.getElementById('countIdle');
+    const haltEl = document.getElementById('countHalt');
     const offlineEl = document.getElementById('countOffline');
     const allEl = document.getElementById('countAll');
     
     if(activeEl) activeEl.innerText = active;
     if(idleEl) idleEl.innerText = idle;
+    if(haltEl) haltEl.innerText = halt;
     if(offlineEl) offlineEl.innerText = offline;
     if(allEl) allEl.innerText = myDevices.length;
 }
@@ -947,13 +953,13 @@ function updatePanelData(data, deviceName) {
         odoEl.innerText = isOdoVerified ? `${odometer.toFixed(1)} km` : '--';
     }
     
-    // Battery & GPS
-    const batteryPercentage = battery !== undefined ? battery : 98;
+    // Voltage & GPS
     const isSecondary = (data.powerSource === 'secondary');
     const batColor = isSecondary ? 'var(--danger)' : 'var(--success)';
-    const batIcon = isSecondary ? 'fa-battery-quarter' : 'fa-bolt';
+    const batIcon = isSecondary ? 'fa-car-battery' : 'fa-bolt';
     const batText = isSecondary ? 'Backup Battery (Warning)' : 'Primary Battery (Normal)';
-    document.getElementById('panelBattery').innerHTML = `${batteryPercentage}% <span style="font-size:0.68rem; color:${batColor}; font-weight:700;"><i class="fa-solid ${batIcon}"></i> ${batText}</span>`;
+    const voltVal = data.voltage !== undefined ? data.voltage.toFixed(1) : '12.0';
+    document.getElementById('panelBattery').innerHTML = `${voltVal} V <span style="font-size:0.68rem; color:${batColor}; font-weight:700;"><i class="fa-solid ${batIcon}"></i> ${batText}</span>`;
     
     const fixText = gpsValid ? '3D Fix' : 'No Fix';
     const fixColor = gpsValid ? 'var(--success)' : 'var(--danger)';
@@ -1036,11 +1042,12 @@ function timeSince(date) {
 }
 
 function buildTelemetryHTML(data, deviceName) {
-    const { imei, latitude, longitude, speed, timestamp, odometer, battery, gpsValid, satellites } = data;
+    const { imei, latitude, longitude, speed, timestamp, odometer, battery, gpsValid, satellites, voltage, powerSource } = data;
     const timeObj = new Date(timestamp);
-    const batteryPercentage = battery !== undefined ? battery : 98;
-    const batColor = batteryPercentage < 20 ? 'danger' : 'success';
-    const batIcon = batteryPercentage < 20 ? 'fa-battery-empty' : 'fa-bolt';
+    const isSecondary = (powerSource === 'secondary');
+    const batColor = isSecondary ? 'danger' : 'success';
+    const batIcon = isSecondary ? 'fa-car-battery' : 'fa-bolt';
+    const voltVal = voltage !== undefined ? voltage.toFixed(1) : '12.0';
     const fixText = gpsValid ? '3D Fix' : 'No Fix';
     const satCount = satellites !== undefined ? satellites : 0;
     
@@ -1093,8 +1100,8 @@ function buildTelemetryHTML(data, deviceName) {
             </div>` : ''}
             ${isFeatureEnabled(imei, 'healthStats') ? `
             <div class="telemetry-item">
-                <span class="telemetry-label"><i class="fa-solid fa-battery-full"></i> Battery</span>
-                <span class="telemetry-val">${batteryPercentage}% <span style="font-size:0.6rem; color:var(--${batColor});"><i class="fa-solid ${batIcon}"></i></span></span>
+                <span class="telemetry-label"><i class="fa-solid fa-car-battery"></i> Voltage</span>
+                <span class="telemetry-val">${voltVal} V <span style="font-size:0.6rem; color:var(--${batColor});"><i class="fa-solid ${batIcon}"></i></span></span>
             </div>
             <div class="telemetry-item">
                 <span class="telemetry-label"><i class="fa-solid fa-location-dot"></i> GPS Lock</span>
