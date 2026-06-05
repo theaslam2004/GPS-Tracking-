@@ -815,14 +815,6 @@ function closeVehiclePanel() {
     document.getElementById('vehiclePanel').classList.remove('open');
 }
 
-function togglePanelConfig() {
-    const configPanel = document.querySelector('.panel-config');
-    if (configPanel) {
-        const isHidden = window.getComputedStyle(configPanel).display === 'none';
-        configPanel.style.display = isHidden ? 'flex' : 'none';
-    }
-}
-
 function focusDevice(imei) {
     activeImei = imei;
     if(markers[imei]) {
