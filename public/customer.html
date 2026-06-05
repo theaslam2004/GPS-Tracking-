@@ -806,7 +806,15 @@
                     </div>
                     <div>
                         <h2 id="panelDeviceName" style="font-weight: 800; font-size: 1.15rem; margin: 0; color: var(--text-primary); letter-spacing: 0.5px;">VEHICLE</h2>
-                        <div id="panelStatus" style="font-weight: 700; font-size: 0.75rem; text-transform: uppercase; color: var(--success); letter-spacing: 0.3px;">Running</div>
+                        <div style="display: flex; align-items: center; gap: 8px;">
+                            <div id="panelStatus" style="font-weight: 700; font-size: 0.75rem; text-transform: uppercase; color: var(--success); letter-spacing: 0.3px;">Running</div>
+                            <div id="panelCheckLight" style="display: none; align-items: center; gap: 4px; background: rgba(255, 61, 0, 0.1); border: 1px solid var(--danger); color: var(--danger); font-size: 0.68rem; font-weight: 800; padding: 2px 8px; border-radius: var(--radius-full); animation: pulseGlow 1.5s infinite ease-in-out; text-transform: uppercase;">
+                                <i class="fa-solid fa-triangle-exclamation"></i> Check Battery
+                            </div>
+                            <div id="panelNormalLight" style="display: inline-flex; align-items: center; gap: 4px; background: rgba(0, 230, 118, 0.1); border: 1px solid var(--success); color: var(--success); font-size: 0.68rem; font-weight: 800; padding: 2px 8px; border-radius: var(--radius-full); text-transform: uppercase;">
+                                <i class="fa-solid fa-circle-check"></i> Normal
+                            </div>
+                        </div>
                     </div>
                 </div>
                 

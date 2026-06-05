@@ -65,6 +65,12 @@ let myDevices = [];
 let latestData = {}; // Store latest telemetry for panel
 let activeImei = null;
 let userSettings = {};
+let currentFilter = 'all';
+
+window.applyFilter = function(type) {
+    currentFilter = type;
+    renderDeviceList();
+};
 
 function isFeatureEnabled(imei, feature) {
     if (!imei) return true;
@@ -649,8 +655,29 @@ function renderDeviceList() {
         if(!a.pinned && b.pinned) return 1;
         return String(a.name || a.imei).localeCompare(String(b.name || b.imei));
     });
+
+    const filteredDevices = sortedDevices.filter(d => {
+        if (currentFilter === 'all') return true;
+        const live = latestData[d.imei] || {};
+        const isStale = live.timestamp ? (Date.now() - new Date(live.timestamp)) > 60000 : true;
+        let statusText = 'offline';
+        if (live.timestamp && !isStale) {
+            statusText = live.status || 'halt';
+        }
+        
+        if (currentFilter === 'running') {
+            return statusText === 'running';
+        }
+        if (currentFilter === 'idle') {
+            return statusText === 'idle';
+        }
+        if (currentFilter === 'offline') {
+            return statusText === 'offline' || statusText === 'halt';
+        }
+        return true;
+    });
     
-    container.innerHTML = sortedDevices.map(d => {
+    container.innerHTML = filteredDevices.map(d => {
         const odoHidden = !isFeatureEnabled(d.imei, 'odometer') ? 'display:none' : '';
         const speedHidden = !isFeatureEnabled(d.imei, 'speedAlert') ? 'display:none' : '';
         
@@ -683,9 +710,10 @@ function renderDeviceList() {
         
         const isSecondary = (live.powerSource === 'secondary');
         const batAlert = isSecondary ? `<i class="fa-solid fa-triangle-exclamation" style="color: var(--danger); margin-left: 6px; animation: pulseGlow 1.5s infinite ease-in-out;" title="Warning: Running on Backup Battery!"></i>` : '';
+        const activeClass = (d.imei === activeImei) ? 'active' : '';
 
         return `
-            <div class="device-card" id="card-${d.imei}" onclick="focusDevice('${d.imei}')">
+            <div class="device-card ${activeClass}" id="card-${d.imei}" onclick="focusDevice('${d.imei}')">
                 <div class="device-header" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
                     <div class="device-title" style="display: flex; align-items: center; gap: 6px; font-size: 0.9rem; font-weight: 700; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 70%;">
                         <i class="fa-solid fa-star" style="color: ${d.pinned ? 'var(--warning)' : 'var(--text-secondary)'}; opacity: ${d.pinned ? '1' : '0.5'}; cursor: pointer; transition: all 0.2s;" onclick="togglePin('${d.imei}', event)" title="${d.pinned ? 'Unpin' : 'Pin to top'}"></i>
@@ -761,15 +789,11 @@ function focusDevice(imei) {
         map.flyTo(markers[imei].getLatLng(), 16, { animate: true, duration: 1.5 });
         markers[imei].openPopup();
         
-        // Highlight active card in sidebar
-        document.querySelectorAll('.device-card').forEach(c => {
-            c.style.borderColor = 'var(--border)';
-            c.style.boxShadow = 'none';
-        });
+        // Highlight active card by re-rendering list
+        renderDeviceList();
+        
         const activeCard = document.getElementById(`card-${imei}`);
         if(activeCard) {
-            activeCard.style.borderColor = 'var(--primary)';
-            activeCard.style.boxShadow = '0 0 15px rgba(0, 212, 255, 0.2)';
             activeCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
         }
         
@@ -831,8 +855,22 @@ function updatePanelData(data, deviceName) {
     
     // Backup battery warning
     const warningEl = document.getElementById('backupBatteryWarning');
+    const isSecondaryMode = (data.powerSource === 'secondary');
     if (warningEl) {
-        warningEl.style.display = (data.powerSource === 'secondary') ? 'block' : 'none';
+        warningEl.style.display = isSecondaryMode ? 'block' : 'none';
+    }
+
+    // Toggle check lights in panel header
+    const checkLightEl = document.getElementById('panelCheckLight');
+    const normalLightEl = document.getElementById('panelNormalLight');
+    if (checkLightEl && normalLightEl) {
+        if (isSecondaryMode) {
+            checkLightEl.style.display = 'inline-flex';
+            normalLightEl.style.display = 'none';
+        } else {
+            checkLightEl.style.display = 'none';
+            normalLightEl.style.display = 'inline-flex';
+        }
     }
     
     // Toggle Visibility of Speedometer Gauge based on Admin settings
@@ -1122,32 +1160,14 @@ function handleDeviceData(data, isLive = true) {
         }
     }
     
-    // Update Sidebar elements
-    const speedEl = document.getElementById(`speed-${imei}`);
-    const timeEl = document.getElementById(`time-${imei}`);
-    const statusEl = document.getElementById(`status-${imei}`);
-    const odoEl = document.getElementById(`odo-${imei}`);
-    
-    if(speedEl) {
-        speedEl.innerText = speed;
-        if(odoEl && data.odometer) odoEl.innerText = data.odometer.toFixed(1);
-        
-        const timeObj = new Date(timestamp);
-        timeEl.innerText = timeObj.toLocaleTimeString();
-        
-        statusEl.innerText = speed > 5 ? 'Running' : 'Idle';
-        statusEl.className = '';
-        statusEl.style.color = speed > 5 ? 'var(--success)' : 'var(--warning)';
-        statusEl.style.background = 'transparent';
-    }
+    // Update Sidebar card list & status counts
+    renderDeviceList();
     
     // Update panel if it's currently open for this device
     const panel = document.getElementById('vehiclePanel');
     if(panel.classList.contains('open') && activeImei === imei) {
         updatePanelData(data, deviceName);
     }
-    
-    updateFleetCounts();
 }
 
 // Generate premium custom rotating arrowhead marker icon
