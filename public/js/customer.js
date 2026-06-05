@@ -11,6 +11,13 @@ let user = null;
 
 // Perform startup authentication validation check
 (async () => {
+    // Request desktop notification permission on startup
+    if (typeof Notification !== 'undefined') {
+        if (Notification.permission !== 'granted' && Notification.permission !== 'denied') {
+            Notification.requestPermission();
+        }
+    }
+    
     try {
         const response = await fetch('/api/auth/me');
         if (response.status === 401) {
@@ -289,13 +296,26 @@ function showPanicAlert(data) {
     const msg = document.getElementById('panicMessage');
     const trackBtn = document.getElementById('panicTrackBtn');
     
-    msg.innerHTML = `Emergency signal received from <b>${data.deviceName}</b>.<br>Time: ${new Date(data.time).toLocaleTimeString()}`;
+    const devName = data.deviceName || data.imei || 'Vehicle';
+    
+    msg.innerHTML = `Emergency signal received from <b>${devName}</b>.<br>Time: ${new Date(data.time).toLocaleTimeString()}`;
     document.body.classList.add('panic-active');
     modal.classList.add('active');
     
     // Play alert sound
     const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/951/951-preview.mp3');
     audio.play().catch(e => console.warn('Audio playback blocked by browser'));
+
+    // Trigger Native HTML5 Desktop Notification
+    if (typeof Notification !== 'undefined' && Notification.permission === 'granted') {
+        new Notification(`🚨 PANIC ALERT: ${devName}`, {
+            body: `Emergency button pressed! Location: ${data.lat.toFixed(5)}, ${data.lng.toFixed(5)}`,
+            requireInteraction: true
+        });
+    }
+
+    // Trigger danger-styled toast next to the panic modal
+    showToast(`🚨 Emergency Alert: ${devName}`, `Emergency button has been pressed!`, 'danger');
 
     trackBtn.onclick = () => {
         map.flyTo([data.lat, data.lng], 18, { animate: true, duration: 2 });
@@ -816,6 +836,7 @@ function focusDevice(imei) {
 
 function updatePanelData(data, deviceName) {
     const { imei, latitude, longitude, speed, timestamp, odometer, battery, gpsValid, satellites } = data;
+    const isStale = (Date.now() - new Date(timestamp)) > 60000;
     
     const device = myDevices.find(d => d.imei === imei);
     
@@ -879,10 +900,13 @@ function updatePanelData(data, deviceName) {
         }
     }
     
-    // Toggle Visibility of Speedometer Gauge based on Admin settings
+    // Toggle Visibility of Speedometer Gauge based on Admin settings and device status (hide on halt/offline)
+    const currentStatus = isStale ? 'offline' : (data.status || 'halt');
     const speedGauge = document.querySelector('.panel-speedometer-container');
     if (speedGauge) {
-        speedGauge.style.display = isFeatureEnabled(imei, 'speedAlert') ? 'flex' : 'none';
+        const isAlertEnabled = isFeatureEnabled(imei, 'speedAlert');
+        const shouldShowSpeed = isAlertEnabled && currentStatus !== 'halt' && currentStatus !== 'offline';
+        speedGauge.style.display = shouldShowSpeed ? 'flex' : 'none';
     }
     
     // Animate Gauge (0-140 km/h mapped to 125.6-0 dashoffset)
@@ -939,7 +963,6 @@ function updatePanelData(data, deviceName) {
     const statusEl = document.getElementById('panelStatus');
     const iconEl = document.getElementById('panelIcon');
     
-    const isStale = (Date.now() - new Date(timestamp)) > 60000;
     if (isStale) {
         statusEl.innerText = 'Offline';
         statusEl.style.color = 'var(--text-secondary)';
@@ -1021,18 +1044,28 @@ function buildTelemetryHTML(data, deviceName) {
     const fixText = gpsValid ? '3D Fix' : 'No Fix';
     const satCount = satellites !== undefined ? satellites : 0;
     
+    const isStale = (Date.now() - new Date(timestamp)) > 60000;
     let status = 'offline';
     let statusText = 'Offline';
     let iconClass = 'fa-power-off';
+    let statusColorVar = 'text-secondary';
     
-    if (speed > 0) {
-        status = 'running';
-        statusText = 'Running';
-        iconClass = 'fa-truck-fast';
-    } else if (speed === 0) {
-        status = 'halt';
-        statusText = 'Idle';
-        iconClass = 'fa-pause';
+    if (!isStale) {
+        status = data.status || 'halt';
+        if (status === 'running') {
+            statusText = 'Running';
+            iconClass = 'fa-truck-fast';
+            statusColorVar = 'success';
+        } else if (status === 'idle') {
+            statusText = 'Idle';
+            iconClass = 'fa-pause';
+            statusColorVar = 'warning';
+        } else {
+            status = 'halt';
+            statusText = 'Halt';
+            iconClass = 'fa-hand';
+            statusColorVar = 'danger';
+        }
     }
     
     return `
@@ -1043,7 +1076,7 @@ function buildTelemetryHTML(data, deviceName) {
             </div>
             <div>
                 <h3 class="telemetry-title" style="text-transform: uppercase; letter-spacing: 1px;">${deviceName || imei}</h3>
-                <span class="telemetry-status" style="color: var(--${status === 'halt' ? 'warning' : (status === 'running' ? 'success' : 'danger')})">${statusText}</span>
+                <span class="telemetry-status" style="color: var(--${statusColorVar})">${statusText}</span>
             </div>
         </div>
         
@@ -1136,9 +1169,10 @@ function handleDeviceData(data, isLive = true) {
     }
     
     // Update Map with Premium Custom Beacon Icon
-    const status = speed > 5 ? 'running' : 'halt';
+    const isStale = (Date.now() - new Date(timestamp)) > 60000;
+    const beaconStatus = isStale ? 'offline' : (data.status || 'halt');
     const isPinned = device && device.pinned;
-    const vehicleIcon = getVehicleIcon(data.heading, status, isPinned);
+    const vehicleIcon = getVehicleIcon(data.heading, beaconStatus, isPinned);
 
 
     if(markers[imei]) {
@@ -1178,13 +1212,15 @@ function handleDeviceData(data, isLive = true) {
 
 // Generate premium custom rotating arrowhead marker icon
 function getVehicleIcon(heading, status, pinned) {
-    let color = '#FFab00'; // Idle (Amber)
+    let color = '#FF3D00'; // Halt (Red)
     let pulseClass = '';
     if (status === 'running') {
         color = '#00E676'; // Moving (Green)
         pulseClass = 'beacon-pulse';
+    } else if (status === 'idle') {
+        color = '#FFab00'; // Idle (Amber)
     } else if (status === 'offline') {
-        color = '#FF3D00'; // Offline (Red)
+        color = '#94a3b8'; // Offline (Gray)
     }
     
     const borderStyle = pinned ? 'border: 2px dashed #FFb547;' : 'border: 1.5px solid rgba(255, 255, 255, 0.4);';
