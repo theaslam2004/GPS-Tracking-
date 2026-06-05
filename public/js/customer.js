@@ -67,6 +67,8 @@ let user = null;
 
 let map;
 const markers = {};
+const liveTrails = {}; // Store recent trail coordinates
+const liveTrailPolylines = {}; // Store trail polyline layers
 const livePaths = {}; // Store L.polyline paths for breadcrumbs
 let myDevices = [];
 let latestData = {}; // Store latest telemetry for panel
@@ -123,7 +125,7 @@ function showToast(title, message, type = 'info') {
 
 // Map Layers
 const mapLayers = {
-    standard: L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; OpenStreetMap &copy; CARTO' }),
+    standard: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' }),
     dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; CARTO' }),
     satellite: L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', { attribution: 'Tiles &copy; Esri' })
 };
@@ -1195,6 +1197,47 @@ function handleDeviceData(data, isLive = true) {
             .bindPopup(popupHTML)
             .on('click', () => focusDevice(imei));
     }
+
+    // Draw 1-minute breadcrumb trail (dashed line)
+    if (latitude && longitude && latitude !== 0 && longitude !== 0) {
+        if (!liveTrails[imei]) {
+            liveTrails[imei] = [];
+        }
+        const lastPt = liveTrails[imei][liveTrails[imei].length - 1];
+        const timestampMs = new Date(timestamp).getTime();
+        if (!lastPt || lastPt.lat !== latitude || lastPt.lng !== longitude) {
+            liveTrails[imei].push({ lat: latitude, lng: longitude, timestamp: timestampMs });
+        } else if (lastPt) {
+            lastPt.timestamp = timestampMs;
+        }
+        
+        const oneMinuteAgo = Date.now() - 60000;
+        liveTrails[imei] = liveTrails[imei].filter(pt => pt.timestamp >= oneMinuteAgo);
+        
+        const latlngs = liveTrails[imei].map(pt => [pt.lat, pt.lng]);
+        if (latlngs.length >= 2) {
+            if (liveTrailPolylines[imei]) {
+                liveTrailPolylines[imei].setLatLngs(latlngs);
+            } else {
+                liveTrailPolylines[imei] = L.polyline(latlngs, {
+                    color: '#ff3b70',
+                    weight: 3,
+                    dashArray: '6, 6',
+                    opacity: 0.8
+                }).addTo(map);
+            }
+        } else if (liveTrailPolylines[imei]) {
+            map.removeLayer(liveTrailPolylines[imei]);
+            delete liveTrailPolylines[imei];
+        }
+    }
+
+    // Auto-recenter map to follow the arrow (if live and not in history playback)
+    const isHistoryActive = document.getElementById('playbackControls') && 
+                            document.getElementById('playbackControls').style.display === 'flex';
+    if (isLive && activeImei === imei && !isHistoryActive) {
+        map.panTo([latitude, longitude], { animate: true });
+    }
     
     // Auto-focus logic: Focus the pinned vehicle by default
     if (isLive) {
@@ -1327,6 +1370,11 @@ let isPlaying = false;
 async function startHistoryMode() {
     if(!activeImei) return;
     
+    // Hide all live trails
+    Object.keys(liveTrailPolylines).forEach(imei => {
+        if (liveTrailPolylines[imei]) map.removeLayer(liveTrailPolylines[imei]);
+    });
+    
     // UI Changes
     document.querySelector('.bottom-filter').style.display = 'none';
     document.getElementById('playbackControls').style.display = 'flex';
@@ -1451,6 +1499,11 @@ function exitHistoryMode() {
     
     if(historyPolyline) map.removeLayer(historyPolyline);
     if(historyMarker) map.removeLayer(historyMarker);
+    
+    // Restore all live trails
+    Object.keys(liveTrailPolylines).forEach(imei => {
+        if (liveTrailPolylines[imei]) liveTrailPolylines[imei].addTo(map);
+    });
     
     document.querySelector('.bottom-filter').style.display = 'flex';
     document.getElementById('playbackControls').style.display = 'none';
@@ -1763,3 +1816,22 @@ function showSettingsModal() {
 function closeSettingsModal() {
     document.getElementById('settingsModal').classList.remove('active');
 }
+
+// Periodic cleanup of trail points older than 1 minute
+setInterval(() => {
+    const oneMinuteAgo = Date.now() - 60000;
+    Object.keys(liveTrails).forEach(imei => {
+        if (liveTrails[imei]) {
+            liveTrails[imei] = liveTrails[imei].filter(pt => pt.timestamp >= oneMinuteAgo);
+            const latlngs = liveTrails[imei].map(pt => [pt.lat, pt.lng]);
+            if (liveTrailPolylines[imei]) {
+                if (latlngs.length < 2) {
+                    map.removeLayer(liveTrailPolylines[imei]);
+                    delete liveTrailPolylines[imei];
+                } else {
+                    liveTrailPolylines[imei].setLatLngs(latlngs);
+                }
+            }
+        }
+    });
+}, 5000);

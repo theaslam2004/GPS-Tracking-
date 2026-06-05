@@ -3,8 +3,10 @@ let map;
 let marker;
 let targetImei = null;
 let currentLayerName = 'standard';
+const liveTrails = {}; // Store recent trail coordinates
+const liveTrailPolylines = {}; // Store trail polyline layers
 const mapLayers = {
-    standard: L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; OpenStreetMap &copy; CARTO' }),
+    standard: L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' }),
     dark: L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', { attribution: '&copy; CARTO' })
 };
 
@@ -87,6 +89,41 @@ function updateVehicleOnMap(telemetry, name) {
     // Smooth transition
     map.panTo(latlng);
     
+    // Draw 1-minute breadcrumb trail (dashed line)
+    if (latitude && longitude && latitude !== 0 && longitude !== 0 && targetImei) {
+        const imei = targetImei;
+        if (!liveTrails[imei]) {
+            liveTrails[imei] = [];
+        }
+        const lastPt = liveTrails[imei][liveTrails[imei].length - 1];
+        const timestampMs = new Date(timestamp).getTime();
+        if (!lastPt || lastPt.lat !== latitude || lastPt.lng !== longitude) {
+            liveTrails[imei].push({ lat: latitude, lng: longitude, timestamp: timestampMs });
+        } else if (lastPt) {
+            lastPt.timestamp = timestampMs;
+        }
+        
+        const oneMinuteAgo = Date.now() - 60000;
+        liveTrails[imei] = liveTrails[imei].filter(pt => pt.timestamp >= oneMinuteAgo);
+        
+        const latlngs = liveTrails[imei].map(pt => [pt.lat, pt.lng]);
+        if (latlngs.length >= 2) {
+            if (liveTrailPolylines[imei]) {
+                liveTrailPolylines[imei].setLatLngs(latlngs);
+            } else {
+                liveTrailPolylines[imei] = L.polyline(latlngs, {
+                    color: '#ff3b70',
+                    weight: 3,
+                    dashArray: '6, 6',
+                    opacity: 0.8
+                }).addTo(map);
+            }
+        } else if (liveTrailPolylines[imei]) {
+            map.removeLayer(liveTrailPolylines[imei]);
+            delete liveTrailPolylines[imei];
+        }
+    }
+    
     // Update Info Panel
     document.getElementById('valStatus').innerText = isMoving ? 'Running' : 'Idle';
     document.getElementById('valStatus').style.color = isMoving ? 'var(--primary)' : 'var(--warning)';
@@ -119,3 +156,21 @@ function getVehicleIcon(heading, status) {
         iconAnchor: [14, 14]
     });
 }
+
+// Periodic cleanup of trail points older than 1 minute
+setInterval(() => {
+    const oneMinuteAgo = Date.now() - 60000;
+    if (targetImei && liveTrails[targetImei]) {
+        const imei = targetImei;
+        liveTrails[imei] = liveTrails[imei].filter(pt => pt.timestamp >= oneMinuteAgo);
+        const latlngs = liveTrails[imei].map(pt => [pt.lat, pt.lng]);
+        if (liveTrailPolylines[imei]) {
+            if (latlngs.length < 2) {
+                map.removeLayer(liveTrailPolylines[imei]);
+                delete liveTrailPolylines[imei];
+            } else {
+                liveTrailPolylines[imei].setLatLngs(latlngs);
+            }
+        }
+    }
+}, 5000);
