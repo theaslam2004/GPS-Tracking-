@@ -713,7 +713,7 @@ function renderDeviceList() {
         // Use live telemetry values if available
         const live = latestData[d.imei] || {};
         const speedVal = live.speed !== undefined ? live.speed : 0;
-        const isOdoVerified = (live.odometer !== undefined && live.odometer > 0);
+        const isOdoVerified = (live.odometer !== undefined && live.odometer >= 0);
         const odoVal = isOdoVerified ? live.odometer.toFixed(1) : '--';
         const timeVal = live.timestamp ? new Date(live.timestamp).toLocaleTimeString() : '--';
         
@@ -813,6 +813,14 @@ function updateFleetCounts() {
 
 function closeVehiclePanel() {
     document.getElementById('vehiclePanel').classList.remove('open');
+}
+
+function togglePanelConfig() {
+    const configPanel = document.querySelector('.panel-config');
+    if (configPanel) {
+        const isHidden = window.getComputedStyle(configPanel).display === 'none';
+        configPanel.style.display = isHidden ? 'flex' : 'none';
+    }
 }
 
 function focusDevice(imei) {
@@ -949,7 +957,7 @@ function updatePanelData(data, deviceName) {
     
     const odoEl = document.getElementById('panelOdo');
     if (odoEl) {
-        const isOdoVerified = (odometer !== undefined && odometer > 0);
+        const isOdoVerified = (odometer !== undefined && odometer >= 0);
         odoEl.innerText = isOdoVerified ? `${odometer.toFixed(1)} km` : '--';
     }
     
@@ -1536,6 +1544,7 @@ async function saveVehicleConfig() {
             
             // Update local devices array
             const dev = myDevices.find(d => d.imei === activeImei);
+            const oldInitialOdo = dev ? (dev.initialOdometer || 0) : 0;
             if (dev) {
                 dev.driverName = driverName;
                 dev.vehicleProfile = vehicleProfile;
@@ -1544,7 +1553,11 @@ async function saveVehicleConfig() {
             
             // Update lastSeen record locally as well so that next update includes it
             if (latestData[activeImei]) {
-                latestData[activeImei].odometer = initialOdometer;
+                const prevRecord = latestData[activeImei];
+                const accumulatedDistance = prevRecord.accumulatedDistance !== undefined ?
+                    prevRecord.accumulatedDistance : Math.max(0, (prevRecord.odometer || 0) - oldInitialOdo);
+                prevRecord.accumulatedDistance = accumulatedDistance;
+                prevRecord.odometer = initialOdometer + accumulatedDistance;
             }
             
             renderDeviceList();

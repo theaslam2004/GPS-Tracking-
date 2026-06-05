@@ -901,7 +901,7 @@ socket.on('device_data', (data) => {
         const speedEl = document.getElementById(`speed-${imei}`);
         if (speedEl) {
             speedEl.innerText = `${speed} km/h`;
-            if (odometer && document.getElementById(`odo-${imei}`)) {
+            if (odometer !== undefined && document.getElementById(`odo-${imei}`)) {
                 document.getElementById(`odo-${imei}`).innerText = `${odometer.toFixed(2)} km`;
             }
             if (document.getElementById(`bat-${imei}`)) {

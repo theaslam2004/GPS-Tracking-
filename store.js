@@ -442,9 +442,17 @@ module.exports = {
             event = 'Backup Battery Warning';
         }
 
-        let prevOdo = prevRecord ? (prevRecord.odometer || 0) : 0;
+        let prevAccumulated = 0;
+        if (prevRecord) {
+            if (prevRecord.accumulatedDistance !== undefined) {
+                prevAccumulated = prevRecord.accumulatedDistance;
+            } else {
+                prevAccumulated = Math.max(0, (prevRecord.odometer || 0) - initialOdo);
+            }
+        }
         const deltaDistanceKm = (locationData.deltaDistance || 0) / 1000;
-        let odometer = prevOdo > 0 ? (prevOdo + deltaDistanceKm) : (initialOdo + deltaDistanceKm);
+        let accumulatedDistance = prevAccumulated + deltaDistanceKm;
+        let odometer = initialOdo + accumulatedDistance;
 
         const point = {
             timestamp: locationData.timestamp,
@@ -459,6 +467,7 @@ module.exports = {
             packetType: locationData.packetType,
             event: event,
             odometer: odometer,
+            accumulatedDistance: accumulatedDistance,
             rawHex: locationData.rawHex || '',
             status: status,
             ignitionOnTime: ignitionOnTime,
@@ -729,11 +738,22 @@ module.exports = {
         const data = readData();
         const dev = data.devices.find(d => d.imei === imei && d.ownerId === userId);
         if (dev) {
+            const oldInitialOdo = dev.initialOdometer || 0;
+            const newInitialOdo = parseFloat(initialOdometer || 0);
             dev.vehicleProfile = vehicleProfile;
-            dev.initialOdometer = parseFloat(initialOdometer || 0);
+            dev.initialOdometer = newInitialOdo;
 
             if (data.deviceLastSeen && data.deviceLastSeen[imei]) {
-                data.deviceLastSeen[imei].odometer = parseFloat(initialOdometer || 0);
+                const prevRecord = data.deviceLastSeen[imei];
+                const accumulatedDistance = prevRecord.accumulatedDistance !== undefined ?
+                    prevRecord.accumulatedDistance : Math.max(0, (prevRecord.odometer || 0) - oldInitialOdo);
+                prevRecord.accumulatedDistance = accumulatedDistance;
+                prevRecord.odometer = newInitialOdo + accumulatedDistance;
+            } else {
+                data.deviceLastSeen[imei] = {
+                    odometer: newInitialOdo,
+                    accumulatedDistance: 0
+                };
             }
             writeData(data);
             return true;
