@@ -335,8 +335,8 @@ function renderCustomerFleet(userId) {
         const isOnline = ls.timestamp && (now - new Date(ls.timestamp)) < 60000;
         const speed = ls.speed || 0;
         
-        let status = 'Halt';
-        let statusColor = 'var(--red)';
+        let status = 'Offline';
+        let statusColor = '#94a3b8';
         if (isOnline) {
             const s = ls.status || 'halt';
             if (s === 'running') {
@@ -720,6 +720,10 @@ async function loadDashboard() {
         const expiredEl = document.getElementById('statExpired');
         if (expiredEl) expiredEl.innerText = expiredCount;
 
+        if (currentViewUserId) {
+            renderCustomerFleet(currentViewUserId);
+        }
+
     } catch (err) { console.error('Dashboard Sync Error:', err); }
 }
 
@@ -999,3 +1003,10 @@ document.addEventListener('click', (e) => {
         document.getElementById('searchResults')?.classList.remove('active');
     }
 });
+
+// Periodically refresh the dashboard and active customer fleet view to sync elapsed time and offline status
+setInterval(() => {
+    if (user && user.role === 'admin') {
+        loadDashboard();
+    }
+}, 10000);

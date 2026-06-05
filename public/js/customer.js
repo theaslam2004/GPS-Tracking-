@@ -75,6 +75,39 @@ let latestData = {}; // Store latest telemetry for panel
 let activeImei = null;
 let userSettings = {};
 let currentFilter = 'all';
+const addressCache = {};
+
+function getAddress(imei, lat, lng, callback) {
+    const cacheKey = `${lat.toFixed(5)},${lng.toFixed(5)}`;
+    if (addressCache[imei] && addressCache[imei].coords === cacheKey) {
+        if (callback) callback(addressCache[imei].address);
+        return;
+    }
+    
+    // Fetch from geocode API
+    fetch(`/api/geocode?lat=${lat}&lon=${lng}`)
+        .then(res => res.json())
+        .then(geo => {
+            let addr = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+            if (geo && geo.display_name) {
+                addr = geo.display_name.split(',').slice(0, 3).join(', ').trim();
+            }
+            addressCache[imei] = { coords: cacheKey, address: addr };
+            if (callback) callback(addr);
+            
+            // Proactively update any existing popup/card elements in the DOM
+            const popupAddrEl = document.getElementById(`popup-address-${imei}`);
+            if (popupAddrEl) popupAddrEl.innerText = addr;
+            
+            const cardAddrEl = document.getElementById(`card-address-${imei}`);
+            if (cardAddrEl) cardAddrEl.innerText = addr;
+        })
+        .catch(() => {
+            const addr = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
+            addressCache[imei] = { coords: cacheKey, address: addr };
+            if (callback) callback(addr);
+        });
+}
 
 window.applyFilter = function(type) {
     currentFilter = type;
@@ -149,6 +182,30 @@ function initMap() {
     // Geofence Drawing Layer
     drawnItems = new L.FeatureGroup();
     map.addLayer(drawnItems);
+    
+    // Dynamic address resolver and HTML refresher on popup open
+    map.on('popupopen', function(e) {
+        const popup = e.popup;
+        const container = popup.getElement();
+        if (container) {
+            const addrEl = container.querySelector('[id^="popup-address-"]');
+            if (addrEl) {
+                const imei = addrEl.id.replace('popup-address-', '');
+                const live = latestData[imei];
+                if (live) {
+                    // Refresh popup content dynamically to sync elapsed time and offline status
+                    const device = myDevices.find(d => d.imei === imei);
+                    popup.setContent(buildTelemetryHTML(live, device ? device.name : imei));
+                    
+                    // Re-resolve address and insert it in the fresh content
+                    getAddress(imei, live.latitude, live.longitude, (addr) => {
+                        const newAddrEl = popup.getElement().querySelector('[id^="popup-address-"]');
+                        if (newAddrEl) newAddrEl.innerText = addr;
+                    });
+                }
+            }
+        }
+    });
     
     // We handle drawing programmatically via the new horizontal toolbar
     
@@ -728,22 +785,14 @@ function renderDeviceList() {
         const timeVal = live.timestamp ? new Date(live.timestamp).toLocaleTimeString() : '--';
         
         // Offline status check
+        let statusClass = 'offline';
         let statusText = 'Offline';
-        let statusColor = 'var(--text-secondary)';
         if (live.timestamp) {
             const isStale = (Date.now() - new Date(live.timestamp)) > 60000;
             if (!isStale) {
-                const s = live.status || 'halt';
-                if (s === 'running') {
-                    statusText = 'Running';
-                    statusColor = 'var(--success)';
-                } else if (s === 'idle') {
-                    statusText = 'Idle';
-                    statusColor = 'var(--warning)';
-                } else {
-                    statusText = 'Halt';
-                    statusColor = 'var(--danger)';
-                }
+                statusClass = live.status || 'halt';
+                statusText = statusClass.charAt(0).toUpperCase() + statusClass.slice(1);
+                if (statusClass === 'halt') statusText = 'Halted';
             }
         }
         
@@ -751,23 +800,73 @@ function renderDeviceList() {
         const batAlert = isSecondary ? `<i class="fa-solid fa-triangle-exclamation" style="color: var(--danger); margin-left: 6px; animation: pulseGlow 1.5s infinite ease-in-out;" title="Warning: Running on Backup Battery!"></i>` : '';
         const activeClass = (d.imei === activeImei) ? 'active' : '';
 
+        // Dynamic address loading
+        const initialCoords = live.latitude && live.longitude ? `${live.latitude.toFixed(5)}, ${live.longitude.toFixed(5)}` : '--';
+        if (live.latitude && live.longitude) {
+            setTimeout(() => {
+                getAddress(d.imei, live.latitude, live.longitude, (addr) => {
+                    const el = document.getElementById(`card-address-${d.imei}`);
+                    if (el) el.innerText = addr;
+                });
+            }, 50);
+        }
+
+        const showMockFuel = d.vehicleProfile === 'heavy';
+        const fuelText = showMockFuel ? '210 L / 360 L' : 'N/A';
+        const fuelPercent = showMockFuel ? 58 : 0;
+        const adblueText = showMockFuel ? '15 L / 25 L' : 'N/A';
+        const adbluePercent = showMockFuel ? 60 : 0;
+        
+        const fuelBarHTML = showMockFuel ? `
+            <div style="margin-top: 8px; border-top: 1px dashed var(--border-light); padding-top: 8px; display: flex; flex-direction: column; gap: 4px;">
+                <div style="display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--text-secondary);">
+                    <span><i class="fa-solid fa-gas-pump" style="color: var(--primary);"></i> Fuel: <b>${fuelText}</b></span>
+                    <span>${fuelPercent}%</span>
+                </div>
+                <div class="taabi-progress-container" style="height: 4px; margin-top: 2px;">
+                    <div class="taabi-progress-fill fuel" style="width: ${fuelPercent}%;"></div>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--text-secondary); margin-top: 2px;">
+                    <span><i class="fa-solid fa-flask" style="color: #00d4ff;"></i> Adblue: <b>${adblueText}</b></span>
+                    <span>${adbluePercent}%</span>
+                </div>
+                <div class="taabi-progress-container" style="height: 4px; margin-top: 2px;">
+                    <div class="taabi-progress-fill adblue" style="width: ${adbluePercent}%;"></div>
+                </div>
+            </div>
+        ` : '';
+
         return `
-            <div class="device-card ${activeClass}" id="card-${d.imei}" onclick="focusDevice('${d.imei}')">
-                <div class="device-header" style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                    <div class="device-title" style="display: flex; align-items: center; gap: 6px; font-size: 0.9rem; font-weight: 700; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 70%;">
+            <div class="device-card ${statusClass} ${activeClass}" id="card-${d.imei}" onclick="focusDevice('${d.imei}')">
+                <!-- Card Header -->
+                <div class="device-header" style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 8px;">
+                    <div class="device-title" style="display: flex; align-items: center; gap: 6px; font-size: 0.88rem; font-weight: 700; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 68%;">
                         <i class="fa-solid fa-star" style="color: ${d.pinned ? 'var(--warning)' : 'var(--text-secondary)'}; opacity: ${d.pinned ? '1' : '0.5'}; cursor: pointer; transition: all 0.2s;" onclick="togglePin('${d.imei}', event)" title="${d.pinned ? 'Unpin' : 'Pin to top'}"></i>
-                        <i class="fa-solid fa-truck" style="font-size: 0.85rem; flex-shrink: 0;"></i>
-                        <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 700;" title="${d.name || d.imei}">${d.name || d.imei}</span>
+                        <i class="fa-solid fa-truck" style="font-size: 0.85rem; flex-shrink: 0; color: var(--text-secondary);"></i>
+                        <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 800; color: var(--text-primary);" title="${d.name || d.imei}">${d.name || d.imei}</span>
                         ${batAlert}
                         <i class="fa-solid fa-pen-to-square rename-btn" style="cursor: pointer; opacity: 0.5; font-size: 0.75rem; flex-shrink: 0;" onclick="renameDevicePrompt('${d.imei}', '${d.name || ''}', event)" title="Rename vehicle"></i>
                     </div>
-                    <div style="font-weight: 700; font-size: 0.75rem; color: ${statusColor}; white-space: nowrap; flex-shrink: 0;" id="status-${d.imei}">${statusText}</div>
+                    <span class="taabi-status-capsule ${statusClass}" style="transform: scale(0.9); transform-origin: right center;">
+                        ${statusText}
+                    </span>
                 </div>
-                <div class="device-stats" style="display: flex; justify-content: space-between; font-size: 0.75rem; padding-top: 8px;">
-                    <div class="stat-item" style="${speedHidden}"><i class="fa-solid fa-gauge-high"></i> <span id="speed-${d.imei}">${speedVal}</span> km/h</div>
-                    <div class="stat-item" style="${odoHidden}"><i class="fa-solid fa-road"></i> <span id="odo-${d.imei}">${odoVal}</span> km</div>
-                    <div class="stat-item"><i class="fa-regular fa-clock"></i> <span id="time-${d.imei}">${timeVal}</span></div>
+                
+                <!-- Address Section -->
+                <div style="display: flex; align-items: flex-start; gap: 6px; font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 8px; line-height: 1.3;">
+                    <i class="fa-solid fa-location-dot" style="color: var(--primary); font-size: 0.8rem; width: 12px; margin-top: 2px;"></i>
+                    <span id="card-address-${d.imei}" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; color: var(--text-primary); flex: 1;">${initialCoords}</span>
                 </div>
+
+                <!-- Stats Grid -->
+                <div class="device-stats" style="display: flex; justify-content: space-between; font-size: 0.72rem; padding: 6px 8px; background: rgba(0,0,0,0.02); border-radius: 6px; border: 1px solid var(--border-light);">
+                    <div class="stat-item" style="${speedHidden}"><span style="color: var(--text-secondary);"><i class="fa-solid fa-gauge-high" style="color: var(--success); font-size: 0.7rem;"></i> speed</span><b style="color: var(--text-primary); font-family: 'Outfit', sans-serif;" id="speed-${d.imei}">${speedVal} km/h</b></div>
+                    <div class="stat-item" style="${odoHidden}"><span style="color: var(--text-secondary);"><i class="fa-solid fa-road" style="color: var(--primary); font-size: 0.7rem;"></i> odometer</span><b style="color: var(--text-primary); font-family: 'Outfit', sans-serif;" id="odo-${d.imei}">${odoVal} km</b></div>
+                    <div class="stat-item"><span style="color: var(--text-secondary);"><i class="fa-regular fa-clock" style="color: var(--primary); font-size: 0.7rem;"></i> updated</span><b style="color: var(--text-primary); font-family: 'Outfit', sans-serif;" id="time-${d.imei}">${timeVal}</b></div>
+                </div>
+
+                <!-- Fuel / Adblue progress bars -->
+                ${fuelBarHTML}
             </div>
         `;
     }).join('');
@@ -858,15 +957,6 @@ function updatePanelData(data, deviceName) {
     
     document.getElementById('panelDeviceName').innerText = deviceName || imei;
     document.getElementById('panelSpeed').innerText = speed;
-    
-    // Populate config fields
-    const driverInput = document.getElementById('cfgDriverName');
-    const profileSelect = document.getElementById('cfgVehicleProfile');
-    const odoInput = document.getElementById('cfgInitialOdometer');
-    
-    if (driverInput && device) driverInput.value = device.driverName || 'Unassigned';
-    if (profileSelect && device) profileSelect.value = device.vehicleProfile || 'standard';
-    if (odoInput && device) odoInput.value = device.initialOdometer || 0;
     
     // Voltage profile verification
     const profile = device ? device.vehicleProfile || 'standard' : 'standard';
@@ -1054,74 +1144,98 @@ function timeSince(date) {
 function buildTelemetryHTML(data, deviceName) {
     const { imei, latitude, longitude, speed, timestamp, odometer, battery, gpsValid, satellites, voltage, powerSource } = data;
     const timeObj = new Date(timestamp);
-    const isSecondary = (powerSource === 'secondary');
-    const batColor = isSecondary ? 'danger' : 'success';
-    const batIcon = isSecondary ? 'fa-car-battery' : 'fa-bolt';
-    const voltVal = voltage !== undefined ? voltage.toFixed(1) : '12.0';
-    const fixText = gpsValid ? '3D Fix' : 'No Fix';
-    const satCount = satellites !== undefined ? satellites : 0;
-    
     const isStale = (Date.now() - new Date(timestamp)) > 60000;
+    
     let status = 'offline';
     let statusText = 'Offline';
-    let iconClass = 'fa-power-off';
-    let statusColorVar = 'text-secondary';
-    
     if (!isStale) {
         status = data.status || 'halt';
-        if (status === 'running') {
-            statusText = 'Running';
-            iconClass = 'fa-truck-fast';
-            statusColorVar = 'success';
-        } else if (status === 'idle') {
-            statusText = 'Idle';
-            iconClass = 'fa-pause';
-            statusColorVar = 'warning';
-        } else {
-            status = 'halt';
-            statusText = 'Halt';
-            iconClass = 'fa-hand';
-            statusColorVar = 'danger';
-        }
+        statusText = status.charAt(0).toUpperCase() + status.slice(1);
+        if (status === 'halt') statusText = 'Halted';
     }
-    
+
+    const device = myDevices.find(d => d.imei === imei);
+    const profile = device ? device.vehicleProfile || 'standard' : 'standard';
+    const profileText = profile === 'heavy' ? 'Heavy (48V)' : 'Standard (12V/24V)';
+    const driverName = device ? device.driverName || 'Unassigned' : 'Unassigned';
+
+    // Simulated Fuel & Adblue based on profile (matches Taabi style)
+    const showMockFuel = profile === 'heavy'; 
+    const fuelText = showMockFuel ? '210 L / 360 L' : 'N/A';
+    const fuelPercent = showMockFuel ? 58 : 0;
+    const adblueText = showMockFuel ? '15 L / 25 L' : 'N/A';
+    const adbluePercent = showMockFuel ? 60 : 0;
+
+    const odoVal = (odometer !== undefined && odometer >= 0) ? `${odometer.toFixed(1)} km` : '--';
+    const coordsString = `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
+
     return `
-    <div class="telemetry-card">
-        <div class="telemetry-header">
-            <div class="telemetry-icon ${status}">
-                <i class="fa-solid ${iconClass}"></i>
+    <div class="taabi-popup" style="padding: 1rem; width: 290px; font-family: 'Outfit', sans-serif;">
+        <!-- Header -->
+        <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-light); padding-bottom: 8px; margin-bottom: 8px;">
+            <div style="font-weight: 800; font-size: 1.05rem; letter-spacing: 0.5px; color: var(--text-primary); text-transform: uppercase;">
+                ${deviceName || imei}
             </div>
-            <div>
-                <h3 class="telemetry-title" style="text-transform: uppercase; letter-spacing: 1px;">${deviceName || imei}</h3>
-                <span class="telemetry-status" style="color: var(--${statusColorVar})">${statusText}</span>
-            </div>
+            <span class="taabi-status-capsule ${status}">
+                ${statusText}
+            </span>
         </div>
-        
-        <div class="telemetry-grid">
-            ${isFeatureEnabled(imei, 'speedAlert') ? `
-            <div class="telemetry-item">
-                <span class="telemetry-label"><i class="fa-solid fa-gauge-high"></i> Speed</span>
-                <span class="telemetry-val">${speed} km/h</span>
-            </div>` : ''}
-            ${isFeatureEnabled(imei, 'odometer') ? `
-            <div class="telemetry-item">
-                <span class="telemetry-label"><i class="fa-solid fa-road"></i> Odometer</span>
-                <span class="telemetry-val accent">${odometer ? odometer.toFixed(1) + ' km' : 'N/A'}</span>
-            </div>` : ''}
-            ${isFeatureEnabled(imei, 'healthStats') ? `
-            <div class="telemetry-item">
-                <span class="telemetry-label"><i class="fa-solid fa-car-battery"></i> Voltage</span>
-                <span class="telemetry-val">${voltVal} V <span style="font-size:0.6rem; color:var(--${batColor});"><i class="fa-solid ${batIcon}"></i></span></span>
+
+        <!-- Vehicle Details Info rows -->
+        <div style="display: flex; flex-direction: column; gap: 6px; font-size: 0.76rem; color: var(--text-secondary);">
+            <!-- Vehicle Profile / Model -->
+            <div style="display: flex; align-items: center; gap: 8px;">
+                <i class="fa-solid fa-truck" style="color: var(--primary); font-size: 0.85rem; width: 14px;"></i>
+                <span>Profile: <b>${profileText}</b> | Driver: <b>${driverName}</b></span>
             </div>
-            <div class="telemetry-item">
-                <span class="telemetry-label"><i class="fa-solid fa-location-dot"></i> GPS Lock</span>
-                <span class="telemetry-val" style="font-size: 0.8rem;">${fixText} (${satCount})</span>
-            </div>` : ''}
-        </div>
-        
-        <div class="telemetry-footer">
-            <span><i class="fa-solid fa-signal" style="color: var(--success); margin-right: 4px;"></i> Online</span>
-            <span><i class="fa-regular fa-clock"></i> ${timeSince(timeObj)}</span>
+            
+            <!-- Address Row -->
+            <div style="display: flex; align-items: flex-start; gap: 8px; line-height: 1.3;">
+                <i class="fa-solid fa-location-dot" style="color: var(--primary); font-size: 0.85rem; width: 14px; margin-top: 2px;"></i>
+                <span id="popup-address-${imei}" class="popup-address-text" style="color: var(--text-primary); font-weight: 600;">${coordsString}</span>
+            </div>
+
+            <!-- Speed & Odo Row -->
+            <div style="display: flex; gap: 12px; margin-top: 2px; border-top: 1px solid var(--border-light); border-bottom: 1px solid var(--border-light); padding: 6px 0;">
+                <div style="flex: 1; display: flex; align-items: center; gap: 6px;">
+                    <i class="fa-solid fa-gauge-high" style="color: var(--success); font-size: 0.85rem;"></i>
+                    <span>Speed: <b style="color: var(--text-primary);">${speed} km/h</b></span>
+                </div>
+                <div style="flex: 1; display: flex; align-items: center; gap: 6px;">
+                    <i class="fa-solid fa-road" style="color: var(--primary); font-size: 0.85rem;"></i>
+                    <span>Odo: <b style="color: var(--text-primary);">${odoVal}</b></span>
+                </div>
+            </div>
+
+            <!-- Fuel Bar -->
+            <div style="display: flex; flex-direction: column; gap: 2px; margin-top: 2px;">
+                <div style="display: flex; justify-content: space-between; font-size: 0.7rem;">
+                    <span><i class="fa-solid fa-gas-pump" style="color: var(--primary);"></i> Fuel</span>
+                    <span style="font-weight: 700; color: var(--text-primary);">${fuelText}</span>
+                </div>
+                ${showMockFuel ? `
+                <div class="taabi-progress-container">
+                    <div class="taabi-progress-fill fuel" style="width: ${fuelPercent}%;"></div>
+                </div>` : ''}
+            </div>
+
+            <!-- Adblue Bar -->
+            <div style="display: flex; flex-direction: column; gap: 2px;">
+                <div style="display: flex; justify-content: space-between; font-size: 0.7rem;">
+                    <span><i class="fa-solid fa-flask" style="color: #00d4ff;"></i> Adblue</span>
+                    <span style="font-weight: 700; color: var(--text-primary);">${adblueText}</span>
+                </div>
+                ${showMockFuel ? `
+                <div class="taabi-progress-container">
+                    <div class="taabi-progress-fill adblue" style="width: ${adbluePercent}%;"></div>
+                </div>` : ''}
+            </div>
+
+            <!-- Footer: Last updated & View History link -->
+            <div style="display: flex; justify-content: space-between; align-items: center; border-top: 1px solid var(--border-light); padding-top: 6px; margin-top: 4px; font-size: 0.68rem;">
+                <span>Last Updated: <b style="color: var(--text-primary);">${timeSince(timeObj)}</b></span>
+                <a href="#" onclick="event.preventDefault(); startHistoryMode();" style="color: var(--primary); font-weight: 700; text-decoration: none;">View history</a>
+            </div>
         </div>
     </div>
     `;
@@ -1529,6 +1643,8 @@ function exitHistoryMode() {
 
 // ── CUSTOM FUNCTIONS FOR ASSET / DRIVER MANAGEMENT ──
 
+
+
 async function renameDevicePrompt(imei, currentName, event) {
     if (event) event.stopPropagation();
     const newName = prompt("Enter new name for vehicle:", currentName);
@@ -1560,72 +1676,6 @@ async function renameDevicePrompt(imei, currentName, event) {
     }
 }
 
-async function saveVehicleConfig() {
-    if (!activeImei) return;
-    
-    const driverName = document.getElementById('cfgDriverName').value.trim();
-    const vehicleProfile = document.getElementById('cfgVehicleProfile').value;
-    const initialOdometer = parseFloat(document.getElementById('cfgInitialOdometer').value || 0);
-    
-    try {
-        const res = await fetch('/api/customer/update-vehicle-profile', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                userId: user.id,
-                imei: activeImei,
-                vehicleProfile,
-                initialOdometer
-            })
-        });
-        
-        const resDriver = await fetch('/api/customer/update-driver', {
-            method: 'POST',
-            headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({
-                userId: user.id,
-                imei: activeImei,
-                driverName
-            })
-        });
-        
-        const data = await res.json();
-        const dataDriver = await resDriver.json();
-        
-        if (data.success && dataDriver.success) {
-            showToast("✅ Configuration Saved", "Vehicle profile and driver updated successfully.", "success");
-            
-            // Update local devices array
-            const dev = myDevices.find(d => d.imei === activeImei);
-            const oldInitialOdo = dev ? (dev.initialOdometer || 0) : 0;
-            if (dev) {
-                dev.driverName = driverName;
-                dev.vehicleProfile = vehicleProfile;
-                dev.initialOdometer = initialOdometer;
-            }
-            
-            // Update lastSeen record locally as well so that next update includes it
-            if (latestData[activeImei]) {
-                const prevRecord = latestData[activeImei];
-                const accumulatedDistance = prevRecord.accumulatedDistance !== undefined ?
-                    prevRecord.accumulatedDistance : Math.max(0, (prevRecord.odometer || 0) - oldInitialOdo);
-                prevRecord.accumulatedDistance = accumulatedDistance;
-                prevRecord.odometer = initialOdometer + accumulatedDistance;
-            }
-            
-            renderDeviceList();
-            
-            // Re-render panel
-            if (latestData[activeImei]) {
-                updatePanelData(latestData[activeImei], dev ? dev.name : activeImei);
-            }
-        } else {
-            showToast("❌ Error", "Failed to update configuration.", "danger");
-        }
-    } catch(e) {
-        showToast("❌ Error", "Network error updating configuration.", "danger");
-    }
-}
 
 // ── CUSTOM FUNCTIONS FOR LINK SHARING ──
 
@@ -1843,3 +1893,12 @@ setInterval(() => {
         }
     });
 }, 5000);
+
+// Periodically refresh the device list and active panel to sync elapsed time and offline status
+setInterval(() => {
+    renderDeviceList();
+    if (activeImei && latestData[activeImei]) {
+        const device = myDevices.find(d => d.imei === activeImei);
+        updatePanelData(latestData[activeImei], device ? device.name : activeImei);
+    }
+}, 10000);

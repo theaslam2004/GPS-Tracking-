@@ -379,15 +379,16 @@ body {
 
 /* Device Cards */
 .device-card {
-    background: linear-gradient(145deg, rgba(255,255,255,0.03) 0%, rgba(0,0,0,0.2) 100%);
+    background: var(--bg-surface);
     border: 1px solid var(--border);
-    border-radius: var(--radius-md);
-    padding: 1.25rem;
-    margin-bottom: 1rem;
-    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+    border-radius: var(--radius-lg);
+    padding: 1.1rem;
+    margin-bottom: 0.85rem;
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
     cursor: pointer;
     position: relative;
     overflow: hidden;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.03);
 }
 
 .device-card::before {
@@ -395,18 +396,33 @@ body {
     position: absolute;
     top: 0; left: 0; width: 4px; height: 100%;
     background: var(--border-light);
-    transition: all 0.3s ease;
+    transition: all 0.25s ease;
 }
 
 .device-card:hover {
-    background: linear-gradient(145deg, rgba(255,255,255,0.06) 0%, rgba(0,212,255,0.05) 100%);
+    background: var(--bg-surface);
     border-color: var(--border-accent);
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-    transform: translateY(-2px) scale(1.01);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.06);
+    transform: translateY(-2px);
+}
+
+.device-card.active {
+    background: var(--bg-surface);
+    border-color: var(--primary);
+    box-shadow: 0 8px 25px rgba(255, 59, 112, 0.12);
+    transform: scale(1.01);
+}
+
+.device-card.active::before {
+    background: var(--primary);
+    width: 6px;
 }
 
 .device-card.running::before { background: var(--success); }
+.device-card.idle::before { background: var(--warning); }
+.device-card.halt::before { background: var(--danger); }
 .device-card.halted::before { background: var(--danger); }
+.device-card.offline::before { background: #94a3b8; }
 
 .device-header {
     display: flex;
@@ -2353,4 +2369,52 @@ body.in-geofence-mode .vehicle-details-panel {
 @keyframes slide-down-fade {
     from { opacity: 0; transform: translateY(-10px); }
     to { opacity: 1; transform: translateY(0); }
+}
+
+/* ==========================================================================
+   Taabi UI Inspiration overrides
+   ========================================================================== */
+.taabi-status-capsule {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: var(--radius-full);
+    font-size: 0.68rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    line-height: 1;
+}
+.taabi-status-capsule.running { background: rgba(0, 230, 118, 0.1); border: 1px solid var(--success); color: var(--success); }
+.taabi-status-capsule.idle { background: rgba(255, 171, 0, 0.1); border: 1px solid var(--warning); color: var(--warning); }
+.taabi-status-capsule.halt { background: rgba(255, 61, 0, 0.1); border: 1px solid var(--danger); color: var(--danger); }
+.taabi-status-capsule.offline { background: rgba(148, 163, 184, 0.1); border: 1px solid #94a3b8; color: #94a3b8; }
+
+.taabi-progress-container {
+    width: 100%;
+    height: 6px;
+    background: var(--border-light);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+    margin-top: 4px;
+}
+.taabi-progress-fill {
+    height: 100%;
+    border-radius: var(--radius-full);
+    transition: width 0.4s ease;
+}
+.taabi-progress-fill.fuel { background: var(--primary); }
+.taabi-progress-fill.adblue { background: #00d4ff; }
+
+/* Let's style leaflet popups override for adaptive day/night theme */
+.leaflet-popup-content-wrapper {
+    background: var(--bg-surface) !important;
+    color: var(--text-primary) !important;
+    border: 1px solid var(--border) !important;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.12) !important;
+    border-radius: 12px !important;
+    padding: 0 !important;
+}
+.leaflet-popup-tip {
+    background: var(--bg-surface) !important;
+    border: 1px solid var(--border) !important;
 }

@@ -869,38 +869,6 @@
                     ⚠️ Backup Battery Mode - Check Power Source!
                 </div>
 
-                <!-- Configuration Form (Hidden) -->
-                <div class="panel-config" style="padding: 8px; margin-top: 4px; background: var(--bg-main); border: 1px solid var(--border-light); border-radius: var(--radius-md); display: none !important; flex-direction: column; gap: 6px;">
-                    <div style="font-size: 0.72rem; color: var(--text-secondary); font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border-light); padding-bottom: 4px;">Configuration</div>
-                    
-                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-                        <span style="font-size: 0.72rem; color: var(--text-secondary);">Driver:</span>
-                        <input type="text" id="cfgDriverName" style="background: var(--bg-surface); border: 1px solid var(--border-light); border-radius: 4px; padding: 3px 6px; color: var(--text-primary); font-size: 0.72rem; width: 110px;" placeholder="Unassigned">
-                    </div>
-                    
-                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-                        <span style="font-size: 0.72rem; color: var(--text-secondary);">Voltage Profile:</span>
-                        <select id="cfgVehicleProfile" style="background: var(--bg-surface); border: 1px solid var(--border-light); border-radius: 4px; padding: 3px 6px; color: var(--text-primary); font-size: 0.72rem; width: 110px; cursor: pointer;">
-                            <option value="standard">Standard (12V/24V)</option>
-                            <option value="heavy">Heavy (48V)</option>
-                        </select>
-                    </div>
-                    
-                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px;">
-                        <span style="font-size: 0.72rem; color: var(--text-secondary);">Initial Odo (km):</span>
-                        <input type="number" id="cfgInitialOdometer" style="background: var(--bg-surface); border: 1px solid var(--border-light); border-radius: 4px; padding: 3px 6px; color: var(--text-primary); font-size: 0.72rem; width: 110px;" placeholder="0" step="any">
-                    </div>
-                    
-                    <div style="display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 0.72rem; border-top: 1px solid var(--border-light); padding-top: 4px;">
-                        <span style="color: var(--text-secondary);">Voltage:</span>
-                        <span id="panelVoltage" style="font-weight: 700; color: var(--primary);">-- V</span>
-                    </div>
-
-                    <button class="btn btn-primary" onclick="saveVehicleConfig()" style="padding: 5px; font-size: 0.72rem; font-weight: 700; width: 100%; border-radius: 4px; margin-top: 2px;">
-                        Save Vehicle Config
-                    </button>
-                </div>
-
                 <!-- Current Address -->
                 <div class="panel-location" style="margin-top: 4px; padding: 8px; background: var(--bg-main); border: 1px solid var(--border-light); border-radius: var(--radius-md);">
                     <div style="font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 0.2rem;"><i class="fa-solid fa-location-dot" style="color: var(--primary);"></i> Current Address</div>

@@ -415,24 +415,29 @@ module.exports = {
         let ignitionOffTime = prevRecord ? prevRecord.ignitionOffTime : null;
         const now = new Date(locationData.timestamp);
 
-        if (locationData.ignition === true) {
-            if (!prevRecord || prevRecord.ignition === false) {
-                ignitionOnTime = now.toISOString();
-                ignitionOffTime = null;
-            }
-            const durationOn = ignitionOnTime ? (now - new Date(ignitionOnTime)) / 1000 : 0;
-            if (locationData.speed > 5) {
-                status = 'running';
-            } else {
-                status = (durationOn >= 10) ? 'idle' : (prevRecord ? prevRecord.status : 'halt');
-            }
+        if (locationData.speed > 2) {
+            status = 'running';
+            // Reset state timers since vehicle is moving
+            ignitionOnTime = null;
+            ignitionOffTime = null;
         } else {
-            if (!prevRecord || prevRecord.ignition === true || prevRecord.ignition === undefined) {
-                ignitionOffTime = now.toISOString();
-                ignitionOnTime = null;
+            // Stationary (speed <= 2)
+            if (locationData.ignition === true) {
+                if (!prevRecord || prevRecord.ignition === false || !ignitionOnTime) {
+                    ignitionOnTime = now.toISOString();
+                    ignitionOffTime = null;
+                }
+                const durationOn = ignitionOnTime ? (now - new Date(ignitionOnTime)) / 1000 : 0;
+                status = (durationOn >= 10) ? 'idle' : 'running';
+            } else {
+                // Ignition OFF: Halt after 60s, else running/idle from prevRecord
+                if (!prevRecord || prevRecord.ignition === true || prevRecord.ignition === undefined || !ignitionOffTime) {
+                    ignitionOffTime = now.toISOString();
+                    ignitionOnTime = null;
+                }
+                const durationOff = ignitionOffTime ? (now - new Date(ignitionOffTime)) / 1000 : 0;
+                status = (durationOff >= 60) ? 'halt' : (prevRecord ? prevRecord.status : 'running');
             }
-            const durationOff = ignitionOffTime ? (now - new Date(ignitionOffTime)) / 1000 : 0;
-            status = (durationOff >= 60) ? 'halt' : (prevRecord ? prevRecord.status : 'idle');
         }
 
         let powerSource = 'primary';

@@ -8,8 +8,15 @@ const DATA_FILE = path.join(__dirname, 'data.json');
 
 function generatePacket(imei, speed, lat, lng, eventType = 'NR') {
     const now = new Date();
-    const dateStr = now.toLocaleDateString('en-GB').replace(/\//g, ''); // DDMMYYYY
-    const timeStr = now.toLocaleTimeString('en-GB').replace(/:/g, ''); // HHMMSS
+    const day = String(now.getUTCDate()).padStart(2, '0');
+    const month = String(now.getUTCMonth() + 1).padStart(2, '0');
+    const year = String(now.getUTCFullYear());
+    const dateStr = `${day}${month}${year}`;
+    
+    const hours = String(now.getUTCHours()).padStart(2, '0');
+    const mins = String(now.getUTCMinutes()).padStart(2, '0');
+    const secs = String(now.getUTCSeconds()).padStart(2, '0');
+    const timeStr = `${hours}${mins}${secs}`;
     
     // Ignition is 1 if speed > 0 or if eventType is IN (Ignition On), except during Towing
     let ign = (speed > 0 && eventType !== 'TS' && eventType !== 'TE' || eventType === 'IN') ? '1' : '0';

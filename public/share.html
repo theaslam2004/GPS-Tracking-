@@ -203,6 +203,52 @@
         .info-row span:last-child {
             font-weight: 600;
         }
+
+        /* Taabi UI Elements */
+        .taabi-status-capsule {
+            display: inline-block;
+            padding: 3px 10px;
+            border-radius: 9999px;
+            font-size: 0.68rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            line-height: 1;
+        }
+        .taabi-status-capsule.running { background: rgba(0, 230, 118, 0.1); border: 1px solid #00E676; color: #00E676; }
+        .taabi-status-capsule.idle { background: rgba(255, 171, 0, 0.1); border: 1px solid #FFab00; color: #FFab00; }
+        .taabi-status-capsule.halt { background: rgba(255, 61, 0, 0.1); border: 1px solid #FF3D00; color: #FF3D00; }
+        .taabi-status-capsule.offline { background: rgba(148, 163, 184, 0.1); border: 1px solid #94a3b8; color: #94a3b8; }
+
+        .taabi-progress-container {
+            width: 100%;
+            height: 6px;
+            background: rgba(0, 0, 0, 0.06);
+            border-radius: 9999px;
+            overflow: hidden;
+            margin-top: 4px;
+        }
+        .taabi-progress-fill {
+            height: 100%;
+            border-radius: 9999px;
+            transition: width 0.4s ease;
+        }
+        .taabi-progress-fill.fuel { background: #ff3b70; }
+        .taabi-progress-fill.adblue { background: #00d4ff; }
+
+        /* Leaflet popup overrides */
+        .leaflet-popup-content-wrapper {
+            background: #ffffff !important;
+            color: #2b354e !important;
+            border: 1px solid rgba(0, 0, 0, 0.06) !important;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.12) !important;
+            border-radius: 12px !important;
+            padding: 0 !important;
+        }
+        .leaflet-popup-tip {
+            background: #ffffff !important;
+            border: 1px solid rgba(0, 0, 0, 0.06) !important;
+        }
     </style>
 </head>
 <body>

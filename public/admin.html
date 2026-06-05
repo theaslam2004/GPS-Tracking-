@@ -268,6 +268,7 @@
     padding: 32px;
     min-height: 100vh;
     background: var(--bg);
+    min-width: 0;
   }
   .nav-links {
     display: flex;
@@ -620,14 +621,14 @@
             </div>
 
             <div class="table-wrap">
-              <table style="width: 100%;">
+              <table style="width: 100%; table-layout: fixed;">
                 <thead>
                   <tr>
-                    <th>Device Details</th>
-                    <th>Status</th>
-                    <th>Last Update</th>
-                    <th>Technical Telemetry</th>
-                    <th style="text-align:right">Feature Control</th>
+                    <th style="width: 20%;">Device Details</th>
+                    <th style="width: 10%;">Status</th>
+                    <th style="width: 15%;">Last Update</th>
+                    <th style="width: 45%;">Technical Telemetry</th>
+                    <th style="width: 10%; text-align:right">Feature Control</th>
                   </tr>
                 </thead>
                 <tbody id="deviceDetailTableBody"></tbody>
