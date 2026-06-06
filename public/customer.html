@@ -751,6 +751,10 @@
                     <i class="fa-solid fa-clock-rotate-left"></i>
                     <span>Replay</span>
                 </a>
+                <a class="menu-item" href="#" id="menu-item-subusers" title="Manage Clients" onclick="showSubUsersModal()">
+                    <i class="fa-solid fa-users-gear"></i>
+                    <span>Clients</span>
+                </a>
                 <a class="menu-item" href="#" id="menu-item-geofence" title="Geofences" onclick="toggleGeofenceMode()" style="display: none !important;">
                     <i class="fa-solid fa-draw-polygon"></i>
                     <span>Geofence</span>
@@ -1170,6 +1174,41 @@
                         <i class="fa-solid fa-file-csv" style="color: var(--primary);"></i> Download Device History (CSV)
                     </a>
                 </div>
+
+                <!-- Daily Activity Report -->
+                <div class="panel-report" id="panelDailyReport" style="margin-top: 8px; padding: 10px; background: var(--bg-main); border: 1px solid var(--border-light); border-radius: var(--radius-md); display: none;">
+                    <div style="font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 0.4rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; display: flex; justify-content: space-between; align-items: center;">
+                        <span><i class="fa-solid fa-chart-simple" style="color: var(--primary); margin-right: 4px;"></i> Today's Summary</span>
+                        <div style="display: flex; gap: 8px; align-items: center;">
+                            <button onclick="exportTodayReportPDF()" title="Export PDF" style="background: none; border: none; padding: 0; cursor: pointer; color: var(--text-secondary); font-size: 0.82rem; display: flex; align-items: center;"><i class="fa-solid fa-file-pdf" style="color: #ef4444;"></i></button>
+                            <button onclick="exportTodayReportExcel()" title="Export Excel" style="background: none; border: none; padding: 0; cursor: pointer; color: var(--text-secondary); font-size: 0.82rem; display: flex; align-items: center;"><i class="fa-solid fa-file-excel" style="color: #22c55e;"></i></button>
+                        </div>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 0.72rem;">
+                        <div style="background: var(--bg-surface); padding: 6px; border-radius: var(--radius-sm); border: 1px solid var(--border-light);">
+                            <div style="color: var(--text-secondary); font-size: 0.62rem; font-weight: 700;">DISTANCE</div>
+                            <div id="panelTodayDistance" style="font-weight: 800; color: var(--text-primary); font-size: 0.8rem; margin-top: 2px;">0.00 km</div>
+                        </div>
+                        <div style="background: var(--bg-surface); padding: 6px; border-radius: var(--radius-sm); border: 1px solid var(--border-light);">
+                            <div style="color: var(--text-secondary); font-size: 0.62rem; font-weight: 700;">ENGINE ACTIVE</div>
+                            <div id="panelTodayEngineTime" style="font-weight: 800; color: var(--text-primary); font-size: 0.8rem; margin-top: 2px;">0h 0m</div>
+                        </div>
+                    </div>
+                    <div style="margin-top: 6px; padding: 6px; background: var(--bg-surface); border-radius: var(--radius-sm); border: 1px solid var(--border-light); font-size: 0.68rem; display: flex; justify-content: space-between; gap: 4px;">
+                        <div style="text-align: center; flex: 1;">
+                            <div style="color: var(--text-secondary); font-size: 0.58rem; font-weight: 700;">DRIVE</div>
+                            <div id="panelTodayRun" style="font-weight: 700; color: var(--success); margin-top: 1px;">0m</div>
+                        </div>
+                        <div style="text-align: center; flex: 1; border-left: 1px solid var(--border-light); border-right: 1px solid var(--border-light);">
+                            <div style="color: var(--text-secondary); font-size: 0.58rem; font-weight: 700;">IDLE</div>
+                            <div id="panelTodayIdle" style="font-weight: 700; color: var(--warning); margin-top: 1px;">0m</div>
+                        </div>
+                        <div style="text-align: center; flex: 1;">
+                            <div style="color: var(--text-secondary); font-size: 0.58rem; font-weight: 700;">HALT</div>
+                            <div id="panelTodayHalt" style="font-weight: 700; color: var(--danger); margin-top: 1px;">0m</div>
+                        </div>
+                    </div>
+                </div>
             </div>
 
             <!-- Telemetry Placeholder -->
@@ -1381,6 +1420,91 @@
             </div>
             <button class="btn btn-primary" onclick="submitManualGeofence()" style="margin-top: 1rem; width: 100%;">
                 Create Zone
+            </button>
+        </div>
+    </div>
+
+    <!-- Manage Sub-Users/Clients Modal -->
+    <div class="modal-overlay" id="subUsersModal" style="z-index: 2000;">
+        <div class="modal glass-panel" style="max-width: 650px; width: 90%;">
+            <div class="modal-header">
+                <h2><i class="fa-solid fa-users-gear" style="color: var(--primary);"></i> Manage Clients & Sub-Dealers</h2>
+                <button class="modal-close" onclick="closeSubUsersModal()">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <span style="font-size: 0.8rem; color: var(--text-secondary);">Create sub-accounts and assign tracking devices to them.</span>
+                <button class="btn btn-primary" onclick="showCreateSubUserModal()" style="font-size: 0.75rem; padding: 6px 12px;">
+                    <i class="fa-solid fa-user-plus"></i> Add Client
+                </button>
+            </div>
+            
+            <div style="max-height: 350px; overflow-y: auto; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-main);">
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.8rem; text-align: left;">
+                    <thead>
+                        <tr style="border-bottom: 1px solid var(--border); background: var(--bg-surface);">
+                            <th style="padding: 10px; color: var(--text-secondary); font-weight: 600;">Client Username</th>
+                            <th style="padding: 10px; color: var(--text-secondary); font-weight: 600;">Contact Details</th>
+                            <th style="padding: 10px; color: var(--text-secondary); font-weight: 600; text-align: right;">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="subUsersListTable">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Create Client Modal -->
+    <div class="modal-overlay" id="createSubUserModal" style="z-index: 3000;">
+        <div class="modal glass-panel" style="max-width: 400px; width: 90%;">
+            <div class="modal-header">
+                <h2>Add New Client Account</h2>
+                <button class="modal-close" onclick="closeCreateSubUserModal()">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div class="form-group" style="position: relative; margin-bottom: 1rem; margin-top: 1rem;">
+                <input type="text" id="subUsername" class="form-control" placeholder=" " required>
+                <label for="subUsername" style="position: absolute; top: -20px; left: 0; font-size: 0.8rem; color: var(--primary);">Username</label>
+            </div>
+            <div class="form-group" style="position: relative; margin-bottom: 1rem; margin-top: 1rem;">
+                <input type="password" id="subPassword" class="form-control" placeholder=" " required>
+                <label for="subPassword" style="position: absolute; top: -20px; left: 0; font-size: 0.8rem; color: var(--primary);">Password</label>
+            </div>
+            <div class="form-group" style="position: relative; margin-bottom: 1rem; margin-top: 1rem;">
+                <input type="text" id="subPhone" class="form-control" placeholder=" ">
+                <label for="subPhone" style="position: absolute; top: -20px; left: 0; font-size: 0.8rem; color: var(--primary);">Phone Number (Optional)</label>
+            </div>
+            <div class="form-group" style="position: relative; margin-bottom: 1.5rem; margin-top: 1rem;">
+                <input type="email" id="subEmail" class="form-control" placeholder=" ">
+                <label for="subEmail" style="position: absolute; top: -20px; left: 0; font-size: 0.8rem; color: var(--primary);">Email Address (Optional)</label>
+            </div>
+            <button class="btn btn-primary" onclick="submitCreateSubUser()" style="width: 100%;">
+                Create Account
+            </button>
+        </div>
+    </div>
+
+    <!-- Assign Devices Modal -->
+    <div class="modal-overlay" id="assignDevicesModal" style="z-index: 3000;">
+        <div class="modal glass-panel" style="max-width: 450px; width: 90%;">
+            <div class="modal-header">
+                <h2>Assign Devices to Client</h2>
+                <button class="modal-close" onclick="closeAssignDevicesModal()">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+            <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 1rem;">
+                Select devices to assign to: <b id="assignTargetUsername" style="color: var(--text-primary);">Client</b>
+            </div>
+            <div id="assignDevicesCheckboxList" style="max-height: 250px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; margin-bottom: 1.5rem; padding: 10px; border: 1px solid var(--border); border-radius: var(--radius-md); background: var(--bg-main);">
+                <!-- Checkboxes populated by JS -->
+            </div>
+            <button class="btn btn-primary" onclick="submitDeviceAssignments()" style="width: 100%;">
+                Save Assignments
             </button>
         </div>
     </div>

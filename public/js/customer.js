@@ -933,6 +933,7 @@ function focusDevice(imei) {
             const device = myDevices.find(d => d.imei === imei);
             updatePanelData(latestData[imei], device ? device.name : imei);
         }
+        loadTodayStats(imei);
     }
 }
 
@@ -942,6 +943,11 @@ function updatePanelData(data, deviceName) {
     const isStale = isReplayMode ? false : ((Date.now() - new Date(timestamp)) > 60000);
     
     const device = myDevices.find(d => d.imei === imei);
+    
+    const reportEl = document.getElementById('panelDailyReport');
+    if (reportEl) {
+        reportEl.style.display = isReplayMode ? 'none' : 'block';
+    }
     
     document.getElementById('panelDeviceName').innerText = deviceName || imei;
     document.getElementById('panelSpeed').innerText = speed;
@@ -1227,7 +1233,8 @@ socket.on('customer_update', (data) => {
 
 // Dynamic Device Data and Map Rendering Handler
 function handleDeviceData(data, isLive = true) {
-    if (data.ownerId != user.id) return;
+    const isMine = myDevices.some(d => d.imei === data.imei);
+    if (!isMine) return;
     
     const { imei, latitude, longitude, speed, timestamp } = data;
     latestData[imei] = data;
@@ -1363,9 +1370,21 @@ function handleDeviceData(data, isLive = true) {
     // Update Sidebar card list & status counts
     renderDeviceList();
     
+    // Add to today's history points if active device and is today
+    if (isLive && activeImei === imei && window.todayHistoryPoints) {
+        const startOfDay = new Date();
+        startOfDay.setHours(0, 0, 0, 0);
+        const todayMs = startOfDay.getTime();
+        if (new Date(timestamp).getTime() >= todayMs) {
+            window.todayHistoryPoints.push(data);
+            window.todayHistoryPoints = window.todayHistoryPoints.filter(p => new Date(p.timestamp).getTime() >= todayMs);
+            updateTodayStatsUI();
+        }
+    }
+
     // Update panel if it's currently open for this device
     const panel = document.getElementById('vehiclePanel');
-    if(panel.classList.contains('open') && activeImei === imei) {
+    if(panel.classList.contains('open') && activeImei === imei && !isHistoryActive) {
         updatePanelData(data, deviceName);
     }
 }
@@ -1403,7 +1422,8 @@ function getVehicleIcon(heading, status, pinned, imei, voltage) {
 
 socket.on('panic_alert', (data) => {
     const settings = userSettings[data.imei] || {};
-    if (data.ownerId === user.id && settings.panicAlert !== false) {
+    const isMine = myDevices.some(d => d.imei === data.imei);
+    if (isMine && settings.panicAlert !== false) {
         showPanicAlert(data);
     }
 });
@@ -1445,7 +1465,8 @@ socket.on('settings_updated', (data) => {
 
 socket.on('geofence_alert', (data) => {
     const settings = userSettings[data.imei] || {};
-    if (data.ownerId !== user.id || settings.geofenceAlert === false) return;
+    const isMine = myDevices.some(d => d.imei === data.imei);
+    if (!isMine || settings.geofenceAlert === false) return;
     
     const isEnter = data.type === 'geofence_enter';
     const title = `🚨 Geofence Alert: ${data.deviceName}`;
@@ -1984,6 +2005,8 @@ function updatePlaybackUI(index) {
                 headingArrow.style.transform = `rotate(${pt.heading || 0}deg)`;
             }
         }
+        // Auto-pan map to follow history marker
+        map.panTo([pt.latitude, pt.longitude]);
     }
     
     // Format full date & time
@@ -2482,7 +2505,9 @@ setInterval(() => {
 // Periodically refresh the device list and active panel to sync elapsed time and offline status
 setInterval(() => {
     renderDeviceList();
-    if (activeImei && latestData[activeImei]) {
+    const isHistoryActive = document.getElementById('playbackControls') && 
+                            document.getElementById('playbackControls').style.display === 'flex';
+    if (activeImei && latestData[activeImei] && !isHistoryActive) {
         const device = myDevices.find(d => d.imei === activeImei);
         updatePanelData(latestData[activeImei], device ? device.name : activeImei);
     }
@@ -2539,4 +2564,374 @@ function slideMarker(marker, newLatLng, duration = 1500) {
     }
     
     marker._slideAnimationId = requestAnimationFrame(animate);
+}
+
+// ==========================================
+// Today's Activity Summary Report Logic
+// ==========================================
+window.todayHistoryPoints = [];
+
+async function loadTodayStats(imei) {
+    if (!imei) return;
+    try {
+        const res = await fetch(`/api/customer/history?imei=${imei}`);
+        const data = await res.json();
+        const allPoints = data.history || [];
+        
+        const startOfDay = new Date();
+        startOfDay.setHours(0, 0, 0, 0);
+        const todayMs = startOfDay.getTime();
+        
+        window.todayHistoryPoints = allPoints.filter(p => new Date(p.timestamp).getTime() >= todayMs);
+        updateTodayStatsUI();
+    } catch (e) {
+        console.error('[Today Report] Failed to load today stats:', e);
+    }
+}
+
+function updateTodayStatsUI() {
+    const points = window.todayHistoryPoints || [];
+    
+    let totalDistanceMeters = 0;
+    let engineOnMs = 0;
+    let driveMs = 0;
+    let idleMs = 0;
+    let haltMs = 0;
+    
+    for (let i = 1; i < points.length; i++) {
+        const prev = points[i - 1];
+        const curr = points[i];
+        
+        if (prev.latitude && prev.longitude && curr.latitude && curr.longitude) {
+            totalDistanceMeters += getDistanceInMeters(prev.latitude, prev.longitude, curr.latitude, curr.longitude);
+        }
+        
+        const duration = new Date(curr.timestamp).getTime() - new Date(prev.timestamp).getTime();
+        if (duration > 0 && duration < 600000) { // cap at 10 minutes to avoid giant gaps
+            if (prev.ignition && curr.ignition) {
+                engineOnMs += duration;
+            }
+            
+            let state = 'halt';
+            if (prev.speed > 2) {
+                state = 'running';
+            } else if (prev.ignition) {
+                state = 'idle';
+            }
+            
+            if (state === 'running') driveMs += duration;
+            else if (state === 'idle') idleMs += duration;
+            else haltMs += duration;
+        }
+    }
+    
+    const distanceKm = (totalDistanceMeters / 1000).toFixed(2);
+    
+    const totalEngineMins = Math.floor(engineOnMs / 60000);
+    const engineHrs = Math.floor(totalEngineMins / 60);
+    const engineMins = totalEngineMins % 60;
+    const engineTimeStr = `${engineHrs}h ${engineMins}m`;
+    
+    function formatToMins(ms) {
+        const m = Math.floor(ms / 60000);
+        if (m < 60) return `${m}m`;
+        return `${Math.floor(m / 60)}h ${m % 60}m`;
+    }
+    
+    // Update DOM elements
+    const distEl = document.getElementById('panelTodayDistance');
+    const engineEl = document.getElementById('panelTodayEngineTime');
+    const runEl = document.getElementById('panelTodayRun');
+    const idleEl = document.getElementById('panelTodayIdle');
+    const haltEl = document.getElementById('panelTodayHalt');
+    
+    if (distEl) distEl.innerText = `${distanceKm} km`;
+    if (engineEl) engineEl.innerText = engineTimeStr;
+    if (runEl) runEl.innerText = formatToMins(driveMs);
+    if (idleEl) idleEl.innerText = formatToMins(idleMs);
+    if (haltEl) haltEl.innerText = formatToMins(haltMs);
+}
+
+function exportTodayReportPDF() {
+    if (!activeImei || !window.todayHistoryPoints || window.todayHistoryPoints.length === 0) {
+        showToast("ℹ️ No Data", "No telemetry data to export for today.", "warning");
+        return;
+    }
+    
+    const dev = myDevices.find(d => d.imei === activeImei);
+    const devName = dev ? dev.name : activeImei;
+    const todayStr = new Date().toLocaleDateString('en-IN', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+    
+    const dist = document.getElementById('panelTodayDistance').innerText;
+    const eng = document.getElementById('panelTodayEngineTime').innerText;
+    const run = document.getElementById('panelTodayRun').innerText;
+    const idle = document.getElementById('panelTodayIdle').innerText;
+    const halt = document.getElementById('panelTodayHalt').innerText;
+    
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <html>
+        <head>
+            <title>Today's Activity Report - ${devName}</title>
+            <style>
+                body { font-family: 'Outfit', sans-serif; color: #2b354e; padding: 40px; }
+                h1 { color: #ff3b70; border-bottom: 2px solid #ff3b70; padding-bottom: 10px; margin-bottom: 5px; }
+                .date-subtitle { font-size: 1rem; color: #64748b; margin-bottom: 20px; font-weight: 600; }
+                .meta-table { width: 100%; margin-bottom: 30px; border-collapse: collapse; }
+                .meta-table td { padding: 10px 12px; border: 1px solid #e2e8f0; font-size: 0.9rem; }
+                .meta-table td.label { font-weight: bold; background: #f8fafc; width: 35%; }
+                .stats-container { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 15px; margin-bottom: 30px; }
+                .stat-card { border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; background: #f8fafc; text-align: center; }
+                .stat-card .title { font-size: 0.75rem; color: #64748b; font-weight: bold; text-transform: uppercase; letter-spacing: 0.5px; }
+                .stat-card .value { font-size: 1.25rem; font-weight: 800; color: #ff3b70; margin-top: 5px; }
+            </style>
+        </head>
+        <body>
+            <h1>Today's Fleet Activity Summary</h1>
+            <div class="date-subtitle">${todayStr}</div>
+            
+            <table class="meta-table">
+                <tr><td class="label">Vehicle Name</td><td><b>${devName}</b></td></tr>
+                <tr><td class="label">IMEI Number</td><td>${activeImei}</td></tr>
+                <tr><td class="label">Total Distance Travelled</td><td><b>${dist}</b></td></tr>
+                <tr><td class="label">Engine Active Duration</td><td><b>${eng}</b></td></tr>
+            </table>
+            
+            <h2>Time Distribution</h2>
+            <div class="stats-container">
+                <div class="stat-card">
+                    <div class="title" style="color: #22c55e;">Driving Duration</div>
+                    <div class="value" style="color: #22c55e;">${run}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="title" style="color: #eab308;">Idle Duration</div>
+                    <div class="value" style="color: #eab308;">${idle}</div>
+                </div>
+                <div class="stat-card">
+                    <div class="title" style="color: #ef4444;">Halted Duration</div>
+                    <div class="value" style="color: #ef4444;">${halt}</div>
+                </div>
+            </div>
+            
+            <script>
+                window.onload = function() {
+                    window.print();
+                    setTimeout(function() { window.close(); }, 500);
+                }
+            </script>
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
+}
+
+function exportTodayReportExcel() {
+    if (!activeImei || !window.todayHistoryPoints || window.todayHistoryPoints.length === 0) {
+        showToast("ℹ️ No Data", "No telemetry data to export for today.", "warning");
+        return;
+    }
+    const dev = myDevices.find(d => d.imei === activeImei);
+    const devName = dev ? dev.name : activeImei;
+    
+    let csvContent = "data:text/csv;charset=utf-8,";
+    csvContent += "Timestamp,Latitude,Longitude,Speed (km/h),Odometer (km),Ignition,Voltage,Power Source\n";
+    window.todayHistoryPoints.forEach(p => {
+        const row = [
+            new Date(p.timestamp).toISOString(),
+            p.latitude,
+            p.longitude,
+            p.speed,
+            p.odometer || 0,
+            p.ignition ? "ON" : "OFF",
+            p.voltage || 0,
+            p.powerSource || "primary"
+        ].join(",");
+        csvContent += row + "\n";
+    });
+    
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `Today_Report_${devName}_${new Date().toISOString().slice(0,10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+}
+
+// ==========================================
+// Client Account & Device Assignment Modals Logic
+// ==========================================
+window.currentAssignSubUserId = null;
+
+async function showSubUsersModal() {
+    document.getElementById('subUsersModal').classList.add('active');
+    await loadSubUsers();
+}
+
+function closeSubUsersModal() {
+    document.getElementById('subUsersModal').classList.remove('active');
+}
+
+async function loadSubUsers() {
+    const tableBody = document.getElementById('subUsersListTable');
+    if (!tableBody) return;
+    tableBody.innerHTML = '<tr><td colspan="3" style="text-align: center; padding: 20px; color: var(--text-secondary);"><i class="fa-solid fa-circle-notch fa-spin"></i> Loading clients...</td></tr>';
+    
+    try {
+        const res = await fetch('/api/customer/sub-users');
+        const data = await res.json();
+        
+        if (data.success && data.subUsers) {
+            if (data.subUsers.length === 0) {
+                tableBody.innerHTML = '<tr><td colspan="3" style="text-align: center; padding: 20px; color: var(--text-secondary);">No clients created yet. Click "Add Client" to create one.</td></tr>';
+                return;
+            }
+            
+            tableBody.innerHTML = data.subUsers.map(su => {
+                const assignedDevices = myDevices.filter(d => d.ownerId === su.id);
+                const deviceNames = assignedDevices.map(d => d.name || d.imei).join(', ') || 'None';
+                
+                return `
+                    <tr style="border-bottom: 1px solid var(--border);">
+                        <td style="padding: 12px; color: var(--text-primary); font-weight: 700;">
+                            <div>${su.username}</div>
+                            <div style="font-size: 0.68rem; color: var(--text-secondary); margin-top: 2px;">
+                                Assigned Devices: <span style="color: var(--primary); font-weight: 600;">${deviceNames}</span>
+                            </div>
+                        </td>
+                        <td style="padding: 12px; color: var(--text-secondary);">
+                            <div>${su.phone || 'No phone'}</div>
+                            <div style="font-size: 0.68rem; opacity: 0.8;">${su.email || 'No email'}</div>
+                        </td>
+                        <td style="padding: 12px; text-align: right;">
+                            <button class="btn btn-outline" onclick="openAssignDevicesModal('${su.id}', '${su.username}')" style="font-size: 0.72rem; padding: 4px 10px;">
+                                <i class="fa-solid fa-link"></i> Assign Devices
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        } else {
+            tableBody.innerHTML = '<tr><td colspan="3" style="text-align: center; padding: 20px; color: var(--danger);">Failed to load clients.</td></tr>';
+        }
+    } catch (e) {
+        console.error("Failed to load sub users", e);
+        tableBody.innerHTML = '<tr><td colspan="3" style="text-align: center; padding: 20px; color: var(--danger);">Connection error.</td></tr>';
+    }
+}
+
+function showCreateSubUserModal() {
+    document.getElementById('subUsername').value = '';
+    document.getElementById('subPassword').value = '';
+    document.getElementById('subPhone').value = '';
+    document.getElementById('subEmail').value = '';
+    document.getElementById('createSubUserModal').classList.add('active');
+}
+
+function closeCreateSubUserModal() {
+    document.getElementById('createSubUserModal').classList.remove('active');
+}
+
+async function submitCreateSubUser() {
+    const username = document.getElementById('subUsername').value.trim();
+    const password = document.getElementById('subPassword').value;
+    const phone = document.getElementById('subPhone').value.trim();
+    const email = document.getElementById('subEmail').value.trim();
+    
+    if (!username || !password) {
+        showToast("⚠️ Warning", "Username and password are required.", "warning");
+        return;
+    }
+    
+    try {
+        const res = await fetch('/api/customer/sub-users/create', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ username, password, phone, email })
+        });
+        const data = await res.json();
+        
+        if (data.success) {
+            showToast("✅ Success", `Client account '${username}' created successfully.`, "success");
+            closeCreateSubUserModal();
+            loadSubUsers();
+        } else {
+            showToast("❌ Error", data.error || "Failed to create client account.", "danger");
+        }
+    } catch (e) {
+        console.error("Failed to create sub user", e);
+        showToast("❌ Error", "Connection failed.", "danger");
+    }
+}
+
+function openAssignDevicesModal(subUserId, username) {
+    window.currentAssignSubUserId = subUserId;
+    const nameEl = document.getElementById('assignTargetUsername');
+    if (nameEl) nameEl.innerText = username;
+    
+    const container = document.getElementById('assignDevicesCheckboxList');
+    if (!container) return;
+    container.innerHTML = '';
+    
+    myDevices.forEach(d => {
+        const isAssignedToThisSub = d.ownerId === subUserId;
+        const isAssignedToDealer = d.ownerId === user.id;
+        
+        let subText = '';
+        if (!isAssignedToThisSub && !isAssignedToDealer) {
+            subText = ` (assigned to other user)`;
+        }
+        
+        container.innerHTML += `
+            <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 6px; border-radius: 4px; background: var(--bg-surface); border: 1px solid var(--border-light); font-size: 0.8rem; color: var(--text-primary);">
+                <input type="checkbox" class="assign-device-checkbox" data-imei="${d.imei}" data-was-assigned="${isAssignedToThisSub}" ${isAssignedToThisSub ? 'checked' : ''} style="accent-color: var(--primary); cursor: pointer;">
+                <div>
+                    <span style="font-weight: 700; color: var(--text-primary);">${d.name || d.imei}</span>
+                    <span style="font-size: 0.65rem; color: var(--text-secondary); display: block;">IMEI: ${d.imei}${subText}</span>
+                </div>
+            </label>
+        `;
+    });
+    
+    document.getElementById('assignDevicesModal').classList.add('active');
+}
+
+function closeAssignDevicesModal() {
+    document.getElementById('assignDevicesModal').classList.remove('active');
+}
+
+async function submitDeviceAssignments() {
+    const subUserId = window.currentAssignSubUserId;
+    if (!subUserId) return;
+    
+    const checkboxes = document.querySelectorAll('.assign-device-checkbox');
+    showToast("⚙️ Saving", "Saving device assignments...", "info");
+    
+    try {
+        for (const cb of checkboxes) {
+            const imei = cb.dataset.imei;
+            const wasAssigned = cb.dataset.wasAssigned === 'true';
+            const isChecked = cb.checked;
+            
+            if (isChecked && !wasAssigned) {
+                await fetch('/api/customer/sub-users/assign-device', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ imei, subUserId })
+                });
+            } else if (!isChecked && wasAssigned) {
+                await fetch('/api/customer/sub-users/assign-device', {
+                    method: 'POST',
+                    headers: {'Content-Type': 'application/json'},
+                    body: JSON.stringify({ imei, subUserId: 'dealer' })
+                });
+            }
+        }
+        showToast("✅ Saved", "Device assignments updated successfully.", "success");
+        closeAssignDevicesModal();
+        loadData();
+    } catch (e) {
+        console.error("Failed to save device assignments", e);
+        showToast("❌ Error", "Failed to update assignments.", "danger");
+    }
 }

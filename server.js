@@ -226,6 +226,57 @@ app.post('/api/customer/update-vehicle-profile', requireLogin, async (req, res) 
     res.json({ success });
 });
 
+// Customer sub-dealers / sub-users management endpoints
+app.get('/api/customer/sub-users', requireLogin, async (req, res) => {
+    try {
+        const subUsers = await store.getSubUsers(req.session.user.id);
+        res.json({ success: true, subUsers });
+    } catch (e) {
+        console.error('[HTTP] Get Sub Users Error:', e);
+        res.status(500).json({ success: false, error: 'Internal server error' });
+    }
+});
+
+app.post('/api/customer/sub-users/create', requireLogin, async (req, res) => {
+    const { username, password, phone, email } = req.body;
+    if (!username || !password) {
+        return res.status(400).json({ success: false, error: 'Username and password are required' });
+    }
+    try {
+        const user = await store.createSubUser(req.session.user.id, username, password, phone, email);
+        if (user) {
+            res.json({ success: true, user });
+        } else {
+            res.json({ success: false, error: 'Username already exists' });
+        }
+    } catch (e) {
+        console.error('[HTTP] Create Sub User Error:', e);
+        res.status(500).json({ success: false, error: 'Internal server error' });
+    }
+});
+
+app.post('/api/customer/sub-users/assign-device', requireLogin, async (req, res) => {
+    const { imei, subUserId } = req.body;
+    if (!imei) {
+        return res.status(400).json({ success: false, error: 'IMEI is required' });
+    }
+    try {
+        const success = await store.assignDeviceToSubUser(imei, req.session.user.id, subUserId);
+        if (success) {
+            io.emit('customer_update', { userId: req.session.user.id });
+            if (subUserId && subUserId !== 'dealer') {
+                io.emit('customer_update', { userId: subUserId });
+            }
+            res.json({ success: true });
+        } else {
+            res.json({ success: false, error: 'Failed to assign device or unauthorized' });
+        }
+    } catch (e) {
+        console.error('[HTTP] Assign Device Error:', e);
+        res.status(500).json({ success: false, error: 'Internal server error' });
+    }
+});
+
 app.post('/api/customer/create-share-link', requireLogin, async (req, res) => {
     const { imei, expiresAfterMinutes } = req.body;
     try {

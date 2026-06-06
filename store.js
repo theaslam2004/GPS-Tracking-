@@ -374,7 +374,10 @@ module.exports = {
     },
     getCustomerDevices: async (userId) => {
         const data = readData();
-        return data.devices.filter(d => d.ownerId === userId);
+        const subUserIds = data.users
+            .filter(u => u.parentId === userId || u.id === userId)
+            .map(u => u.id);
+        return data.devices.filter(d => subUserIds.includes(d.ownerId));
     },
     togglePinDevice: async (userId, imei) => {
         imei = imei.trim();
@@ -485,15 +488,53 @@ module.exports = {
 
         // Prevent saving invalid 0,0 coordinates to history path
         if (locationData.latitude && locationData.longitude && locationData.latitude !== 0 && locationData.longitude !== 0) {
-            if (!data.deviceHistory[imei]) data.deviceHistory[imei] = [];
-            data.deviceHistory[imei].push(point);
-            if (data.deviceHistory[imei].length > 500) data.deviceHistory[imei].shift();
+            // Store device history in a separate file to prevent bloating data.json
+            const historyDir = path.join(__dirname, 'history');
+            if (!fs.existsSync(historyDir)) {
+                fs.mkdirSync(historyDir, { recursive: true });
+            }
+            const historyFile = path.join(historyDir, `${imei}.json`);
+            let deviceHistory = [];
+            if (fs.existsSync(historyFile)) {
+                try {
+                    const raw = fs.readFileSync(historyFile, 'utf8');
+                    deviceHistory = JSON.parse(raw);
+                } catch (e) {
+                    console.error("[Store] Failed to read history file:", e.message);
+                }
+            } else {
+                // Migrate from data.json history if exists
+                if (data.deviceHistory && data.deviceHistory[imei]) {
+                    deviceHistory = data.deviceHistory[imei];
+                    delete data.deviceHistory[imei]; // Free space in data.json
+                }
+            }
+            deviceHistory.push(point);
+            // Capped at 100,000 points (about 4-6 months of normal driving) to prevent resource exhaustion
+            if (deviceHistory.length > 100000) {
+                deviceHistory.shift();
+            }
+            try {
+                fs.writeFileSync(historyFile, JSON.stringify(deviceHistory), 'utf8');
+            } catch (e) {
+                console.error("[Store] Failed to write history file:", e.message);
+            }
         }
 
         writeData(data);
         return [];
     },
     getHistory: async (imei) => {
+        const historyDir = path.join(__dirname, 'history');
+        const historyFile = path.join(historyDir, `${imei}.json`);
+        if (fs.existsSync(historyFile)) {
+            try {
+                const raw = fs.readFileSync(historyFile, 'utf8');
+                return JSON.parse(raw);
+            } catch (e) {
+                console.error("[Store] Failed to read history file:", e.message);
+            }
+        }
         const data = readData();
         return data.deviceHistory[imei] || [];
     },
@@ -829,5 +870,65 @@ module.exports = {
             writeData(data);
             return newSub;
         }
+    },
+    createSubUser: async (parentId, username, password, phone = '', email = '') => {
+        const data = readData();
+        if (data.users.find(u => u.username === username)) return null;
+
+        const userId = Date.now().toString();
+        const newUser = {
+            id: userId,
+            parentId: parentId, // Link to parent customer (dealer)
+            username,
+            password: encrypt(password),
+            role: 'customer',
+            phone: phone || '',
+            email: email || ''
+        };
+        data.users.push(newUser);
+
+        const pricing = data.systemSettings || defaultData.systemSettings;
+        const trialPlan = pricing['Trial'] || { validityDays: 10, deviceLimit: 100 };
+        const expirationDate = new Date();
+        expirationDate.setDate(expirationDate.getDate() + (trialPlan.validityDays || 10));
+
+        data.subscriptions.push({
+            userId,
+            planName: 'Trial',
+            deviceLimit: trialPlan.deviceLimit || 100,
+            pricePaid: 0,
+            validityDays: trialPlan.validityDays || 10,
+            expirationDate: expirationDate.toISOString()
+        });
+
+        writeData(data);
+        return { id: newUser.id, username: newUser.username, role: newUser.role, parentId: newUser.parentId };
+    },
+    getSubUsers: async (parentId) => {
+        const data = readData();
+        return data.users
+            .filter(u => u.parentId === parentId)
+            .map(u => ({ id: u.id, username: u.username, phone: u.phone, email: u.email }));
+    },
+    assignDeviceToSubUser: async (imei, dealerId, subUserId) => {
+        const data = readData();
+        const device = data.devices.find(d => d.imei === imei);
+        if (!device) return false;
+        
+        // Safety check: ensure the dealer actually owns/has access to this device
+        const subUserIds = data.users
+            .filter(u => u.parentId === dealerId || u.id === dealerId)
+            .map(u => u.id);
+            
+        if (!subUserIds.includes(device.ownerId)) {
+            return false; // Unauthorized
+        }
+        
+        // Update ownership to the target sub-user (or back to dealer if 'dealer' / falsy)
+        const targetOwnerId = (subUserId === 'dealer' || !subUserId) ? dealerId : subUserId;
+        device.ownerId = targetOwnerId;
+        
+        writeData(data);
+        return true;
     }
 };
