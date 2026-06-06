@@ -1269,22 +1269,63 @@ function handleDeviceData(data, isLive = true) {
     const isStale = (Date.now() - new Date(timestamp)) > 60000;
     const beaconStatus = isStale ? 'offline' : (data.status || 'halt');
     const isPinned = device && device.pinned;
-    const vehicleIcon = getVehicleIcon(data.heading, beaconStatus, isPinned, imei, data.voltage);
+    const profile = device ? device.vehicleProfile || 'standard' : 'standard';
 
+    // Calculate iconType for real-time tracking
+    let iconType = 'ace';
+    if (deviceName.toLowerCase().includes('heavy') || profile === 'heavy' || deviceName.toLowerCase().includes('truck') || deviceName.toLowerCase().includes('excavator') || deviceName.toLowerCase().includes('tractor') || deviceName.toLowerCase().includes('dumper')) {
+        iconType = 'heavy';
+    } else if (deviceName.toLowerCase().includes('eicher') || deviceName.toLowerCase().includes('tempo') || deviceName.toLowerCase().includes('van') || deviceName.toLowerCase().includes('bus')) {
+        iconType = 'eicher';
+    } else if (deviceName.toLowerCase().includes('ace') || deviceName.toLowerCase().includes('chota') || deviceName.toLowerCase().includes('mini')) {
+        iconType = 'ace';
+    } else if (deviceName.toLowerCase().includes('rickshaw') || deviceName.toLowerCase().includes('auto') || deviceName.toLowerCase().includes('tuk')) {
+        iconType = 'rickshaw';
+    } else if (data.voltage !== undefined && data.voltage !== null) {
+        const v = parseFloat(data.voltage);
+        if (v > 36) iconType = 'heavy';
+        else if (v > 18) iconType = 'eicher';
+        else iconType = 'ace';
+    }
 
-
-    if(markers[imei]) {
-        markers[imei].setLatLng([latitude, longitude]);
-        markers[imei].setIcon(vehicleIcon);
-        if(markers[imei].isPopupOpen()) {
-            markers[imei].getPopup().setContent(popupHTML);
+    if (markers[imei]) {
+        const marker = markers[imei];
+        
+        // Recreate icon only if type, status, or pinning changed to avoid thrashed Leaflet markers
+        if (marker.iconType !== iconType || marker.status !== beaconStatus || marker.pinned !== isPinned) {
+            const vehicleIcon = getVehicleIcon(data.heading, beaconStatus, isPinned, imei, data.voltage);
+            marker.setIcon(vehicleIcon);
+            marker.iconType = iconType;
+            marker.status = beaconStatus;
+            marker.pinned = isPinned;
+        }
+        
+        // Slide smoothly to new coordinates
+        slideMarker(marker, [latitude, longitude], 1500);
+        
+        // Rotate inner container smoothly
+        const element = marker.getElement();
+        if (element) {
+            const rotateContainer = element.querySelector('.rotate-container');
+            if (rotateContainer) {
+                rotateContainer.style.transform = `rotate(${data.heading || 0}deg)`;
+            }
+        }
+        
+        if (marker.isPopupOpen()) {
+            marker.getPopup().setContent(popupHTML);
         } else {
-            markers[imei].setPopupContent(popupHTML);
+            marker.setPopupContent(popupHTML);
         }
     } else {
-        markers[imei] = L.marker([latitude, longitude], { icon: vehicleIcon }).addTo(map)
+        const vehicleIcon = getVehicleIcon(data.heading, beaconStatus, isPinned, imei, data.voltage);
+        const marker = L.marker([latitude, longitude], { icon: vehicleIcon }).addTo(map)
             .bindPopup(popupHTML)
             .on('click', () => focusDevice(imei));
+        marker.iconType = iconType;
+        marker.status = beaconStatus;
+        marker.pinned = isPinned;
+        markers[imei] = marker;
     }
 
     // Draw 1-minute breadcrumb trail (dashed line)
@@ -1537,8 +1578,10 @@ function getVehicleIcon(heading, status, pinned, imei, voltage) {
     return L.divIcon({
         className: 'custom-vehicle-marker-svg',
         html: `
-            <div class="${runningClass}" style="transform: rotate(${heading || 0}deg); ${shadowFilter} width: ${size[0]}px; height: ${size[1]}px; display: flex; align-items: center; justify-content: center; position: relative;">
-                ${svgHtml}
+            <div class="marker-container ${runningClass}" style="${shadowFilter} width: ${size[0]}px; height: ${size[1]}px; display: flex; align-items: center; justify-content: center; position: relative;">
+                <div class="rotate-container" style="transform: rotate(${heading || 0}deg); width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; transition: transform 0.4s ease-out;">
+                    ${svgHtml}
+                </div>
                 ${extraIndicator}
             </div>
         `,
@@ -1806,6 +1849,28 @@ function filterAndProcessHistory() {
         icon: firstIcon,
         zIndexOffset: 1000
     }).addTo(map);
+    
+    // Set classification metadata properties to avoid thrashed Leaflet markers
+    const dev = myDevices.find(d => d.imei === activeImei);
+    const devName = dev ? dev.name || '' : '';
+    const devProfile = dev ? dev.vehicleProfile || 'standard' : 'standard';
+    let initIconType = 'ace';
+    if (devName.toLowerCase().includes('heavy') || devProfile === 'heavy' || devName.toLowerCase().includes('truck') || devName.toLowerCase().includes('excavator') || devName.toLowerCase().includes('tractor') || devName.toLowerCase().includes('dumper')) {
+        initIconType = 'heavy';
+    } else if (devName.toLowerCase().includes('eicher') || devName.toLowerCase().includes('tempo') || devName.toLowerCase().includes('van') || devName.toLowerCase().includes('bus')) {
+        initIconType = 'eicher';
+    } else if (devName.toLowerCase().includes('ace') || devName.toLowerCase().includes('chota') || devName.toLowerCase().includes('mini')) {
+        initIconType = 'ace';
+    } else if (devName.toLowerCase().includes('rickshaw') || devName.toLowerCase().includes('auto') || devName.toLowerCase().includes('tuk')) {
+        initIconType = 'rickshaw';
+    } else if (firstPt.voltage !== undefined && firstPt.voltage !== null) {
+        const v = parseFloat(firstPt.voltage);
+        if (v > 36) initIconType = 'heavy';
+        else if (v > 18) initIconType = 'eicher';
+        else initIconType = 'ace';
+    }
+    historyMarker.iconType = initIconType;
+    historyMarker.status = firstStatus;
     
     // Init Slider
     document.getElementById('pbSlider').max = historyData.length - 1;
@@ -2106,12 +2171,50 @@ function updatePlaybackUI(index) {
     const pt = historyData[index];
     
     if (historyMarker) {
-        historyMarker.setLatLng([pt.latitude, pt.longitude]);
         let ptStatus = 'halt';
         if (pt.speed > 2) ptStatus = 'running';
         else if (pt.ignition) ptStatus = 'idle';
-        historyMarker.setIcon(getVehicleIcon(pt.heading || 0, ptStatus, false, activeImei, pt.voltage));
-
+        
+        // Calculate iconType for history playback
+        const dev = myDevices.find(d => d.imei === activeImei);
+        const deviceName = dev ? dev.name || '' : '';
+        const profile = dev ? dev.vehicleProfile || 'standard' : 'standard';
+        let iconType = 'ace';
+        if (deviceName.toLowerCase().includes('heavy') || profile === 'heavy' || deviceName.toLowerCase().includes('truck') || deviceName.toLowerCase().includes('excavator') || deviceName.toLowerCase().includes('tractor') || deviceName.toLowerCase().includes('dumper')) {
+            iconType = 'heavy';
+        } else if (deviceName.toLowerCase().includes('eicher') || deviceName.toLowerCase().includes('tempo') || deviceName.toLowerCase().includes('van') || deviceName.toLowerCase().includes('bus')) {
+            iconType = 'eicher';
+        } else if (deviceName.toLowerCase().includes('ace') || deviceName.toLowerCase().includes('chota') || deviceName.toLowerCase().includes('mini')) {
+            iconType = 'ace';
+        } else if (deviceName.toLowerCase().includes('rickshaw') || deviceName.toLowerCase().includes('auto') || deviceName.toLowerCase().includes('tuk')) {
+            iconType = 'rickshaw';
+        } else if (pt.voltage !== undefined && pt.voltage !== null) {
+            const v = parseFloat(pt.voltage);
+            if (v > 36) iconType = 'heavy';
+            else if (v > 18) iconType = 'eicher';
+            else iconType = 'ace';
+        }
+        
+        if (historyMarker.iconType !== iconType || historyMarker.status !== ptStatus) {
+            historyMarker.setIcon(getVehicleIcon(pt.heading || 0, ptStatus, false, activeImei, pt.voltage));
+            historyMarker.iconType = iconType;
+            historyMarker.status = ptStatus;
+        }
+        
+        // Calculate smooth sliding duration based on speed multiplier (e.g. 1x: 800ms, 8x: 100ms)
+        const stepDuration = 1000 / playbackSpeed;
+        const slideDuration = Math.min(stepDuration * 0.8, 1200);
+        
+        slideMarker(historyMarker, [pt.latitude, pt.longitude], slideDuration);
+        
+        // Rotate inner container smoothly
+        const element = historyMarker.getElement();
+        if (element) {
+            const rotateContainer = element.querySelector('.rotate-container');
+            if (rotateContainer) {
+                rotateContainer.style.transform = `rotate(${pt.heading || 0}deg)`;
+            }
+        }
     }
     
     // Format full date & time
@@ -2621,3 +2724,50 @@ window.addEventListener('click', () => {
     const dropdown = document.getElementById('speedDropdown');
     if (dropdown) dropdown.style.display = 'none';
 });
+
+// Smoothly slides a marker to a new position using requestAnimationFrame
+function slideMarker(marker, newLatLng, duration = 1500) {
+    if (!marker) return;
+    const startLatLng = marker.getLatLng();
+    const endLatLng = L.latLng(newLatLng);
+    
+    if (!startLatLng || typeof startLatLng.distanceTo !== 'function') {
+        marker.setLatLng(endLatLng);
+        return;
+    }
+    
+    // If it's a huge distance jump (like loading a new device or first load), snap instantly
+    const distance = startLatLng.distanceTo(endLatLng);
+    if (distance > 5000 || distance < 0.1) {
+        marker.setLatLng(endLatLng);
+        return;
+    }
+    
+    // Cancel any existing animation on this marker
+    if (marker._slideAnimationId) {
+        cancelAnimationFrame(marker._slideAnimationId);
+    }
+    
+    const startTime = performance.now();
+    
+    function animate(now) {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        
+        // Easing function: easeOutCubic
+        const ease = 1 - Math.pow(1 - progress, 3);
+        
+        const lat = startLatLng.lat + (endLatLng.lat - startLatLng.lat) * ease;
+        const lng = startLatLng.lng + (endLatLng.lng - startLatLng.lng) * ease;
+        
+        marker.setLatLng([lat, lng]);
+        
+        if (progress < 1) {
+            marker._slideAnimationId = requestAnimationFrame(animate);
+        } else {
+            marker._slideAnimationId = null;
+        }
+    }
+    
+    marker._slideAnimationId = requestAnimationFrame(animate);
+}

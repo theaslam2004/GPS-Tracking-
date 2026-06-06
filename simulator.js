@@ -170,7 +170,7 @@ async function startSimulation() {
                 if (eventType !== 'NR') {
                     console.log(`🚨 [${device.imei}] Sent Event Packet: ${eventType} (Speed: ${speed} km/h)`);
                 }
-            }, 3000 + (index * 500));
+            }, 1500);
         });
 
         client.on('error', (err) => {

@@ -221,9 +221,43 @@ function updateVehicleOnMap(telemetry, name) {
 
     const popupHTML = buildTelemetryHTML(telemetry, name);
     
+    // Calculate iconType for share page
+    let iconType = 'ace';
+    if (name.toLowerCase().includes('heavy') || profile === 'heavy' || name.toLowerCase().includes('truck') || name.toLowerCase().includes('excavator') || name.toLowerCase().includes('tractor') || name.toLowerCase().includes('dumper')) {
+        iconType = 'heavy';
+    } else if (name.toLowerCase().includes('eicher') || name.toLowerCase().includes('tempo') || name.toLowerCase().includes('van') || name.toLowerCase().includes('bus')) {
+        iconType = 'eicher';
+    } else if (name.toLowerCase().includes('ace') || name.toLowerCase().includes('chota') || name.toLowerCase().includes('mini')) {
+        iconType = 'ace';
+    } else if (name.toLowerCase().includes('rickshaw') || name.toLowerCase().includes('auto') || name.toLowerCase().includes('tuk')) {
+        iconType = 'rickshaw';
+    } else if (telemetry.voltage !== undefined && telemetry.voltage !== null) {
+        const v = parseFloat(telemetry.voltage);
+        if (v > 36) iconType = 'heavy';
+        else if (v > 18) iconType = 'eicher';
+        else iconType = 'ace';
+    }
+
     if (marker) {
-        marker.setLatLng(latlng);
-        marker.setIcon(markerIcon);
+        // Recreate icon only if type or status changed to avoid Leaflet DOM thrashing
+        if (marker.iconType !== iconType || marker.status !== status) {
+            marker.setIcon(markerIcon);
+            marker.iconType = iconType;
+            marker.status = status;
+        }
+        
+        // Slide smoothly to new coordinates
+        slideMarker(marker, latlng, 1500);
+        
+        // Rotate inner container smoothly
+        const element = marker.getElement();
+        if (element) {
+            const rotateContainer = element.querySelector('.rotate-container');
+            if (rotateContainer) {
+                rotateContainer.style.transform = `rotate(${heading || 0}deg)`;
+            }
+        }
+
         if (marker.isPopupOpen()) {
             marker.getPopup().setContent(popupHTML);
         } else {
@@ -233,6 +267,8 @@ function updateVehicleOnMap(telemetry, name) {
         marker = L.marker(latlng, { icon: markerIcon }).addTo(map)
             .bindPopup(popupHTML)
             .openPopup();
+        marker.iconType = iconType;
+        marker.status = status;
         map.setView(latlng, 15);
     }
     
@@ -469,8 +505,10 @@ function getVehicleIcon(heading, status, voltage) {
     return L.divIcon({
         className: 'custom-vehicle-marker-svg',
         html: `
-            <div style="transform: rotate(${heading || 0}deg); ${shadowFilter} width: ${size[0]}px; height: ${size[1]}px; display: flex; align-items: center; justify-content: center;">
-                ${svgHtml}
+            <div class="marker-container" style="${shadowFilter} width: ${size[0]}px; height: ${size[1]}px; display: flex; align-items: center; justify-content: center; position: relative;">
+                <div class="rotate-container" style="transform: rotate(${heading || 0}deg); width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; transition: transform 0.4s ease-out;">
+                    ${svgHtml}
+                </div>
             </div>
         `,
         iconSize: size,
@@ -504,3 +542,50 @@ setInterval(() => {
         updateVehicleOnMap(latestTelemetry, document.getElementById('vehicleName').innerText);
     }
 }, 10000);
+
+// Smoothly slides a marker to a new position using requestAnimationFrame
+function slideMarker(marker, newLatLng, duration = 1500) {
+    if (!marker) return;
+    const startLatLng = marker.getLatLng();
+    const endLatLng = L.latLng(newLatLng);
+    
+    if (!startLatLng || typeof startLatLng.distanceTo !== 'function') {
+        marker.setLatLng(endLatLng);
+        return;
+    }
+    
+    // If it's a huge distance jump (like loading a new device or first load), snap instantly
+    const distance = startLatLng.distanceTo(endLatLng);
+    if (distance > 5000 || distance < 0.1) {
+        marker.setLatLng(endLatLng);
+        return;
+    }
+    
+    // Cancel any existing animation on this marker
+    if (marker._slideAnimationId) {
+        cancelAnimationFrame(marker._slideAnimationId);
+    }
+    
+    const startTime = performance.now();
+    
+    function animate(now) {
+        const elapsed = now - startTime;
+        const progress = Math.min(elapsed / duration, 1);
+        
+        // Easing function: easeOutCubic
+        const ease = 1 - Math.pow(1 - progress, 3);
+        
+        const lat = startLatLng.lat + (endLatLng.lat - startLatLng.lat) * ease;
+        const lng = startLatLng.lng + (endLatLng.lng - startLatLng.lng) * ease;
+        
+        marker.setLatLng([lat, lng]);
+        
+        if (progress < 1) {
+            marker._slideAnimationId = requestAnimationFrame(animate);
+        } else {
+            marker._slideAnimationId = null;
+        }
+    }
+    
+    marker._slideAnimationId = requestAnimationFrame(animate);
+}
