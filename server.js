@@ -256,17 +256,15 @@ app.post('/api/customer/sub-users/create', requireLogin, async (req, res) => {
 });
 
 app.post('/api/customer/sub-users/assign-device', requireLogin, async (req, res) => {
-    const { imei, subUserId } = req.body;
-    if (!imei) {
-        return res.status(400).json({ success: false, error: 'IMEI is required' });
+    const { imei, subUserId, assign } = req.body;
+    if (!imei || !subUserId) {
+        return res.status(400).json({ success: false, error: 'IMEI and subUserId are required' });
     }
     try {
-        const success = await store.assignDeviceToSubUser(imei, req.session.user.id, subUserId);
+        const success = await store.assignDeviceToSubUser(imei, req.session.user.id, subUserId, assign);
         if (success) {
             io.emit('customer_update', { userId: req.session.user.id });
-            if (subUserId && subUserId !== 'dealer') {
-                io.emit('customer_update', { userId: subUserId });
-            }
+            io.emit('customer_update', { userId: subUserId });
             res.json({ success: true });
         } else {
             res.json({ success: false, error: 'Failed to assign device or unauthorized' });

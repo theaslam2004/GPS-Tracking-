@@ -2788,7 +2788,7 @@ async function loadSubUsers() {
             }
             
             tableBody.innerHTML = data.subUsers.map(su => {
-                const assignedDevices = myDevices.filter(d => d.ownerId === su.id);
+                const assignedDevices = myDevices.filter(d => d.assignedTo && d.assignedTo.includes(su.id));
                 const deviceNames = assignedDevices.map(d => d.name || d.imei).join(', ') || 'None';
                 
                 return `
@@ -2874,20 +2874,14 @@ function openAssignDevicesModal(subUserId, username) {
     container.innerHTML = '';
     
     myDevices.forEach(d => {
-        const isAssignedToThisSub = d.ownerId === subUserId;
-        const isAssignedToDealer = d.ownerId === user.id;
-        
-        let subText = '';
-        if (!isAssignedToThisSub && !isAssignedToDealer) {
-            subText = ` (assigned to other user)`;
-        }
+        const isAssignedToThisSub = d.assignedTo && d.assignedTo.includes(subUserId);
         
         container.innerHTML += `
             <label style="display: flex; align-items: center; gap: 8px; cursor: pointer; padding: 6px; border-radius: 4px; background: var(--bg-surface); border: 1px solid var(--border-light); font-size: 0.8rem; color: var(--text-primary);">
                 <input type="checkbox" class="assign-device-checkbox" data-imei="${d.imei}" data-was-assigned="${isAssignedToThisSub}" ${isAssignedToThisSub ? 'checked' : ''} style="accent-color: var(--primary); cursor: pointer;">
                 <div>
                     <span style="font-weight: 700; color: var(--text-primary);">${d.name || d.imei}</span>
-                    <span style="font-size: 0.65rem; color: var(--text-secondary); display: block;">IMEI: ${d.imei}${subText}</span>
+                    <span style="font-size: 0.65rem; color: var(--text-secondary); display: block;">IMEI: ${d.imei}</span>
                 </div>
             </label>
         `;
@@ -2917,13 +2911,13 @@ async function submitDeviceAssignments() {
                 await fetch('/api/customer/sub-users/assign-device', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ imei, subUserId })
+                    body: JSON.stringify({ imei, subUserId, assign: true })
                 });
             } else if (!isChecked && wasAssigned) {
                 await fetch('/api/customer/sub-users/assign-device', {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ imei, subUserId: 'dealer' })
+                    body: JSON.stringify({ imei, subUserId, assign: false })
                 });
             }
         }

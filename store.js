@@ -374,15 +374,21 @@ module.exports = {
     },
     getCustomerDevices: async (userId) => {
         const data = readData();
-        const subUserIds = data.users
-            .filter(u => u.parentId === userId || u.id === userId)
-            .map(u => u.id);
-        return data.devices.filter(d => subUserIds.includes(d.ownerId));
+        const user = data.users.find(u => u.id === userId);
+        if (!user) return [];
+        
+        if (user.parentId) {
+            // Sub-user (client) - see only assigned devices
+            return data.devices.filter(d => d.assignedTo && d.assignedTo.includes(userId));
+        } else {
+            // Main user (dealer/customer) - see all devices owned by this customer ID
+            return data.devices.filter(d => d.ownerId === userId);
+        }
     },
     togglePinDevice: async (userId, imei) => {
         imei = imei.trim();
         const data = readData();
-        const device = data.devices.find(d => d.ownerId === userId && d.imei === imei);
+        const device = data.devices.find(d => d.imei === imei && (d.ownerId === userId || (d.assignedTo && d.assignedTo.includes(userId))));
         if (device) {
             device.pinned = !device.pinned;
             writeData(data);
@@ -762,7 +768,7 @@ module.exports = {
     // Custom asset edit methods
     renameDevice: async (imei, userId, newName) => {
         const data = readData();
-        const dev = data.devices.find(d => d.imei === imei && d.ownerId === userId);
+        const dev = data.devices.find(d => d.imei === imei && (d.ownerId === userId || (d.assignedTo && d.assignedTo.includes(userId))));
         if (dev) {
             dev.name = newName;
             writeData(data);
@@ -772,7 +778,7 @@ module.exports = {
     },
     updateDriver: async (imei, userId, driverName) => {
         const data = readData();
-        const dev = data.devices.find(d => d.imei === imei && d.ownerId === userId);
+        const dev = data.devices.find(d => d.imei === imei && (d.ownerId === userId || (d.assignedTo && d.assignedTo.includes(userId))));
         if (dev) {
             dev.driverName = driverName;
             writeData(data);
@@ -782,7 +788,7 @@ module.exports = {
     },
     updateVehicleProfile: async (imei, userId, vehicleProfile, initialOdometer) => {
         const data = readData();
-        const dev = data.devices.find(d => d.imei === imei && d.ownerId === userId);
+        const dev = data.devices.find(d => d.imei === imei && (d.ownerId === userId || (d.assignedTo && d.assignedTo.includes(userId))));
         if (dev) {
             const oldInitialOdo = dev.initialOdometer || 0;
             const newInitialOdo = parseFloat(initialOdometer || 0);
@@ -910,23 +916,27 @@ module.exports = {
             .filter(u => u.parentId === parentId)
             .map(u => ({ id: u.id, username: u.username, phone: u.phone, email: u.email }));
     },
-    assignDeviceToSubUser: async (imei, dealerId, subUserId) => {
+    assignDeviceToSubUser: async (imei, dealerId, subUserId, assign) => {
         const data = readData();
         const device = data.devices.find(d => d.imei === imei);
         if (!device) return false;
         
-        // Safety check: ensure the dealer actually owns/has access to this device
-        const subUserIds = data.users
-            .filter(u => u.parentId === dealerId || u.id === dealerId)
-            .map(u => u.id);
-            
-        if (!subUserIds.includes(device.ownerId)) {
+        // Safety check: ensure the dealer owns this device
+        if (device.ownerId !== dealerId) {
             return false; // Unauthorized
         }
         
-        // Update ownership to the target sub-user (or back to dealer if 'dealer' / falsy)
-        const targetOwnerId = (subUserId === 'dealer' || !subUserId) ? dealerId : subUserId;
-        device.ownerId = targetOwnerId;
+        if (!device.assignedTo) {
+            device.assignedTo = [];
+        }
+        
+        if (assign) {
+            if (!device.assignedTo.includes(subUserId)) {
+                device.assignedTo.push(subUserId);
+            }
+        } else {
+            device.assignedTo = device.assignedTo.filter(id => id !== subUserId);
+        }
         
         writeData(data);
         return true;
