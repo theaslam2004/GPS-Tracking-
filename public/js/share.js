@@ -333,7 +333,7 @@ function getVehicleIcon(heading, status, voltage) {
         html: `
             <div class="vehicle-beacon ${pulseClass}" style="background: ${color}; color: ${color}; ${borderStyle} width: 28px; height: 28px;">
                 <div class="heading-arrow" style="transform: rotate(${heading || 0}deg); color: #ffffff; transition: transform 0.4s ease-out; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
-                    <i class="fa-solid fa-location-arrow"></i>
+                    <i class="fa-solid fa-location-arrow" style="transform: rotate(-45deg); display: inline-block;"></i>
                 </div>
             </div>
         `,

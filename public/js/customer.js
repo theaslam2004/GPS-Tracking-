@@ -1384,23 +1384,14 @@ function getVehicleIcon(heading, status, pinned, imei, voltage) {
     
     let borderStyle = pinned ? 'border: 2.5px solid #FFab00; box-shadow: 0 0 12px #FFab00;' : 'border: 1.5px solid rgba(255, 255, 255, 0.4); box-shadow: 0 0 8px ' + color + ';';
     const pulseClass = (status === 'running') ? 'beacon-pulse' : '';
-    
-    // Add extra indicator badge for pinned state
-    let extraIndicator = '';
-    if (pinned) {
-        extraIndicator = `
-            <div style="position: absolute; top: -5px; right: -5px; width: 10px; height: 10px; border-radius: 50%; background: #FFab00; border: 1.5px solid #fff; box-shadow: 0 0 4px #FFab00; z-index: 99;"></div>
-        `;
-    }
 
     return L.divIcon({
         className: 'custom-vehicle-marker-svg',
         html: `
             <div class="vehicle-beacon ${pulseClass}" style="background: ${color}; color: ${color}; ${borderStyle} width: 28px; height: 28px;">
                 <div class="heading-arrow" style="transform: rotate(${heading || 0}deg); color: #ffffff; transition: transform 0.4s ease-out; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
-                    <i class="fa-solid fa-location-arrow"></i>
+                    <i class="fa-solid fa-location-arrow" style="transform: rotate(-45deg); display: inline-block;"></i>
                 </div>
-                ${extraIndicator}
             </div>
         `,
         iconSize: [28, 28],

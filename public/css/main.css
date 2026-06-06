@@ -609,6 +609,7 @@ body {
 }
 
 .heading-arrow i {
+    display: inline-block;
     transform: rotate(-45deg); /* Offset fontawesome's default location-arrow angle */
 }
 
