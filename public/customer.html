@@ -611,6 +611,124 @@
                 padding: 1.2rem !important;
             }
         }
+
+        /* Replay Sidebar & Timeline Premium Styles */
+        .replay-tabs button {
+            border: 1px solid var(--border-light);
+            background: var(--bg-surface);
+            color: var(--text-secondary);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .replay-tabs button.active-tab {
+            background: var(--primary) !important;
+            color: #ffffff !important;
+            box-shadow: 0 4px 10px rgba(255, 59, 112, 0.2) !important;
+            border-color: var(--primary) !important;
+        }
+        .accordion-header i.fa-chevron-down {
+            transition: transform 0.2s ease;
+        }
+        .accordion-header.collapsed i.fa-chevron-down {
+            transform: rotate(-90deg);
+        }
+        .speed-opt {
+            transition: background 0.15s, color 0.15s;
+        }
+        .speed-opt:hover {
+            background: rgba(255, 59, 112, 0.08) !important;
+            color: var(--primary) !important;
+        }
+        /* Vertical Replay Timeline styling */
+        .timeline-item {
+            position: relative;
+            padding-left: 24px;
+            margin-bottom: 4px;
+        }
+        .timeline-item::before {
+            content: '';
+            position: absolute;
+            left: 7px;
+            top: 14px;
+            bottom: -18px;
+            width: 2px;
+            background: var(--border-light);
+            z-index: 1;
+        }
+        .timeline-item:last-child::before {
+            display: none;
+        }
+        .timeline-badge {
+            position: absolute;
+            left: 0;
+            top: 0;
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 3px solid var(--bg-main);
+            box-shadow: 0 0 0 1px var(--border-light);
+            z-index: 2;
+        }
+        .timeline-badge.running { background: var(--success); }
+        .timeline-badge.idle { background: var(--warning); }
+        .timeline-badge.halt { background: var(--danger); }
+        
+        .timeline-content {
+            background: var(--bg-surface);
+            border: 1px solid var(--border-light);
+            border-radius: 6px;
+            padding: 8px;
+            font-size: 0.75rem;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.02);
+        }
+        .timeline-time {
+            font-weight: 700;
+            color: var(--text-primary);
+            font-size: 0.72rem;
+            margin-bottom: 2px;
+        }
+        .timeline-location {
+            color: var(--text-secondary);
+            font-size: 0.68rem;
+            line-height: 1.3;
+            margin-top: 2px;
+        }
+        .date-presets-container {
+            position: absolute;
+            top: 72px;
+            right: 60px;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border: 1px solid var(--border);
+            border-radius: var(--radius-md);
+            padding: 4px 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+        body.theme-night .date-presets-container {
+            background: rgba(20, 24, 34, 0.85);
+        }
+        .pb-datetime-input {
+            background: var(--bg-main);
+            border: 1px solid var(--border-light);
+            border-radius: 6px;
+            padding: 4px 8px;
+            color: var(--text-primary);
+            font-size: 0.72rem;
+            font-weight: 700;
+            font-family: 'Outfit', sans-serif;
+            cursor: pointer;
+            outline: none;
+            transition: border-color 0.2s, box-shadow 0.2s;
+        }
+        .pb-datetime-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(255, 59, 112, 0.15);
+        }
     </style>
 </head>
 <body>
@@ -656,73 +774,171 @@
         <!-- Middle Column (Details/Search Column) -->
         <div class="sidebar-wrapper">
             <div class="sidebar">
-                <!-- Search and Stats Header -->
-                <div class="sidebar-header">
-                    <div style="display: flex; justify-content: space-between; align-items: center;">
-                        <h3 style="font-size: 1.1rem; font-weight: 800; text-transform: uppercase; color: var(--text-primary); margin: 0; letter-spacing: 0.5px;">My Fleet</h3>
-                        <div id="liveClock" style="font-family: 'Outfit', sans-serif; font-weight: 700; color: var(--primary); display: flex; align-items: center; gap: 6px; font-size: 0.8rem;">
-                            <i class="fa-regular fa-clock"></i> <span id="clockTime">--:--:-- PM</span>
+                
+                <!-- Live Tracking Sidebar Content Container -->
+                <div id="liveSidebarContent" style="display: flex; flex-direction: column; height: 100%;">
+                    <!-- Search and Stats Header -->
+                    <div class="sidebar-header">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <h3 style="font-size: 1.1rem; font-weight: 800; text-transform: uppercase; color: var(--text-primary); margin: 0; letter-spacing: 0.5px;">My Fleet</h3>
+                            <div id="liveClock" style="font-family: 'Outfit', sans-serif; font-weight: 700; color: var(--primary); display: flex; align-items: center; gap: 6px; font-size: 0.8rem;">
+                                <i class="fa-regular fa-clock"></i> <span id="clockTime">--:--:-- PM</span>
+                            </div>
+                        </div>
+                        <div class="search-container">
+                            <i class="fa-solid fa-magnifying-glass search-icon"></i>
+                            <input type="text" id="vehicleSearchInput" placeholder="Search vehicle number..." onkeyup="filterVehicleList()">
+                            <i class="fa-solid fa-circle-xmark clear-icon" id="vehicleSearchClear" onclick="clearVehicleSearch()"></i>
                         </div>
                     </div>
-                    <div class="search-container">
-                        <i class="fa-solid fa-magnifying-glass search-icon"></i>
-                        <input type="text" id="vehicleSearchInput" placeholder="Search vehicle number..." onkeyup="filterVehicleList()">
-                        <i class="fa-solid fa-circle-xmark clear-icon" id="vehicleSearchClear" onclick="clearVehicleSearch()"></i>
+
+                    <div class="sidebar-controls" id="sidebarControlsContainer" style="display: none;">
+                        <div style="display: flex; gap: 0.5rem;">
+                            <button class="btn btn-outline" id="geofenceToggleBtn" onclick="toggleGeofenceMode()" style="font-size: 0.82rem; padding: 0.6rem; flex: 1; font-weight: 700; display: none !important;" title="Geofence Zones">
+                                <i class="fa-solid fa-draw-polygon"></i> Geofence Zones
+                            </button>
+                        </div>
+
+                        <!-- Geofence tool menu -->
+                        <div id="geofenceList" style="display: none; margin-top: 0.5rem; padding: 0.8rem; background: var(--bg-main); border-radius: var(--radius-md); border: 1px solid var(--border-light);">
+                            <h4 style="font-size: 0.7rem; text-transform: uppercase; margin: 0 0 0.8rem 0; color: var(--primary); letter-spacing: 0.5px; font-weight: 800;">Geofence Tools</h4>
+                            <div class="geofence-tool-strip" style="display: flex; justify-content: space-around; gap: 4px; margin-bottom: 8px;">
+                                <button class="tool-btn" onclick="startPolygonDraw()" style="flex: 1; padding: 6px; font-size: 0.7rem; border-radius: 4px; border: 1px solid var(--border-light); background: var(--bg-surface); cursor: pointer;" title="Draw Polygon">
+                                    <i class="fa-solid fa-draw-polygon" style="color: var(--primary);"></i>
+                                    <span style="display:block; font-size: 0.6rem; margin-top: 2px; color: var(--text-secondary);">Polygon</span>
+                                </button>
+                                <button class="tool-btn" onclick="startCircleDraw()" style="flex: 1; padding: 6px; font-size: 0.7rem; border-radius: 4px; border: 1px solid var(--border-light); background: var(--bg-surface); cursor: pointer;" title="Draw Circle">
+                                    <i class="fa-solid fa-circle-dot" style="color: var(--primary);"></i>
+                                    <span style="display:block; font-size: 0.6rem; margin-top: 2px; color: var(--text-secondary);">Circle</span>
+                                </button>
+                                <button class="tool-btn" onclick="showManualGeofenceModal()" style="flex: 1; padding: 6px; font-size: 0.7rem; border-radius: 4px; border: 1px solid var(--border-light); background: var(--bg-surface); cursor: pointer;" title="Manual Input">
+                                    <i class="fa-solid fa-keyboard" style="color: var(--primary);"></i>
+                                    <span style="display:block; font-size: 0.6rem; margin-top: 2px; color: var(--text-secondary);">Manual</span>
+                                </button>
+                                <button class="tool-btn" onclick="centerOnUser()" style="flex: 1; padding: 6px; font-size: 0.7rem; border-radius: 4px; border: 1px solid var(--border-light); background: var(--bg-surface); cursor: pointer;" title="Find Me">
+                                    <i class="fa-solid fa-location-crosshairs" style="color: var(--primary);"></i>
+                                    <span style="display:block; font-size: 0.6rem; margin-top: 2px; color: var(--text-secondary);">Locate</span>
+                                </button>
+                            </div>
+                            <div id="geofenceItems" style="max-height: 120px; overflow-y: auto; font-size: 0.75rem; margin-top: 8px; border-top: 1px solid var(--border-light); padding-top: 8px;"></div>
+                        </div>
+
+                        <!-- Subscription Banner -->
+                        <div class="subscription-banner" id="subBanner" onclick="showUpgradeModal()" style="display: none !important; flex-direction: column; gap: 4px; padding: 10px; border-radius: var(--radius-md); font-size: 0.8rem; margin-top: 0.2rem; cursor: pointer;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                                <span style="font-weight: 700;"><i class="fa-solid fa-shield-halved" style="color: var(--primary); margin-right: 4px;"></i> <span id="activePlanName" style="color: var(--primary);">--</span></span>
+                                <span id="validityDays" style="font-weight: 700; color: var(--primary);">-- Days</span>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; font-size: 0.7rem; opacity: 0.8;">
+                                <span>Trackers: <span id="deviceUsage" style="font-weight: 700;">0/0</span></span>
+                                <span onclick="showUpgradeModal()" style="color: var(--primary); cursor: pointer; font-weight: 700; text-decoration: underline;">Upgrade Plan</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Device Card List -->
+                    <div class="sidebar-content" id="deviceList">
+                        <div style="text-align: center; color: var(--text-secondary); margin-top: 2rem; font-size: 0.9rem;">
+                            <i class="fa-solid fa-circle-notch fa-spin" style="margin-bottom: 10px; font-size: 1.5rem; color: var(--primary);"></i><br>
+                            Syncing Fleet Data...
+                        </div>
                     </div>
                 </div>
 
-                <div class="sidebar-controls" id="sidebarControlsContainer" style="display: none;">
-                    <div style="display: flex; gap: 0.5rem;">
-                        <button class="btn btn-outline" id="geofenceToggleBtn" onclick="toggleGeofenceMode()" style="font-size: 0.82rem; padding: 0.6rem; flex: 1; font-weight: 700; display: none !important;" title="Geofence Zones">
-                            <i class="fa-solid fa-draw-polygon"></i> Geofence Zones
+                <!-- Replay Summary Sidebar Content Container (Hidden by default) -->
+                <div id="replaySidebar" style="display: none; flex-direction: column; height: 100%; overflow-y: auto; padding: 1.2rem;">
+                    <!-- Go Back header -->
+                    <div style="display: flex; align-items: center; justify-content: space-between; margin-bottom: 1rem;">
+                        <button class="btn btn-outline" style="border-radius: var(--radius-full); padding: 0.4rem 1rem; font-size: 0.8rem; font-weight: 700; display: flex; align-items: center; gap: 6px;" onclick="switchMapTab('live')">
+                            <i class="fa-solid fa-arrow-left"></i> Go Back
                         </button>
+                        <div id="replayVehicleTitle" style="font-weight: 800; font-size: 1rem; color: var(--primary); font-family: 'Outfit', sans-serif;">VEHICLE</div>
                     </div>
 
-                    <!-- Geofence tool menu -->
-                    <div id="geofenceList" style="display: none; margin-top: 0.5rem; padding: 0.8rem; background: var(--bg-main); border-radius: var(--radius-md); border: 1px solid var(--border-light);">
-                        <h4 style="font-size: 0.7rem; text-transform: uppercase; margin: 0 0 0.8rem 0; color: var(--primary); letter-spacing: 0.5px; font-weight: 800;">Geofence Tools</h4>
-                        <div class="geofence-tool-strip" style="display: flex; justify-content: space-around; gap: 4px; margin-bottom: 8px;">
-                            <button class="tool-btn" onclick="startPolygonDraw()" style="flex: 1; padding: 6px; font-size: 0.7rem; border-radius: 4px; border: 1px solid var(--border-light); background: var(--bg-surface); cursor: pointer;" title="Draw Polygon">
-                                <i class="fa-solid fa-draw-polygon" style="color: var(--primary);"></i>
-                                <span style="display:block; font-size: 0.6rem; margin-top: 2px; color: var(--text-secondary);">Polygon</span>
-                            </button>
-                            <button class="tool-btn" onclick="startCircleDraw()" style="flex: 1; padding: 6px; font-size: 0.7rem; border-radius: 4px; border: 1px solid var(--border-light); background: var(--bg-surface); cursor: pointer;" title="Draw Circle">
-                                <i class="fa-solid fa-circle-dot" style="color: var(--primary);"></i>
-                                <span style="display:block; font-size: 0.6rem; margin-top: 2px; color: var(--text-secondary);">Circle</span>
-                            </button>
-                            <button class="tool-btn" onclick="showManualGeofenceModal()" style="flex: 1; padding: 6px; font-size: 0.7rem; border-radius: 4px; border: 1px solid var(--border-light); background: var(--bg-surface); cursor: pointer;" title="Manual Input">
-                                <i class="fa-solid fa-keyboard" style="color: var(--primary);"></i>
-                                <span style="display:block; font-size: 0.6rem; margin-top: 2px; color: var(--text-secondary);">Manual</span>
-                            </button>
-                            <button class="tool-btn" onclick="centerOnUser()" style="flex: 1; padding: 6px; font-size: 0.7rem; border-radius: 4px; border: 1px solid var(--border-light); background: var(--bg-surface); cursor: pointer;" title="Find Me">
-                                <i class="fa-solid fa-location-crosshairs" style="color: var(--primary);"></i>
-                                <span style="display:block; font-size: 0.6rem; margin-top: 2px; color: var(--text-secondary);">Locate</span>
-                            </button>
-                        </div>
-                        <div id="geofenceItems" style="max-height: 120px; overflow-y: auto; font-size: 0.75rem; margin-top: 8px; border-top: 1px solid var(--border-light); padding-top: 8px;"></div>
+                    <!-- Replay tabs -->
+                    <div class="replay-tabs" style="display: flex; gap: 8px; margin-bottom: 0.5rem; flex-shrink: 0;">
+                        <button class="btn active-tab" id="replayTabSummary" onclick="switchReplayTab('summary')" style="flex: 1; padding: 8px; font-size: 0.78rem; font-weight: 700; border-radius: var(--radius-md);">Vehicle Summary</button>
+                        <button class="btn" id="replayTabAlerts" onclick="switchReplayTab('alerts')" style="flex: 1; padding: 8px; font-size: 0.78rem; font-weight: 700; border-radius: var(--radius-md);">Alerts Summary</button>
                     </div>
 
-                    <!-- Subscription Banner -->
-                    <div class="subscription-banner" id="subBanner" onclick="showUpgradeModal()" style="display: none !important; flex-direction: column; gap: 4px; padding: 10px; border-radius: var(--radius-md); font-size: 0.8rem; margin-top: 0.2rem; cursor: pointer;">
-                        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
-                            <span style="font-weight: 700;"><i class="fa-solid fa-shield-halved" style="color: var(--primary); margin-right: 4px;"></i> <span id="activePlanName" style="color: var(--primary);">--</span></span>
-                            <span id="validityDays" style="font-weight: 700; color: var(--primary);">-- Days</span>
+                    <!-- Export Buttons -->
+                    <div style="display: flex; justify-content: flex-end; gap: 12px; margin-bottom: 0.8rem; font-size: 1.15rem; color: var(--text-secondary); padding: 0 4px;">
+                        <i class="fa-solid fa-file-pdf" style="cursor: pointer; transition: color 0.2s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color=''" onclick="exportReplayPDF()" title="Download PDF Summary"></i>
+                        <i class="fa-solid fa-file-excel" style="cursor: pointer; transition: color 0.2s;" onmouseover="this.style.color='var(--primary)'" onmouseout="this.style.color=''" onclick="exportReplayExcel()" title="Download Excel Summary"></i>
+                    </div>
+
+                    <!-- Vehicle Summary Tab Content -->
+                    <div id="replaySummaryTabContent" style="display: flex; flex-direction: column; gap: 0.8rem;">
+                        <!-- Trip Summary Card -->
+                        <div class="accordion-card" style="background: var(--bg-main); border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 12px;">
+                            <div class="accordion-header" onclick="toggleAccordion('tripSummaryContent', 'tripSummaryArrow')" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-weight: 800; font-size: 0.8rem; text-transform: uppercase; color: var(--text-primary);">
+                                <span style="display: flex; align-items: center; gap: 6px;"><i class="fa-solid fa-route" style="color: var(--primary);"></i> Trip Summary</span>
+                                <i class="fa-solid fa-chevron-down" id="tripSummaryArrow"></i>
+                            </div>
+                            <div id="tripSummaryContent" style="margin-top: 10px; display: flex; flex-direction: column; gap: 8px; font-size: 0.8rem; transition: max-height 0.2s ease;">
+                                <div style="display: flex; align-items: center; gap: 10px; padding: 4px 0;">
+                                    <i class="fa-solid fa-road" style="color: var(--primary); font-size: 1rem; opacity: 0.8; width: 16px;"></i>
+                                    <div>
+                                        <div style="color: var(--text-secondary); font-size: 0.65rem; text-transform: uppercase; font-weight: 700;">Total Distance</div>
+                                        <div id="tripTotalDistance" style="font-weight: 800; color: var(--text-primary); font-size: 0.85rem;">0.00 km</div>
+                                    </div>
+                                </div>
+                                <div style="display: flex; align-items: center; gap: 10px; padding: 4px 0;">
+                                    <i class="fa-solid fa-clock" style="color: var(--primary); font-size: 1rem; opacity: 0.8; width: 16px;"></i>
+                                    <div>
+                                        <div style="color: var(--text-secondary); font-size: 0.65rem; text-transform: uppercase; font-weight: 700;">Total Engine On Time</div>
+                                        <div id="tripEngineTime" style="font-weight: 800; color: var(--text-primary); font-size: 0.85rem;">0.00 hours</div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; width: 100%; font-size: 0.7rem; opacity: 0.8;">
-                            <span>Trackers: <span id="deviceUsage" style="font-weight: 700;">0/0</span></span>
-                            <span onclick="showUpgradeModal()" style="color: var(--primary); cursor: pointer; font-weight: 700; text-decoration: underline;">Upgrade Plan</span>
+
+                        <!-- Route Summary Card -->
+                        <div class="accordion-card" style="background: var(--bg-main); border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 12px;">
+                            <div class="accordion-header" onclick="toggleAccordion('routeSummaryContent', 'routeSummaryArrow')" style="display: flex; justify-content: space-between; align-items: center; cursor: pointer; font-weight: 800; font-size: 0.8rem; text-transform: uppercase; color: var(--text-primary);">
+                                <span style="display: flex; align-items: center; gap: 6px;"><i class="fa-solid fa-map-location-dot" style="color: var(--primary);"></i> Route Summary</span>
+                                <i class="fa-solid fa-chevron-down" id="routeSummaryArrow"></i>
+                            </div>
+                            <div id="routeSummaryContent" style="margin-top: 10px; display: flex; flex-direction: column; gap: 10px; transition: max-height 0.2s ease;">
+                                <!-- Stats Line -->
+                                <div style="display: flex; justify-content: space-between; font-size: 0.7rem; font-weight: 700; color: var(--text-secondary); border-bottom: 1px solid var(--border-light); padding-bottom: 6px;">
+                                    <span style="display: flex; align-items: center; gap: 4px;"><span style="width: 8px; height: 8px; border-radius: 50%; background: var(--success); display: inline-block;"></span> Total Run: <span id="routeTotalRun" style="color: var(--text-primary);">0m</span></span>
+                                    <span style="display: flex; align-items: center; gap: 4px;"><span style="width: 8px; height: 8px; border-radius: 50%; background: var(--warning); display: inline-block;"></span> Total Idle: <span id="routeTotalIdle" style="color: var(--text-primary);">0m</span></span>
+                                    <span style="display: flex; align-items: center; gap: 4px;"><span style="width: 8px; height: 8px; border-radius: 50%; background: var(--danger); display: inline-block;"></span> Total Halt: <span id="routeTotalHalt" style="color: var(--text-primary);">0m</span></span>
+                                </div>
+                                
+                                <!-- Stats Capsules -->
+                                <div style="display: flex; gap: 8px;">
+                                    <div style="flex: 1; text-align: center; background: var(--bg-surface); border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 6px;">
+                                        <div style="font-size: 0.6rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 700;">Idle Count</div>
+                                        <div id="routeIdleCount" style="font-size: 0.82rem; font-weight: 800; color: var(--text-primary); margin-top: 2px;">0</div>
+                                    </div>
+                                    <div style="flex: 1; text-align: center; background: var(--bg-surface); border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 6px;">
+                                        <div style="font-size: 0.6rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 700;">Running Count</div>
+                                        <div id="routeRunCount" style="font-size: 0.82rem; font-weight: 800; color: var(--text-primary); margin-top: 2px;">0</div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Vertical Timeline Events -->
+                                <div id="replayTimelineList" style="margin-top: 4px; display: flex; flex-direction: column; gap: 12px; padding-right: 4px;">
+                                    <!-- Populated dynamically via JS -->
+                                    <div style="text-align: center; color: var(--text-secondary); font-size: 0.75rem; padding: 1.5rem 0;">
+                                        Select a time range preset to load route segments...
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Alerts Summary Tab Content (Hidden by default) -->
+                    <div id="replayAlertsTabContent" style="display: none; flex-direction: column; gap: 8px;">
+                        <div style="text-align: center; color: var(--text-secondary); padding: 2.5rem 1rem;">
+                            <i class="fa-solid fa-bell-slash" style="font-size: 1.8rem; opacity: 0.4; margin-bottom: 8px; color: var(--text-secondary);"></i>
+                            <div style="font-weight: 700; font-size: 0.8rem;">No Alerts Recorded</div>
+                            <div style="font-size: 0.7rem; opacity: 0.8; margin-top: 2px;">No event triggers detected for this vehicle within the selected duration.</div>
                         </div>
                     </div>
                 </div>
-
-                <!-- Device Card List -->
-                <div class="sidebar-content" id="deviceList">
-                    <div style="text-align: center; color: var(--text-secondary); margin-top: 2rem; font-size: 0.9rem;">
-                        <i class="fa-solid fa-circle-notch fa-spin" style="margin-bottom: 10px; font-size: 1.5rem; color: var(--primary);"></i><br>
-                        Syncing Fleet Data...
-                    </div>
-                </div>
-
 
             </div>
         </div>
@@ -739,7 +955,26 @@
             </div>
             
             <div id="map"></div>
-            
+
+            <!-- Replay Date Preset Selector (Hidden by default) -->
+            <div id="datePresetContainer" class="date-presets-container" style="display: none;">
+                <i class="fa-solid fa-clock-rotate-left" style="color: var(--primary); font-size: 0.9rem;"></i>
+                <select id="dateRangePreset" onchange="handleDatePresetChange(this.value)" style="border: none; background: transparent; color: var(--text-primary); font-size: 0.8rem; font-weight: 700; outline: none; cursor: pointer; font-family: 'Outfit', sans-serif;">
+                    <option value="24h">Last 24 Hours</option>
+                    <option value="7d">Last 7 Days</option>
+                    <option value="15d">Last 15 Days</option>
+                    <option value="30d">Last 30 Days</option>
+                    <option value="custom">Custom</option>
+                </select>
+                
+                <!-- Hidden by default, shown only when 'custom' is selected -->
+                <div id="pbCustomRangeContainer" style="display: none; align-items: center; gap: 8px;">
+                    <span style="font-size: 0.72rem; color: var(--text-secondary); font-weight: 700; margin-left: 4px;">From:</span>
+                    <input type="datetime-local" id="pbStartDateInput" class="pb-datetime-input">
+                    <span style="font-size: 0.72rem; color: var(--text-secondary); font-weight: 700;">To:</span>
+                    <input type="datetime-local" id="pbEndDateInput" class="pb-datetime-input">
+                </div>
+            </div>
             <!-- Geofence Mode Top Bar (Hidden by default) -->
             <div id="geofenceHeader" class="glass-panel" style="position: absolute; top: -100px; left: 50%; transform: translateX(-50%); z-index: 1000; padding: 1rem 1.5rem; border-radius: var(--radius-full); display: flex; justify-content: space-between; align-items: center; width: 90%; max-width: 600px; transition: top 0.4s ease; border: 1px solid var(--primary); background: var(--bg-surface);">
                 <div>
@@ -778,20 +1013,59 @@
                 </div>
             </div>
             
-            <!-- History Playback Controls (Hidden by default) -->
-            <div id="playbackControls" class="glass-panel" style="display: none; position: absolute; bottom: 2rem; left: 50%; transform: translateX(-50%); z-index: 1000; padding: 1rem 1.5rem; border-radius: var(--radius-full); align-items: center; gap: 1.5rem; width: 90%; max-width: 650px; background: var(--bg-surface); border: 1px solid var(--border); box-shadow: 0 4px 20px rgba(0,0,0,0.08);">
-                <button class="btn btn-primary" id="playBtn" onclick="togglePlayback()" style="border-radius: 50%; width: 45px; height: 45px; padding: 0; flex-shrink: 0; font-size: 1.2rem;"><i class="fa-solid fa-play"></i></button>
+            <!-- Premium History Playback Controls (Hidden by default) -->
+            <div id="playbackControls" style="display: none; position: absolute; bottom: 1.5rem; left: 50%; transform: translateX(-50%); z-index: 1000; width: 92%; max-width: 850px; background: rgba(255, 255, 255, 0.85); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.5); box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08); border-radius: var(--radius-lg); padding: 1rem 1.5rem; align-items: center; gap: 1.2rem; flex-wrap: wrap;">
                 
-                <input type="date" id="pbDateInput" style="background: var(--bg-main); border: 1px solid var(--border-light); border-radius: 6px; padding: 6px 8px; color: var(--text-primary); font-size: 0.78rem; font-family: 'Outfit', sans-serif; cursor: pointer; outline: none; font-weight: 700; flex-shrink: 0;">
-                
-                <div style="flex: 1; display: flex; flex-direction: column; gap: 6px;">
-                    <div style="display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: 700; font-family: 'Outfit', monospace;">
-                        <span id="pbTime" style="color: var(--text-secondary);">--/--/---- --:--:--</span>
-                        <span id="pbSpeed" style="color: var(--primary);">0 km/h</span>
+                <!-- Left Playback & Speed Controls -->
+                <div style="display: flex; align-items: center; gap: 10px; flex-shrink: 0;">
+                    <!-- Play/Pause Button -->
+                    <button class="btn btn-primary" id="playBtn" onclick="togglePlayback()" style="border-radius: 50%; width: 40px; height: 40px; padding: 0; display: flex; align-items: center; justify-content: center; font-size: 1.1rem; box-shadow: 0 4px 10px rgba(255, 59, 112, 0.25);">
+                        <i class="fa-solid fa-play"></i>
+                    </button>
+                    
+                    <!-- Speed Multiplier Select Button -->
+                    <div style="position: relative; display: inline-block;">
+                        <button class="btn btn-outline" id="speedMultiplierBtn" onclick="toggleSpeedDropdown(event)" style="padding: 6px 12px; font-size: 0.8rem; font-weight: 700; border-radius: var(--radius-md); display: flex; align-items: center; gap: 6px; border-color: var(--border-light); background: var(--bg-surface); color: var(--text-primary);">
+                            <span id="speedMultiplierText">1x</span> <i class="fa-solid fa-chevron-up"></i>
+                        </button>
+                        <div id="speedDropdown" style="display: none; position: absolute; bottom: 100%; left: 0; margin-bottom: 6px; background: var(--bg-surface); border: 1px solid var(--border-light); border-radius: var(--radius-md); box-shadow: 0 4px 12px rgba(0,0,0,0.08); min-width: 70px; z-index: 1010; overflow: hidden;">
+                            <div onclick="setPlaybackSpeed(1)" class="speed-opt" style="padding: 8px 12px; font-size: 0.8rem; font-weight: 700; cursor: pointer; color: var(--text-primary);">1x</div>
+                            <div onclick="setPlaybackSpeed(2)" class="speed-opt" style="padding: 8px 12px; font-size: 0.8rem; font-weight: 700; cursor: pointer; color: var(--text-primary);">2x</div>
+                            <div onclick="setPlaybackSpeed(4)" class="speed-opt" style="padding: 8px 12px; font-size: 0.8rem; font-weight: 700; cursor: pointer; color: var(--text-primary);">4x</div>
+                            <div onclick="setPlaybackSpeed(8)" class="speed-opt" style="padding: 8px 12px; font-size: 0.8rem; font-weight: 700; cursor: pointer; color: var(--text-primary);">8x</div>
+                        </div>
                     </div>
-                    <input type="range" id="pbSlider" min="0" max="100" value="0" style="width: 100%; cursor: pointer; accent-color: var(--primary);" oninput="seekPlayback(this.value)">
                 </div>
-                <button class="btn btn-outline" onclick="exitHistoryMode()" style="border-radius: var(--radius-full); padding: 0.5rem 1rem; font-size: 0.85rem; flex-shrink: 0;"><i class="fa-solid fa-xmark"></i> Exit</button>
+                
+                <!-- Center: Slider track with Range label and Timeline ticks -->
+                <div style="flex: 1; display: flex; flex-direction: column; gap: 4px; min-width: 250px;">
+                    <!-- Top stats row: Date Range, time and speed -->
+                    <div style="display: flex; justify-content: space-between; align-items: center; font-size: 0.72rem; font-weight: 700; color: var(--text-secondary); padding: 0 2px;">
+                        <span id="pbRangeLabel" style="color: var(--text-secondary);">Range: --</span>
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <span id="pbTime" style="font-family: 'Outfit', monospace; color: var(--text-primary);">--/--/---- --:--:--</span>
+                            <span id="pbSpeed" style="color: var(--primary); font-family: 'Outfit', monospace; font-weight: 800;">0 km/h</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Slider Input -->
+                    <div style="position: relative; width: 100%; display: flex; align-items: center; height: 16px;">
+                        <input type="range" id="pbSlider" min="0" max="100" value="0" style="width: 100%; cursor: pointer; accent-color: var(--primary); margin: 0;" oninput="seekPlayback(this.value)">
+                    </div>
+                    
+                    <!-- Dynamically Generated Ticks (Time labels underneath) -->
+                    <div id="pbTicks" style="display: flex; justify-content: space-between; font-size: 0.65rem; color: var(--text-secondary); font-weight: 700; padding: 0 4px; margin-top: 2px;">
+                        <!-- Time interval marks loaded via JS -->
+                    </div>
+                </div>
+                
+                <!-- Right Action Buttons (Recenter, Exit) -->
+                <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+                    <button class="btn btn-outline" onclick="recenterReplayMap()" style="padding: 0.5rem; width: 38px; height: 38px; display: flex; align-items: center; justify-content: center; border-radius: var(--radius-md); border-color: var(--border-light); background: var(--bg-surface); color: var(--text-primary);" title="Recenter Replay Map">
+                        <i class="fa-solid fa-expand"></i>
+                    </button>
+                    <button class="btn btn-outline" onclick="exitHistoryMode()" style="border-radius: var(--radius-full); padding: 0.4rem 1rem; font-size: 0.8rem; font-weight: 700; border-color: var(--border-light); background: var(--bg-surface); color: var(--text-primary);"><i class="fa-solid fa-xmark"></i> Exit</button>
+                </div>
             </div>
         </div>
 
@@ -807,7 +1081,14 @@
                     </div>
                     <div>
                         <h2 id="panelDeviceName" style="font-weight: 800; font-size: 1.15rem; margin: 0; color: var(--text-primary); letter-spacing: 0.5px;">VEHICLE</h2>
-                        <div style="display: flex; align-items: center; gap: 8px;">
+                        <!-- Driver & Profile Subtitle -->
+                        <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 2px; display: flex; align-items: center; gap: 4px; flex-wrap: wrap;">
+                            <span>Driver: <b id="panelDriverName" style="color: var(--text-primary);">Unassigned</b></span>
+                            <i class="fa-solid fa-user-pen" id="panelEditDriverBtn" style="cursor: pointer; opacity: 0.6; font-size: 0.72rem; color: var(--primary);" title="Assign Driver"></i>
+                            <span style="margin: 0 4px; opacity: 0.5;">|</span>
+                            <span id="panelVehicleProfile" style="font-weight: 600;">Standard</span>
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 8px; margin-top: 4px;">
                             <div id="panelStatus" style="font-weight: 700; font-size: 0.75rem; text-transform: uppercase; color: var(--text-secondary); letter-spacing: 0.3px;">Offline</div>
                             <div id="panelCheckLight" style="display: none; align-items: center; gap: 4px; background: rgba(255, 61, 0, 0.1); border: 1px solid var(--danger); color: var(--danger); font-size: 0.68rem; font-weight: 800; padding: 2px 8px; border-radius: var(--radius-full); animation: pulseGlow 1.5s infinite ease-in-out; text-transform: uppercase;">
                                 <i class="fa-solid fa-triangle-exclamation"></i> Check Battery
@@ -875,6 +1156,8 @@
                     <div id="panelCoords" style="font-size: 0.8rem; font-weight: 700; line-height: 1.3; color: var(--text-primary);">0.0000, 0.0000</div>
                     <div style="font-size: 0.68rem; color: var(--text-secondary); margin-top: 0.3rem;">Last update: <span id="panelTime">Just now</span></div>
                 </div>
+
+
                 
                 <!-- Actions -->
                 <div class="panel-actions" style="margin-top: 4px; display: flex; gap: 6px;">

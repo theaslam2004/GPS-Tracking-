@@ -6,7 +6,7 @@ const SERVER_HOST = '127.0.0.1';
 const SERVER_PORT = 8080;
 const DATA_FILE = path.join(__dirname, 'data.json');
 
-function generatePacket(imei, speed, lat, lng, eventType = 'NR') {
+function generatePacket(imei, speed, lat, lng, eventType = 'NR', vehicleProfile = 'standard') {
     const now = new Date();
     const day = String(now.getUTCDate()).padStart(2, '0');
     const month = String(now.getUTCMonth() + 1).padStart(2, '0');
@@ -49,8 +49,16 @@ function generatePacket(imei, speed, lat, lng, eventType = 'NR') {
         case 'DT': alertId = 16; break;
     }
     
+    // Determine vehicle main power voltage based on profile
+    let mainVolt = '12.4';
+    if (vehicleProfile === 'heavy') {
+        mainVolt = '48.6';
+    } else if (imei === '862170070000002') {
+        mainVolt = '24.4'; // 24V standard vehicle
+    }
+    
     // Standard Bharat-101 Packet structure (indices align with real manual)
-    return `$Header,iTriangle1,010013,${eventType},${alertId},L,${imei},KA01GPS,1,${dateStr},${timeStr},${lat},N,${lng},E,${speed}.0,180.0,12,206.0,1.26,0.68,Airtel,${ign},${mainPower},12.4,${batVolt},${isPanic ? '1' : '0'},${isTamper ? 'O' : 'C'},31,404,10,8ab,975e416,45,ab,de74335,38,8ab,e09c934,43,8ab,951a834,0000,0001,008273,0.0,0.0,${(Math.random()*5000).toFixed(2)}*FF\r\n`;
+    return `$Header,iTriangle1,010013,${eventType},${alertId},L,${imei},KA01GPS,1,${dateStr},${timeStr},${lat},N,${lng},E,${speed}.0,180.0,12,206.0,1.26,0.68,Airtel,${ign},${mainPower},${mainVolt},${batVolt},${isPanic ? '1' : '0'},${isTamper ? 'O' : 'C'},31,404,10,8ab,975e416,45,ab,de74335,38,8ab,e09c934,43,8ab,951a834,0000,0001,008273,0.0,0.0,${(Math.random()*5000).toFixed(2)}*FF\r\n`;
 }
 
 async function startSimulation() {
@@ -156,7 +164,7 @@ async function startSimulation() {
                     lng += (Math.random() - 0.5) * 0.001;
                 }
 
-                const packet = generatePacket(device.imei, speed, lat.toFixed(6), lng.toFixed(6), eventType);
+                const packet = generatePacket(device.imei, speed, lat.toFixed(6), lng.toFixed(6), eventType, device.vehicleProfile || 'standard');
                 client.write(packet);
                 
                 if (eventType !== 'NR') {

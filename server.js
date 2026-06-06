@@ -615,6 +615,14 @@ const tcpServer = net.createServer((socket) => {
             
             // Identify owner
             const dataStore = await store.getData();
+            
+            // Populate status and odometer from database store
+            const lastSeen = dataStore.deviceLastSeen[parsedData.imei];
+            if (lastSeen) {
+                parsedData.status = lastSeen.status;
+                parsedData.odometer = lastSeen.odometer;
+            }
+
             const devices = dataStore.devices;
             const device = devices.find(d => d.imei === parsedData.imei);
             if (device) {

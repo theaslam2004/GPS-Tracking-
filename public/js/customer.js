@@ -48,15 +48,33 @@ let user = null;
         initMap();
         loadData();
 
-        // Default history date input to today
-        const dateInput = document.getElementById('pbDateInput');
-        if (dateInput) {
-            dateInput.value = new Date().toLocaleDateString('en-CA');
-            dateInput.addEventListener('change', () => {
+        // Default history datetime inputs
+        const startDateInput = document.getElementById('pbStartDateInput');
+        const endDateInput = document.getElementById('pbEndDateInput');
+        if (startDateInput && endDateInput) {
+            const now = new Date();
+            const yesterday = new Date(now.getTime() - 24*60*60*1000);
+            
+            const formatDateTimeLocal = (date) => {
+                const year = date.getFullYear();
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const day = String(date.getDate()).padStart(2, '0');
+                const hours = String(date.getHours()).padStart(2, '0');
+                const minutes = String(date.getMinutes()).padStart(2, '0');
+                return `${year}-${month}-${day}T${hours}:${minutes}`;
+            };
+            
+            startDateInput.value = formatDateTimeLocal(yesterday);
+            endDateInput.value = formatDateTimeLocal(now);
+            
+            const onCustomDateChange = () => {
                 if (activeImei) {
-                    startHistoryMode();
+                    loadAndRenderHistory();
                 }
-            });
+            };
+            
+            startDateInput.addEventListener('change', onCustomDateChange);
+            endDateInput.addEventListener('change', onCustomDateChange);
         }
     } catch (e) {
         console.error('[Auth Check] Error validating session:', e);
@@ -79,8 +97,8 @@ const addressCache = {};
 
 function getAddress(imei, lat, lng, callback) {
     const cacheKey = `${lat.toFixed(5)},${lng.toFixed(5)}`;
-    if (addressCache[imei] && addressCache[imei].coords === cacheKey) {
-        if (callback) callback(addressCache[imei].address);
+    if (addressCache[cacheKey]) {
+        if (callback) callback(addressCache[cacheKey]);
         return;
     }
     
@@ -92,7 +110,7 @@ function getAddress(imei, lat, lng, callback) {
             if (geo && geo.display_name) {
                 addr = geo.display_name.split(',').slice(0, 3).join(', ').trim();
             }
-            addressCache[imei] = { coords: cacheKey, address: addr };
+            addressCache[cacheKey] = addr;
             if (callback) callback(addr);
             
             // Proactively update any existing popup/card elements in the DOM
@@ -104,7 +122,7 @@ function getAddress(imei, lat, lng, callback) {
         })
         .catch(() => {
             const addr = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
-            addressCache[imei] = { coords: cacheKey, address: addr };
+            addressCache[cacheKey] = addr;
             if (callback) callback(addr);
         });
 }
@@ -800,73 +818,42 @@ function renderDeviceList() {
         const batAlert = isSecondary ? `<i class="fa-solid fa-triangle-exclamation" style="color: var(--danger); margin-left: 6px; animation: pulseGlow 1.5s infinite ease-in-out;" title="Warning: Running on Backup Battery!"></i>` : '';
         const activeClass = (d.imei === activeImei) ? 'active' : '';
 
-        // Dynamic address loading
-        const initialCoords = live.latitude && live.longitude ? `${live.latitude.toFixed(5)}, ${live.longitude.toFixed(5)}` : '--';
-        if (live.latitude && live.longitude) {
-            setTimeout(() => {
-                getAddress(d.imei, live.latitude, live.longitude, (addr) => {
-                    const el = document.getElementById(`card-address-${d.imei}`);
-                    if (el) el.innerText = addr;
-                });
-            }, 50);
-        }
-
-        const showMockFuel = d.vehicleProfile === 'heavy';
-        const fuelText = showMockFuel ? '210 L / 360 L' : 'N/A';
-        const fuelPercent = showMockFuel ? 58 : 0;
-        const adblueText = showMockFuel ? '15 L / 25 L' : 'N/A';
-        const adbluePercent = showMockFuel ? 60 : 0;
-        
-        const fuelBarHTML = showMockFuel ? `
-            <div style="margin-top: 8px; border-top: 1px dashed var(--border-light); padding-top: 8px; display: flex; flex-direction: column; gap: 4px;">
-                <div style="display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--text-secondary);">
-                    <span><i class="fa-solid fa-gas-pump" style="color: var(--primary);"></i> Fuel: <b>${fuelText}</b></span>
-                    <span>${fuelPercent}%</span>
-                </div>
-                <div class="taabi-progress-container" style="height: 4px; margin-top: 2px;">
-                    <div class="taabi-progress-fill fuel" style="width: ${fuelPercent}%;"></div>
-                </div>
-                <div style="display: flex; justify-content: space-between; font-size: 0.68rem; color: var(--text-secondary); margin-top: 2px;">
-                    <span><i class="fa-solid fa-flask" style="color: #00d4ff;"></i> Adblue: <b>${adblueText}</b></span>
-                    <span>${adbluePercent}%</span>
-                </div>
-                <div class="taabi-progress-container" style="height: 4px; margin-top: 2px;">
-                    <div class="taabi-progress-fill adblue" style="width: ${adbluePercent}%;"></div>
-                </div>
-            </div>
-        ` : '';
-
         return `
             <div class="device-card ${statusClass} ${activeClass}" id="card-${d.imei}" onclick="focusDevice('${d.imei}')">
                 <!-- Card Header -->
                 <div class="device-header" style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 8px;">
-                    <div class="device-title" style="display: flex; align-items: center; gap: 6px; font-size: 0.88rem; font-weight: 700; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 68%;">
+                    <div class="device-title" style="display: flex; align-items: center; gap: 6px; font-size: 0.88rem; font-weight: 700; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 65%;">
                         <i class="fa-solid fa-star" style="color: ${d.pinned ? 'var(--warning)' : 'var(--text-secondary)'}; opacity: ${d.pinned ? '1' : '0.5'}; cursor: pointer; transition: all 0.2s;" onclick="togglePin('${d.imei}', event)" title="${d.pinned ? 'Unpin' : 'Pin to top'}"></i>
                         <i class="fa-solid fa-truck" style="font-size: 0.85rem; flex-shrink: 0; color: var(--text-secondary);"></i>
                         <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 800; color: var(--text-primary);" title="${d.name || d.imei}">${d.name || d.imei}</span>
                         ${batAlert}
-                        <i class="fa-solid fa-pen-to-square rename-btn" style="cursor: pointer; opacity: 0.5; font-size: 0.75rem; flex-shrink: 0;" onclick="renameDevicePrompt('${d.imei}', '${d.name || ''}', event)" title="Rename vehicle"></i>
                     </div>
-                    <span class="taabi-status-capsule ${statusClass}" style="transform: scale(0.9); transform-origin: right center;">
-                        ${statusText}
-                    </span>
-                </div>
-                
-                <!-- Address Section -->
-                <div style="display: flex; align-items: flex-start; gap: 6px; font-size: 0.72rem; color: var(--text-secondary); margin-bottom: 8px; line-height: 1.3;">
-                    <i class="fa-solid fa-location-dot" style="color: var(--primary); font-size: 0.8rem; width: 12px; margin-top: 2px;"></i>
-                    <span id="card-address-${d.imei}" style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; color: var(--text-primary); flex: 1;">${initialCoords}</span>
+                    <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+                        <i class="fa-solid fa-pen-to-square rename-btn" style="cursor: pointer; opacity: 0.5; font-size: 0.75rem; flex-shrink: 0; color: var(--text-secondary);" onclick="renameDevicePrompt('${d.imei}', '${d.name || ''}', event)" title="Rename vehicle"></i>
+                        <span class="taabi-status-capsule ${statusClass}" style="transform: scale(0.9); transform-origin: right center;">
+                            ${statusText}
+                        </span>
+                    </div>
                 </div>
 
                 <!-- Stats Grid -->
-                <div class="device-stats" style="display: flex; justify-content: space-between; font-size: 0.72rem; padding: 6px 8px; background: rgba(0,0,0,0.02); border-radius: 6px; border: 1px solid var(--border-light);">
-                    <div class="stat-item" style="${speedHidden}"><span style="color: var(--text-secondary);"><i class="fa-solid fa-gauge-high" style="color: var(--success); font-size: 0.7rem;"></i> speed</span><b style="color: var(--text-primary); font-family: 'Outfit', sans-serif;" id="speed-${d.imei}">${speedVal} km/h</b></div>
-                    <div class="stat-item" style="${odoHidden}"><span style="color: var(--text-secondary);"><i class="fa-solid fa-road" style="color: var(--primary); font-size: 0.7rem;"></i> odometer</span><b style="color: var(--text-primary); font-family: 'Outfit', sans-serif;" id="odo-${d.imei}">${odoVal} km</b></div>
-                    <div class="stat-item"><span style="color: var(--text-secondary);"><i class="fa-regular fa-clock" style="color: var(--primary); font-size: 0.7rem;"></i> updated</span><b style="color: var(--text-primary); font-family: 'Outfit', sans-serif;" id="time-${d.imei}">${timeVal}</b></div>
+                <div class="device-stats" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.25rem; background: none; border: none; padding: 0.5rem 0 0; margin-top: 0.5rem;">
+                    <div class="stat-item" style="display: flex; flex-direction: column; align-items: center; text-align: center; justify-content: center; ${speedHidden}">
+                        <i class="fa-solid fa-gauge-high" style="color: var(--success); font-size: 0.95rem; margin-bottom: 2px;"></i>
+                        <span style="color: var(--text-primary); font-weight: 700; font-family: 'Outfit', sans-serif; font-size: 0.82rem;" id="speed-${d.imei}">${speedVal}</span>
+                        <span style="color: var(--text-secondary); font-size: 0.65rem; text-transform: uppercase; font-weight: 500; letter-spacing: 0.3px;">km/h</span>
+                    </div>
+                    <div class="stat-item" style="display: flex; flex-direction: column; align-items: center; text-align: center; justify-content: center; ${odoHidden}">
+                        <i class="fa-solid fa-road" style="color: var(--primary); font-size: 0.95rem; margin-bottom: 2px;"></i>
+                        <span style="color: var(--text-primary); font-weight: 700; font-family: 'Outfit', sans-serif; font-size: 0.82rem;" id="odo-${d.imei}">${odoVal}</span>
+                        <span style="color: var(--text-secondary); font-size: 0.65rem; text-transform: uppercase; font-weight: 500; letter-spacing: 0.3px;">km</span>
+                    </div>
+                    <div class="stat-item" style="display: flex; flex-direction: column; align-items: center; text-align: center; justify-content: center;">
+                        <i class="fa-regular fa-clock" style="color: var(--primary); font-size: 0.95rem; margin-bottom: 2px;"></i>
+                        <span style="color: var(--text-primary); font-weight: 700; font-family: 'Outfit', sans-serif; font-size: 0.72rem; line-height: 1.2; word-break: break-word; white-space: normal;" id="time-${d.imei}">${timeVal}</span>
+                        <span style="color: var(--text-secondary); font-size: 0.65rem; text-transform: uppercase; font-weight: 500; letter-spacing: 0.3px;">Updated</span>
+                    </div>
                 </div>
-
-                <!-- Fuel / Adblue progress bars -->
-                ${fuelBarHTML}
             </div>
         `;
     }).join('');
@@ -951,15 +938,33 @@ function focusDevice(imei) {
 
 function updatePanelData(data, deviceName) {
     const { imei, latitude, longitude, speed, timestamp, odometer, battery, gpsValid, satellites } = data;
-    const isStale = (Date.now() - new Date(timestamp)) > 60000;
+    const isReplayMode = (document.getElementById('playbackControls') && document.getElementById('playbackControls').style.display === 'flex');
+    const isStale = isReplayMode ? false : ((Date.now() - new Date(timestamp)) > 60000);
     
     const device = myDevices.find(d => d.imei === imei);
     
     document.getElementById('panelDeviceName').innerText = deviceName || imei;
     document.getElementById('panelSpeed').innerText = speed;
     
-    // Voltage profile verification
     const profile = device ? device.vehicleProfile || 'standard' : 'standard';
+    const profileText = profile === 'heavy' ? 'Heavy (48V)' : 'Standard (12V/24V)';
+    const driverName = device ? device.driverName || 'Unassigned' : 'Unassigned';
+
+    const driverNameEl = document.getElementById('panelDriverName');
+    if (driverNameEl) driverNameEl.innerText = driverName;
+    
+    const profileEl = document.getElementById('panelVehicleProfile');
+    if (profileEl) profileEl.innerText = profileText;
+
+    const editDriverBtn = document.getElementById('panelEditDriverBtn');
+    if (editDriverBtn) {
+        editDriverBtn.onclick = (event) => {
+            event.stopPropagation();
+            assignDriverPrompt(imei, driverName);
+        };
+    }
+    
+    // Voltage profile verification
     const volt = data.voltage !== undefined ? data.voltage : 12.0;
     let voltStatus = 'Normal';
     let voltColor = 'var(--success)';
@@ -1028,22 +1033,12 @@ function updatePanelData(data, deviceName) {
     if(speed > 110) color = 'var(--danger)';
     speedFill.style.stroke = color;
     
-    // Reverse Geocoding for Address
+    // Reverse Geocoding for Address (Using cached getAddress to prevent rate limit issues)
     const coordsEl = document.getElementById('panelCoords');
     coordsEl.innerText = 'Fetching address...';
-    fetch(`/api/geocode?lat=${latitude}&lon=${longitude}`)
-        .then(res => res.json())
-        .then(geo => {
-            if(geo && geo.display_name) {
-                const shortAddress = geo.display_name.split(',').slice(0, 3).join(', ');
-                coordsEl.innerText = shortAddress;
-            } else {
-                coordsEl.innerText = `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
-            }
-        })
-        .catch(() => {
-            coordsEl.innerText = `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
-        });
+    getAddress(imei, latitude, longitude, (addr) => {
+        coordsEl.innerText = addr;
+    });
         
     document.getElementById('panelTime').innerText = new Date(timestamp).toLocaleTimeString();
     
@@ -1127,6 +1122,8 @@ function updatePanelData(data, deviceName) {
             deviceExportBtn.style.display = 'none';
         }
     }
+
+
 }
 
 
@@ -1158,13 +1155,6 @@ function buildTelemetryHTML(data, deviceName) {
     const profile = device ? device.vehicleProfile || 'standard' : 'standard';
     const profileText = profile === 'heavy' ? 'Heavy (48V)' : 'Standard (12V/24V)';
     const driverName = device ? device.driverName || 'Unassigned' : 'Unassigned';
-
-    // Simulated Fuel & Adblue based on profile (matches Taabi style)
-    const showMockFuel = profile === 'heavy'; 
-    const fuelText = showMockFuel ? '210 L / 360 L' : 'N/A';
-    const fuelPercent = showMockFuel ? 58 : 0;
-    const adblueText = showMockFuel ? '15 L / 25 L' : 'N/A';
-    const adbluePercent = showMockFuel ? 60 : 0;
 
     const odoVal = (odometer !== undefined && odometer >= 0) ? `${odometer.toFixed(1)} km` : '--';
     const coordsString = `${latitude.toFixed(5)}, ${longitude.toFixed(5)}`;
@@ -1205,30 +1195,6 @@ function buildTelemetryHTML(data, deviceName) {
                     <i class="fa-solid fa-road" style="color: var(--primary); font-size: 0.85rem;"></i>
                     <span>Odo: <b style="color: var(--text-primary);">${odoVal}</b></span>
                 </div>
-            </div>
-
-            <!-- Fuel Bar -->
-            <div style="display: flex; flex-direction: column; gap: 2px; margin-top: 2px;">
-                <div style="display: flex; justify-content: space-between; font-size: 0.7rem;">
-                    <span><i class="fa-solid fa-gas-pump" style="color: var(--primary);"></i> Fuel</span>
-                    <span style="font-weight: 700; color: var(--text-primary);">${fuelText}</span>
-                </div>
-                ${showMockFuel ? `
-                <div class="taabi-progress-container">
-                    <div class="taabi-progress-fill fuel" style="width: ${fuelPercent}%;"></div>
-                </div>` : ''}
-            </div>
-
-            <!-- Adblue Bar -->
-            <div style="display: flex; flex-direction: column; gap: 2px;">
-                <div style="display: flex; justify-content: space-between; font-size: 0.7rem;">
-                    <span><i class="fa-solid fa-flask" style="color: #00d4ff;"></i> Adblue</span>
-                    <span style="font-weight: 700; color: var(--text-primary);">${adblueText}</span>
-                </div>
-                ${showMockFuel ? `
-                <div class="taabi-progress-container">
-                    <div class="taabi-progress-fill adblue" style="width: ${adbluePercent}%;"></div>
-                </div>` : ''}
             </div>
 
             <!-- Footer: Last updated & View History link -->
@@ -1303,7 +1269,8 @@ function handleDeviceData(data, isLive = true) {
     const isStale = (Date.now() - new Date(timestamp)) > 60000;
     const beaconStatus = isStale ? 'offline' : (data.status || 'halt');
     const isPinned = device && device.pinned;
-    const vehicleIcon = getVehicleIcon(data.heading, beaconStatus, isPinned);
+    const vehicleIcon = getVehicleIcon(data.heading, beaconStatus, isPinned, imei, data.voltage);
+
 
 
     if(markers[imei]) {
@@ -1382,36 +1349,205 @@ function handleDeviceData(data, isLive = true) {
     }
 }
 
-// Generate premium custom rotating arrowhead marker icon
-function getVehicleIcon(heading, status, pinned) {
+// Generate premium custom rotating vehicle silhouette icon based on profile and name
+// Generate premium custom rotating vehicle silhouette icon based on profile, name, and battery voltage
+function getVehicleIcon(heading, status, pinned, imei, voltage) {
+    const device = myDevices.find(d => d.imei === imei);
+    const profile = device ? device.vehicleProfile || 'standard' : 'standard';
+    const name = (device ? device.name || '' : '').toLowerCase();
+    
+    let iconType = 'ace'; // Default fallback is Tata Ace instead of generic car
+    
+    // 1. Classification by Name / Profile
+    if (name.includes('heavy') || profile === 'heavy' || name.includes('truck') || name.includes('excavator') || name.includes('tractor') || name.includes('dumper')) {
+        iconType = 'heavy';
+    } else if (name.includes('eicher') || name.includes('tempo') || name.includes('van') || name.includes('bus')) {
+        iconType = 'eicher';
+    } else if (name.includes('ace') || name.includes('chota') || name.includes('mini')) {
+        iconType = 'ace';
+    } else if (name.includes('rickshaw') || name.includes('auto') || name.includes('tuk')) {
+        iconType = 'rickshaw';
+    }
+    // 2. Classification fallback by Battery Voltage (12V: Ace, 24V: Eicher, 48V: Heavy) if no specific match
+    else if (voltage !== undefined && voltage !== null) {
+        const v = parseFloat(voltage);
+        if (v > 36) {
+            iconType = 'heavy';
+        } else if (v > 18) {
+            iconType = 'eicher';
+        } else {
+            iconType = 'ace';
+        }
+    }
+    
     let color = '#FF3D00'; // Halt (Red)
-    let pulseClass = '';
     if (status === 'running') {
         color = '#00E676'; // Moving (Green)
-        pulseClass = 'beacon-pulse';
     } else if (status === 'idle') {
         color = '#FFab00'; // Idle (Amber)
     } else if (status === 'offline') {
         color = '#94a3b8'; // Offline (Gray)
     }
     
-    const borderStyle = pinned ? 'border: 2px dashed #FFb547;' : 'border: 1.5px solid rgba(255, 255, 255, 0.4);';
-    const shadowStyle = pinned ? 'box-shadow: 0 0 12px #FFb547;' : `box-shadow: 0 0 8px ${color};`;
-
+    let svgHtml = '';
+    let size = [30, 60];
+    let anchor = [15, 30];
+    const gradId = imei || 'default';
+    
+    if (iconType === 'heavy') {
+        size = [32, 74];
+        anchor = [16, 37];
+        svgHtml = `
+        <svg viewBox="0 0 100 240" width="32" height="74" style="display:block;">
+          <rect x="2" y="50" width="14" height="30" rx="5" fill="#111" />
+          <rect x="84" y="50" width="14" height="30" rx="5" fill="#111" />
+          <rect x="2" y="155" width="14" height="35" rx="5" fill="#111" />
+          <rect x="84" y="155" width="14" height="35" rx="5" fill="#111" />
+          <rect x="2" y="195" width="14" height="35" rx="5" fill="#111" />
+          <rect x="84" y="195" width="14" height="35" rx="5" fill="#111" />
+          <rect x="30" y="70" width="40" height="150" fill="#0f172a" />
+          <rect x="15" y="15" width="70" height="65" rx="8" fill="url(#heavyCab-${gradId})" stroke="#854d0e" stroke-width="3" />
+          <path d="M 22 25 L 26 42 H 74 L 78 25 Z" fill="#94a3b8" opacity="0.8" />
+          <rect x="10" y="35" width="5" height="25" fill="#ca8a04" />
+          <rect x="85" y="35" width="5" height="25" fill="#ca8a04" />
+          <circle cx="35" cy="55" r="5" fill="#1e293b" />
+          <circle cx="35" cy="55" r="2" fill="#000" />
+          <rect x="10" y="85" width="80" height="142" rx="4" fill="url(#heavyBucket-${gradId})" stroke="#0f172a" stroke-width="3" />
+          <line x1="20" y1="110" x2="80" y2="110" stroke="#0f172a" stroke-width="3" />
+          <line x1="20" y1="135" x2="80" y2="135" stroke="#0f172a" stroke-width="3" />
+          <line x1="20" y1="160" x2="80" y2="160" stroke="#0f172a" stroke-width="3" />
+          <line x1="20" y1="185" x2="80" y2="185" stroke="#0f172a" stroke-width="3" />
+          <line x1="20" y1="210" x2="80" y2="210" stroke="#0f172a" stroke-width="3" />
+          <polygon points="18,15 28,15 25,22 18,22" fill="#fef08a" />
+          <polygon points="82,15 72,15 75,22 82,22" fill="#fef08a" />
+          <defs>
+            <linearGradient id="heavyCab-${gradId}" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#eab308"/>
+              <stop offset="100%" stop-color="#ca8a04"/>
+            </linearGradient>
+            <linearGradient id="heavyBucket-${gradId}" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#475569"/>
+              <stop offset="100%" stop-color="#1e293b"/>
+            </linearGradient>
+          </defs>
+        </svg>`;
+    } else if (iconType === 'eicher') {
+        size = [30, 72];
+        anchor = [15, 36];
+        svgHtml = `
+        <svg viewBox="0 0 100 240" width="30" height="72" style="display:block;">
+          <rect x="6" y="55" width="10" height="25" rx="3" fill="#000" />
+          <rect x="84" y="55" width="10" height="25" rx="3" fill="#000" />
+          <rect x="4" y="160" width="12" height="25" rx="3" fill="#000" />
+          <rect x="84" y="160" width="12" height="25" rx="3" fill="#000" />
+          <rect x="4" y="195" width="12" height="25" rx="3" fill="#000" />
+          <rect x="84" y="195" width="12" height="25" rx="3" fill="#000" />
+          <rect x="35" y="75" width="30" height="150" fill="#1e293b" />
+          <rect x="12" y="12" width="76" height="72" rx="10" fill="url(#eicherCab-${gradId})" stroke="#14532d" stroke-width="2" />
+          <path d="M 18 25 L 22 42 H 78 L 82 25 Z" fill="#94a3b8" opacity="0.8" stroke="#0f291e" />
+          <rect x="35" y="50" width="30" height="20" rx="3" fill="#15803d" stroke="#14532d" />
+          <rect x="1" y="38" width="11" height="18" rx="2" fill="#1e293b" />
+          <rect x="88" y="38" width="11" height="18" rx="2" fill="#1e293b" />
+          <rect x="10" y="90" width="80" height="138" rx="3" fill="url(#eicherBed-${gradId})" stroke="#451a03" stroke-width="2" />
+          <rect x="14" y="94" width="72" height="130" fill="#451a03" opacity="0.4" />
+          <circle cx="24" cy="18" r="5" fill="#fffae0" />
+          <circle cx="76" cy="18" r="5" fill="#fffae0" />
+          <defs>
+            <linearGradient id="eicherCab-${gradId}" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#15803d"/>
+              <stop offset="100%" stop-color="#166534"/>
+            </linearGradient>
+            <linearGradient id="eicherBed-${gradId}" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#b45309"/>
+              <stop offset="100%" stop-color="#78350f"/>
+            </linearGradient>
+          </defs>
+        </svg>`;
+    } else if (iconType === 'rickshaw') {
+        size = [26, 48];
+        anchor = [13, 24];
+        svgHtml = `
+        <svg viewBox="0 0 100 180" width="26" height="48" style="display:block;">
+          <rect x="46" y="10" width="8" height="20" rx="2" fill="#000" />
+          <rect x="8" y="125" width="10" height="22" rx="2" fill="#000" />
+          <rect x="82" y="125" width="10" height="22" rx="2" fill="#000" />
+          <path d="M 45 30 L 15 110 V 150 H 85 V 110 L 55 30 Z" fill="#1e293b" />
+          <path d="M 46 38 C 46 38, 18 100, 18 115 C 18 140, 82 140, 82 115 C 82 100, 54 38, 54 38 Z" fill="url(#rickshawYellow-${gradId})" stroke="#854d0e" stroke-width="2" />
+          <path d="M 45 42 L 35 65 H 65 L 55 42 Z" fill="#000" />
+          <rect x="24" y="58" width="8" height="4" fill="#000" />
+          <rect x="68" y="58" width="8" height="4" fill="#000" />
+          <path d="M 18 110 C 18 110, 20 148, 30 148 H 70 C 80 148, 82 110, 82 110 Z" fill="#0f172a" />
+          <circle cx="50" cy="28" r="5" fill="#fffae0" />
+          <defs>
+            <linearGradient id="rickshawYellow-${gradId}" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#facc15"/>
+              <stop offset="100%" stop-color="#ca8a04"/>
+            </linearGradient>
+          </defs>
+        </svg>`;
+    } else { // ace (default fallback)
+        size = [30, 60];
+        anchor = [15, 30];
+        svgHtml = `
+        <svg viewBox="0 0 100 200" width="30" height="60" style="display:block;">
+          <rect x="8" y="35" width="10" height="25" rx="3" fill="#000" />
+          <rect x="82" y="35" width="10" height="25" rx="3" fill="#000" />
+          <rect x="8" y="145" width="10" height="25" rx="3" fill="#000" />
+          <rect x="82" y="145" width="10" height="25" rx="3" fill="#000" />
+          <rect x="40" y="70" width="20" height="80" fill="#1e293b" />
+          <rect x="15" y="12" width="70" height="68" rx="15" fill="url(#cabinGrad-${gradId})" stroke="#cbd5e1" stroke-width="2" />
+          <rect x="3" y="45" width="12" height="8" rx="2" fill="#334155" />
+          <rect x="85" y="45" width="12" height="8" rx="2" fill="#334155" />
+          <path d="M 22 25 L 26 38 H 74 L 78 25 Z" fill="#94a3b8" opacity="0.8" />
+          <rect x="25" y="45" width="50" height="25" rx="5" fill="#94a3b8" opacity="0.3" />
+          <rect x="12" y="82" width="76" height="106" rx="4" fill="url(#bedGrad-${gradId})" stroke="#1e293b" stroke-width="2" />
+          <rect x="16" y="86" width="68" height="98" fill="#1e293b" opacity="0.4" />
+          <rect x="48" y="86" width="4" height="98" fill="#475569" opacity="0.7" />
+          <circle cx="28" cy="20" r="5" fill="#fffae0" />
+          <circle cx="72" cy="20" r="5" fill="#fffae0" />
+          <defs>
+            <linearGradient id="cabinGrad-${gradId}" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#ffffff"/>
+              <stop offset="100%" stop-color="#e2e8f0"/>
+            </linearGradient>
+            <linearGradient id="bedGrad-${gradId}" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stop-color="#475569"/>
+              <stop offset="100%" stop-color="#334155"/>
+            </linearGradient>
+          </defs>
+        </svg>`;
+    }
+    
+    // Status color shadow filter
+    let shadowFilter = `filter: drop-shadow(0 0 5px ${color}) drop-shadow(0 0 1px ${color});`;
+    if (pinned) {
+        shadowFilter = `filter: drop-shadow(0 0 8px #FFab00) drop-shadow(0 0 2px #FFab00);`;
+    }
+    
+    // Add extra indicators for pinned state
+    let extraIndicator = '';
+    if (pinned) {
+        extraIndicator = `
+            <div style="position: absolute; top: -5px; right: -5px; width: 10px; height: 10px; border-radius: 50%; background: #FFab00; border: 1.5px solid #fff; box-shadow: 0 0 4px #FFab00; z-index: 99;"></div>
+        `;
+    }
+    
+    const runningClass = (status === 'running') ? 'svg-marker-running' : '';
+    
     return L.divIcon({
-        className: 'custom-vehicle-marker',
+        className: 'custom-vehicle-marker-svg',
         html: `
-            <div class="vehicle-beacon ${pulseClass}" style="background: ${color}; color: ${color}; ${borderStyle} ${shadowStyle}">
-                <div class="heading-arrow" style="transform: rotate(${heading || 0}deg); color: #ffffff;">
-                    <i class="fa-solid fa-location-arrow"></i>
-                </div>
+            <div class="${runningClass}" style="transform: rotate(${heading || 0}deg); ${shadowFilter} width: ${size[0]}px; height: ${size[1]}px; display: flex; align-items: center; justify-content: center; position: relative;">
+                ${svgHtml}
+                ${extraIndicator}
             </div>
         `,
-        iconSize: [28, 28],
-        iconAnchor: [14, 14],
-        popupAnchor: [0, -18]
+        iconSize: size,
+        iconAnchor: anchor,
+        popupAnchor: [0, -anchor[1]]
     });
 }
+
 
 socket.on('panic_alert', (data) => {
     const settings = userSettings[data.imei] || {};
@@ -1485,12 +1621,18 @@ socket.on('device_data', (data) => {
 let historyPolyline = null;
 let historyMarker = null;
 let historyData = [];
+let rawHistoryData = [];
 let playbackInterval = null;
 let playbackIndex = 0;
 let isPlaying = false;
+let playbackSpeed = 1;
+let activeReplayTab = 'summary';
 
 async function startHistoryMode() {
-    if(!activeImei) return;
+    if(!activeImei) {
+        showToast("ℹ️ Select a Vehicle", "Please select a vehicle from the list first to view history.", "warning");
+        return;
+    }
     
     // Hide all live trails
     Object.keys(liveTrailPolylines).forEach(imei => {
@@ -1500,7 +1642,12 @@ async function startHistoryMode() {
     // UI Changes
     document.querySelector('.bottom-filter').style.display = 'none';
     document.getElementById('playbackControls').style.display = 'flex';
-    document.getElementById('vehiclePanel').classList.remove('open');
+    document.getElementById('vehiclePanel').classList.add('open');
+    
+    // Toggle sidebar content
+    document.getElementById('liveSidebarContent').style.display = 'none';
+    document.getElementById('replaySidebar').style.display = 'flex';
+    document.getElementById('datePresetContainer').style.display = 'flex';
     
     // Keep sidebar open, select the Replay tab
     const tabLive = document.getElementById('tabLive');
@@ -1510,79 +1657,497 @@ async function startHistoryMode() {
         tabReplay.classList.add('active');
     }
     
-    // Get selected date
-    const dateInput = document.getElementById('pbDateInput');
-    if (dateInput && !dateInput.value) {
-        dateInput.value = new Date().toLocaleDateString('en-CA');
+    // Reset inputs
+    document.getElementById('dateRangePreset').value = '24h';
+    const customContainer = document.getElementById('pbCustomRangeContainer');
+    if (customContainer) customContainer.style.display = 'none';
+    
+    // Reset custom inputs to last 24h default
+    const startDateInput = document.getElementById('pbStartDateInput');
+    const endDateInput = document.getElementById('pbEndDateInput');
+    if (startDateInput && endDateInput) {
+        const now = new Date();
+        const yesterday = new Date(now.getTime() - 24*60*60*1000);
+        
+        const formatDateTimeLocal = (date) => {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            const hours = String(date.getHours()).padStart(2, '0');
+            const minutes = String(date.getMinutes()).padStart(2, '0');
+            return `${year}-${month}-${day}T${hours}:${minutes}`;
+        };
+        
+        startDateInput.value = formatDateTimeLocal(yesterday);
+        endDateInput.value = formatDateTimeLocal(now);
     }
-    const selectedDate = dateInput ? dateInput.value : '';
+    
+    await loadAndRenderHistory();
+}
 
-    // Fetch History
-    try {
-        const res = await fetch(`/api/customer/history?imei=${activeImei}&date=${selectedDate}`);
-        const data = await res.json();
-        historyData = data.history;
-        
-        if(!historyData || historyData.length === 0) {
-            showToast("ℹ️ No History Data", "No tracking points found for the selected date.", "warning");
-            // Clear map layers
-            if(historyPolyline) { map.removeLayer(historyPolyline); historyPolyline = null; }
-            if(historyMarker) { map.removeLayer(historyMarker); historyMarker = null; }
-            // Reset slider and labels
-            document.getElementById('pbSlider').value = 0;
-            document.getElementById('pbSlider').max = 0;
-            document.getElementById('pbTime').innerText = "--/--/---- --:--:--";
-            document.getElementById('pbSpeed').innerText = "0 km/h";
-            return;
-        }
-        
-        // Draw Polyline (Filtering out invalid 0,0 coordinates)
-        const latlngs = historyData
-            .filter(p => p.latitude && p.longitude && p.latitude !== 0 && p.longitude !== 0)
-            .map(p => [p.latitude, p.longitude]);
-        if(historyPolyline) map.removeLayer(historyPolyline);
-        if (latlngs.length > 0) {
-            historyPolyline = L.polyline(latlngs, {color: 'var(--primary)', weight: 4, opacity: 0.8}).addTo(map);
-            map.fitBounds(historyPolyline.getBounds());
-        } else {
-            console.warn('[History] No valid coordinates to render history polyline.');
-        }
-        
-        // Setup Marker
-        if(historyMarker) map.removeLayer(historyMarker);
-        const firstPt = historyData[0];
-        historyMarker = L.marker([firstPt.latitude, firstPt.longitude], {
-            icon: L.divIcon({
-                className: 'history-marker',
-                html: '<div style="width:16px;height:16px;background:var(--accent);border-radius:50%;border:3px solid #fff;box-shadow:0 0 10px rgba(255,115,0,0.8);"></div>',
-                iconSize: [16, 16], iconAnchor: [8, 8]
-            }),
-            zIndexOffset: 1000
-        }).addTo(map);
-        
-        // Init Slider
-        document.getElementById('pbSlider').max = historyData.length - 1;
-        document.getElementById('pbSlider').value = 0;
-        updatePlaybackUI(0);
-        
-    } catch(e) {
-        console.error('Error loading history:', e);
-        exitHistoryMode();
+async function loadAndRenderHistory() {
+    if (!activeImei) return;
+    
+    // Stop any active playback
+    if (isPlaying) {
+        isPlaying = false;
+        clearInterval(playbackInterval);
+        document.getElementById('playBtn').innerHTML = '<i class="fa-solid fa-play"></i>';
     }
+    
+    try {
+        const res = await fetch(`/api/customer/history?imei=${activeImei}`);
+        const data = await res.json();
+        rawHistoryData = data.history || [];
+        
+        // Set vehicle title
+        const dev = myDevices.find(d => d.imei === activeImei);
+        document.getElementById('replayVehicleTitle').innerText = dev ? dev.name : activeImei;
+        
+        filterAndProcessHistory();
+    } catch (e) {
+        console.error('Error fetching history:', e);
+        showToast("❌ Fetch Error", "Failed to retrieve tracking history.", "danger");
+    }
+}
+
+async function handleDatePresetChange(preset) {
+    const customContainer = document.getElementById('pbCustomRangeContainer');
+    if (customContainer) {
+        if (preset === 'custom') {
+            customContainer.style.display = 'flex';
+        } else {
+            customContainer.style.display = 'none';
+        }
+    }
+    await loadAndRenderHistory();
+}
+
+function filterAndProcessHistory() {
+    const preset = document.getElementById('dateRangePreset').value;
+    const now = new Date();
+    
+    let filtered = [];
+    if (preset === '24h') {
+        const limit = now.getTime() - (24 * 60 * 60 * 1000);
+        filtered = rawHistoryData.filter(pt => new Date(pt.timestamp).getTime() >= limit);
+    } else if (preset === '7d') {
+        const limit = now.getTime() - (7 * 24 * 60 * 60 * 1000);
+        filtered = rawHistoryData.filter(pt => new Date(pt.timestamp).getTime() >= limit);
+    } else if (preset === '15d') {
+        const limit = now.getTime() - (15 * 24 * 60 * 60 * 1000);
+        filtered = rawHistoryData.filter(pt => new Date(pt.timestamp).getTime() >= limit);
+    } else if (preset === '30d') {
+        const limit = now.getTime() - (30 * 24 * 60 * 60 * 1000);
+        filtered = rawHistoryData.filter(pt => new Date(pt.timestamp).getTime() >= limit);
+    } else if (preset === 'custom') {
+        const startVal = document.getElementById('pbStartDateInput').value;
+        const endVal = document.getElementById('pbEndDateInput').value;
+        if (startVal && endVal) {
+            const startLimit = new Date(startVal).getTime();
+            const endLimit = new Date(endVal).getTime();
+            filtered = rawHistoryData.filter(pt => {
+                const ptTime = new Date(pt.timestamp).getTime();
+                return ptTime >= startLimit && ptTime <= endLimit;
+            });
+        } else {
+            filtered = rawHistoryData;
+        }
+    }
+    
+    historyData = filtered;
+    
+    if (historyData.length === 0) {
+        showToast("ℹ️ No History Data", "No tracking points found for the selected range.", "warning");
+        // Clear map layers
+        if(historyPolyline) { map.removeLayer(historyPolyline); historyPolyline = null; }
+        if(historyMarker) { map.removeLayer(historyMarker); historyMarker = null; }
+        // Reset slider and labels
+        document.getElementById('pbSlider').value = 0;
+        document.getElementById('pbSlider').max = 0;
+        document.getElementById('pbTime').innerText = "--/--/---- --:--:--";
+        document.getElementById('pbSpeed').innerText = "0 km/h";
+        document.getElementById('pbRangeLabel').innerText = "Range: --";
+        document.getElementById('pbTicks').innerHTML = "";
+        document.getElementById('replayTimelineList').innerHTML = `<div style="text-align: center; color: var(--text-secondary); font-size: 0.75rem; padding: 1.5rem 0;">No history points found for this range.</div>`;
+        
+        // Reset stats
+        document.getElementById('tripTotalDistance').innerText = '0.00 km';
+        document.getElementById('tripEngineTime').innerText = '0.00 hours';
+        document.getElementById('routeTotalRun').innerText = '0m';
+        document.getElementById('routeTotalIdle').innerText = '0m';
+        document.getElementById('routeTotalHalt').innerText = '0m';
+        document.getElementById('routeIdleCount').innerText = '0';
+        document.getElementById('routeRunCount').innerText = '0';
+        return;
+    }
+    
+    // Draw Polyline (Filtering out invalid 0,0 coordinates)
+    const latlngs = historyData
+        .filter(p => p.latitude && p.longitude && p.latitude !== 0 && p.longitude !== 0)
+        .map(p => [p.latitude, p.longitude]);
+    if(historyPolyline) map.removeLayer(historyPolyline);
+    if (latlngs.length > 0) {
+        historyPolyline = L.polyline(latlngs, {color: '#0052cc', weight: 5, opacity: 0.85}).addTo(map);
+        map.fitBounds(historyPolyline.getBounds());
+    } else {
+        console.warn('[History] No valid coordinates to render history polyline.');
+    }
+    
+    // Setup Marker
+    if(historyMarker) map.removeLayer(historyMarker);
+    const firstPt = historyData[0];
+    let firstStatus = 'halt';
+    if (firstPt.speed > 2) firstStatus = 'running';
+    else if (firstPt.ignition) firstStatus = 'idle';
+    const firstIcon = getVehicleIcon(firstPt.heading || 0, firstStatus, false, activeImei, firstPt.voltage);
+
+    historyMarker = L.marker([firstPt.latitude, firstPt.longitude], {
+        icon: firstIcon,
+        zIndexOffset: 1000
+    }).addTo(map);
+    
+    // Init Slider
+    document.getElementById('pbSlider').max = historyData.length - 1;
+    document.getElementById('pbSlider').value = 0;
+    playbackIndex = 0;
+    updatePlaybackUI(0);
+    
+    // Populate Date Range Label
+    const startT = new Date(historyData[0].timestamp);
+    const endT = new Date(historyData[historyData.length - 1].timestamp);
+    const startLabelStr = startT.toLocaleDateString('en-US', {month: 'short', day: 'numeric'});
+    const endLabelStr = endT.toLocaleDateString('en-US', {month: 'short', day: 'numeric'});
+    document.getElementById('pbRangeLabel').innerText = `Range: ${startLabelStr} - ${endLabelStr}`;
+    
+    // Compute statistics & vertical timeline
+    computeHistoryStatsAndTimeline();
+    
+    // Generate slider ticks
+    generateSliderTicks();
+}
+
+function generateSliderTicks() {
+    if (historyData.length < 2) return;
+    const ticksContainer = document.getElementById('pbTicks');
+    if (!ticksContainer) return;
+    
+    const len = historyData.length;
+    const indices = [0, Math.floor(len * 0.33), Math.floor(len * 0.66), len - 1];
+    
+    let html = '';
+    indices.forEach(idx => {
+        const pt = historyData[idx];
+        if (pt) {
+            const d = new Date(pt.timestamp);
+            const dateStr = d.toLocaleDateString('en-US', {month: 'short', day: 'numeric'});
+            const timeStr = d.toLocaleTimeString('en-US', {hour: '2-digit', minute: '2-digit'});
+            html += `<div style="text-align: center;">
+                <div>${dateStr}</div>
+                <div style="font-size:0.6rem; opacity:0.8;">${timeStr}</div>
+            </div>`;
+        }
+    });
+    ticksContainer.innerHTML = html;
+}
+
+function getDistanceInMeters(lat1, lon1, lat2, lon2) {
+    const R = 6371e3; // metres
+    const phi1 = lat1 * Math.PI/180;
+    const phi2 = lat2 * Math.PI/180;
+    const deltaPhi = (lat2-lat1) * Math.PI/180;
+    const deltaLambda = (lon2-lon1) * Math.PI/180;
+
+    const a = Math.sin(deltaPhi/2) * Math.sin(deltaPhi/2) +
+              Math.cos(phi1) * Math.cos(phi2) *
+              Math.sin(deltaLambda/2) * Math.sin(deltaLambda/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+
+    return R * c;
+}
+
+function formatDuration(ms) {
+    const totalMins = Math.floor(ms / 60000);
+    if (totalMins < 1) return '30s';
+    if (totalMins < 60) return `${totalMins}m`;
+    const hrs = Math.floor(totalMins / 60);
+    const mins = totalMins % 60;
+    return mins > 0 ? `${hrs}h ${mins}m` : `${hrs}h`;
+}
+
+function resolveSegmentAddress(segmentIndex, lat, lng, elementId) {
+    const dummyImei = `seg-${segmentIndex}`;
+    getAddress(dummyImei, lat, lng, (addr) => {
+        const el = document.getElementById(elementId);
+        if (el) el.innerText = addr;
+    });
+}
+
+function optimizeSegments(rawSegments) {
+    if (rawSegments.length <= 1) return rawSegments;
+
+    // Pass 1: Merge short stops (idle or halt under 2 minutes) into running if surrounded by running, or merge them to avoid rapid alternation.
+    let tempSegments = [];
+    for (let i = 0; i < rawSegments.length; i++) {
+        const current = rawSegments[i];
+        const duration = current.endTime.getTime() - current.startTime.getTime();
+        
+        if ((current.state === 'idle' || current.state === 'halt') && duration < 120000) {
+            const prev = tempSegments[tempSegments.length - 1];
+            const next = rawSegments[i + 1];
+            
+            if (prev && prev.state === 'running') {
+                prev.endPoint = current.endPoint;
+                prev.points = prev.points.concat(current.points);
+                prev.endTime = current.endTime;
+                continue;
+            } else if (next && next.state === 'running') {
+                next.startPoint = current.startPoint;
+                next.points = current.points.concat(next.points);
+                next.startTime = current.startTime;
+                continue;
+            }
+        }
+        
+        if (current.state === 'running' && duration < 60000) {
+            let segDist = 0;
+            for (let j = 1; j < current.points.length; j++) {
+                segDist += getDistanceInMeters(current.points[j-1].latitude, current.points[j-1].longitude, current.points[j].latitude, current.points[j].longitude);
+            }
+            if (segDist < 30) {
+                const prev = tempSegments[tempSegments.length - 1];
+                const next = rawSegments[i + 1];
+                
+                if (prev && (prev.state === 'idle' || prev.state === 'halt')) {
+                    prev.endPoint = current.endPoint;
+                    prev.points = prev.points.concat(current.points);
+                    prev.endTime = current.endTime;
+                    continue;
+                } else if (next && (next.state === 'idle' || next.state === 'halt')) {
+                    next.startPoint = current.startPoint;
+                    next.points = current.points.concat(next.points);
+                    next.startTime = current.startTime;
+                    continue;
+                }
+            }
+        }
+        
+        tempSegments.push(current);
+    }
+
+    // Pass 2: Consolidate consecutive segments of the same state
+    let consolidated = [];
+    tempSegments.forEach(seg => {
+        if (consolidated.length === 0) {
+            consolidated.push(seg);
+        } else {
+            const last = consolidated[consolidated.length - 1];
+            if (last.state === seg.state) {
+                last.endPoint = seg.endPoint;
+                last.points = last.points.concat(seg.points);
+                last.endTime = seg.endTime;
+            } else {
+                consolidated.push(seg);
+            }
+        }
+    });
+
+    return consolidated;
+}
+
+function computeHistoryStatsAndTimeline() {
+    // 1. Total Distance
+    let totalDistanceMeters = 0;
+    for (let i = 1; i < historyData.length; i++) {
+        const prev = historyData[i - 1];
+        const curr = historyData[i];
+        if (prev.latitude && prev.longitude && curr.latitude && curr.longitude) {
+            totalDistanceMeters += getDistanceInMeters(prev.latitude, prev.longitude, curr.latitude, curr.longitude);
+        }
+    }
+    const totalDistanceKm = (totalDistanceMeters / 1000).toFixed(2);
+    document.getElementById('tripTotalDistance').innerText = `${totalDistanceKm} km`;
+    
+    // 2. Engine Time (Ignition ON interval accumulation)
+    let engineOnMs = 0;
+    for (let i = 1; i < historyData.length; i++) {
+        const prev = historyData[i - 1];
+        const curr = historyData[i];
+        if (prev.ignition && curr.ignition) {
+            const duration = new Date(curr.timestamp).getTime() - new Date(prev.timestamp).getTime();
+            if (duration > 0 && duration < 600000) { // cap at 10 minutes to avoid giant gaps
+                engineOnMs += duration;
+            }
+        }
+    }
+    const engineOnHours = (engineOnMs / (1000 * 60 * 60)).toFixed(2);
+    document.getElementById('tripEngineTime').innerText = `${engineOnHours} hours`;
+    
+    // 3. Segment Clustering
+    const rawSegments = [];
+    let currentSegment = null;
+    
+    historyData.forEach((pt) => {
+        let state = 'halt';
+        if (pt.speed > 2) {
+            state = 'running';
+        } else if (pt.ignition) {
+            state = 'idle';
+        }
+        
+        if (!currentSegment) {
+            currentSegment = {
+                state: state,
+                startPoint: pt,
+                endPoint: pt,
+                points: [pt],
+                startTime: new Date(pt.timestamp),
+                endTime: new Date(pt.timestamp)
+            };
+        } else if (currentSegment.state === state) {
+            currentSegment.endPoint = pt;
+            currentSegment.points.push(pt);
+            currentSegment.endTime = new Date(pt.timestamp);
+        } else {
+            rawSegments.push(currentSegment);
+            currentSegment = {
+                state: state,
+                startPoint: pt,
+                endPoint: pt,
+                points: [pt],
+                startTime: new Date(pt.timestamp),
+                endTime: new Date(pt.timestamp)
+            };
+        }
+    });
+    if (currentSegment) {
+        rawSegments.push(currentSegment);
+    }
+    
+    // Optimize segments to remove jitter / short stops
+    const segments = optimizeSegments(rawSegments);
+    
+    // Render segments to timeline
+    let timelineHtml = '';
+    let totalRunMs = 0;
+    let totalIdleMs = 0;
+    let totalHaltMs = 0;
+    let idleCount = 0;
+    let runCount = 0;
+
+    segments.forEach((seg, index) => {
+        const durationMs = seg.endTime.getTime() - seg.startTime.getTime();
+        if (seg.state === 'running') {
+            totalRunMs += durationMs;
+            runCount++;
+        } else if (seg.state === 'idle') {
+            totalIdleMs += durationMs;
+            idleCount++;
+        } else {
+            totalHaltMs += durationMs;
+        }
+        
+        const durationText = formatDuration(durationMs);
+        const timeRangeText = `${seg.startTime.toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit'})} - ${seg.endTime.toLocaleTimeString('en-US', {hour: 'numeric', minute: '2-digit'})}`;
+        const dateText = seg.startTime.toLocaleDateString('en-US', {month: 'short', day: 'numeric'});
+        
+        let stateLabel = 'Halted';
+        let stateClass = 'halt';
+        let detailText = '';
+        
+        if (seg.state === 'running') {
+            stateLabel = 'Running';
+            stateClass = 'running';
+            let segDist = 0;
+            for (let i = 1; i < seg.points.length; i++) {
+                segDist += getDistanceInMeters(seg.points[i-1].latitude, seg.points[i-1].longitude, seg.points[i].latitude, seg.points[i].longitude);
+            }
+            detailText = ` | ${(segDist / 1000).toFixed(2)} km`;
+        } else if (seg.state === 'idle') {
+            stateLabel = 'Idle';
+            stateClass = 'idle';
+        }
+        
+        const elementId = `timeline-address-${index}`;
+        const startPt = seg.startPoint;
+        
+        timelineHtml += `
+        <div class="timeline-item">
+            <div class="timeline-badge ${stateClass}"></div>
+            <div class="timeline-content">
+                <div class="timeline-time">${dateText} | ${timeRangeText}</div>
+                <div style="font-weight: 700; color: ${stateClass === 'running' ? 'var(--success)' : stateClass === 'idle' ? 'var(--warning)' : 'var(--danger)'};">
+                    ${stateLabel} (${durationText}${detailText})
+                </div>
+                <div class="timeline-location" id="${elementId}">
+                    ${startPt.latitude.toFixed(5)}, ${startPt.longitude.toFixed(5)}
+                </div>
+            </div>
+        </div>
+        `;
+        
+        // Resolve address asynchronously with staggered timeout
+        setTimeout(() => {
+            resolveSegmentAddress(index, startPt.latitude, startPt.longitude, elementId);
+        }, index * 150);
+    });
+
+    document.getElementById('replayTimelineList').innerHTML = timelineHtml || '<div style="text-align:center; padding:1.5rem; color:var(--text-secondary);">No timeline events to display.</div>';
+    
+    document.getElementById('routeTotalRun').innerText = formatDuration(totalRunMs);
+    document.getElementById('routeTotalIdle').innerText = formatDuration(totalIdleMs);
+    document.getElementById('routeTotalHalt').innerText = formatDuration(totalHaltMs);
+    document.getElementById('routeIdleCount').innerText = idleCount;
+    document.getElementById('routeRunCount').innerText = runCount;
 }
 
 function updatePlaybackUI(index) {
     if(!historyData || !historyData[index]) return;
     const pt = historyData[index];
     
-    if (historyMarker) historyMarker.setLatLng([pt.latitude, pt.longitude]);
+    if (historyMarker) {
+        historyMarker.setLatLng([pt.latitude, pt.longitude]);
+        let ptStatus = 'halt';
+        if (pt.speed > 2) ptStatus = 'running';
+        else if (pt.ignition) ptStatus = 'idle';
+        historyMarker.setIcon(getVehicleIcon(pt.heading || 0, ptStatus, false, activeImei, pt.voltage));
+
+    }
     
-    // Format full date & time (locale dependent but nice)
+    // Format full date & time
     const timeObj = new Date(pt.timestamp);
     const datePart = timeObj.toLocaleDateString('en-GB'); // DD/MM/YYYY
     const timePart = timeObj.toLocaleTimeString('en-GB'); // HH:MM:SS
     document.getElementById('pbTime').innerText = `${datePart} ${timePart}`;
     document.getElementById('pbSpeed').innerText = `${pt.speed} km/h`;
+    
+    // Open detailed vehicle panel on the right side if it's not open
+    const panel = document.getElementById('vehiclePanel');
+    if (panel) panel.classList.add('open');
+
+    // Update the right side details panel with active playback point details in real-time
+    const dev = myDevices.find(d => d.imei === activeImei);
+    const panelData = {
+        ...pt,
+        imei: activeImei
+    };
+    updatePanelData(panelData, dev ? dev.name : activeImei);
+}
+
+function startPlaybackLoop() {
+    const baseInterval = 800; // 1x = 800ms per point
+    const currentInterval = baseInterval / playbackSpeed;
+    
+    playbackInterval = setInterval(() => {
+        playbackIndex++;
+        if (playbackIndex >= historyData.length) {
+            togglePlayback(); // pause at end
+            playbackIndex = historyData.length - 1;
+        } else {
+            document.getElementById('pbSlider').value = playbackIndex;
+            updatePlaybackUI(playbackIndex);
+        }
+    }, currentInterval);
 }
 
 function togglePlayback() {
@@ -1592,26 +2157,132 @@ function togglePlayback() {
     if(isPlaying) {
         btn.innerHTML = '<i class="fa-solid fa-pause"></i>';
         if(playbackIndex >= historyData.length - 1) playbackIndex = 0; // restart
-        
-        playbackInterval = setInterval(() => {
-            playbackIndex++;
-            if(playbackIndex >= historyData.length) {
-                togglePlayback(); // pause at end
-                playbackIndex = historyData.length - 1;
-            } else {
-                document.getElementById('pbSlider').value = playbackIndex;
-                updatePlaybackUI(playbackIndex);
-            }
-        }, 100); // 100ms per point
+        startPlaybackLoop();
     } else {
         btn.innerHTML = '<i class="fa-solid fa-play"></i>';
         clearInterval(playbackInterval);
     }
 }
 
+function toggleSpeedDropdown(event) {
+    if (event) event.stopPropagation();
+    const dropdown = document.getElementById('speedDropdown');
+    dropdown.style.display = dropdown.style.display === 'none' ? 'block' : 'none';
+}
+
+function setPlaybackSpeed(speed) {
+    playbackSpeed = speed;
+    document.getElementById('speedMultiplierText').innerText = `${speed}x`;
+    document.getElementById('speedDropdown').style.display = 'none';
+    
+    if (isPlaying) {
+        clearInterval(playbackInterval);
+        startPlaybackLoop();
+    }
+}
+
 function seekPlayback(val) {
     playbackIndex = parseInt(val);
     updatePlaybackUI(playbackIndex);
+}
+
+function recenterReplayMap() {
+    if (historyPolyline) {
+        map.fitBounds(historyPolyline.getBounds());
+    }
+}
+
+function switchReplayTab(tab) {
+    activeReplayTab = tab;
+    const btnSummary = document.getElementById('replayTabSummary');
+    const btnAlerts = document.getElementById('replayTabAlerts');
+    const contentSummary = document.getElementById('replaySummaryTabContent');
+    const contentAlerts = document.getElementById('replayAlertsTabContent');
+    
+    if (tab === 'summary') {
+        btnSummary.classList.add('active-tab');
+        btnAlerts.classList.remove('active-tab');
+        contentSummary.style.display = 'flex';
+        contentAlerts.style.display = 'none';
+    } else {
+        btnSummary.classList.remove('active-tab');
+        btnAlerts.classList.add('active-tab');
+        contentSummary.style.display = 'none';
+        contentAlerts.style.display = 'flex';
+    }
+}
+
+function toggleAccordion(contentId, arrowId) {
+    const content = document.getElementById(contentId);
+    const arrow = document.getElementById(arrowId);
+    if (!content || !arrow) return;
+    
+    if (content.style.display === 'none') {
+        content.style.display = 'flex';
+        arrow.style.transform = 'rotate(0deg)';
+    } else {
+        content.style.display = 'none';
+        arrow.style.transform = 'rotate(-90deg)';
+    }
+}
+
+function exportReplayPDF() {
+    if (!activeImei || historyData.length === 0) return;
+    
+    const dev = myDevices.find(d => d.imei === activeImei);
+    const devName = dev ? dev.name : activeImei;
+    const startT = new Date(historyData[0].timestamp).toLocaleString();
+    const endT = new Date(historyData[historyData.length - 1].timestamp).toLocaleString();
+    
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(`
+        <html>
+        <head>
+            <title>Trip History Report - ${devName}</title>
+            <style>
+                body { font-family: 'Outfit', sans-serif; color: #2b354e; padding: 40px; }
+                h1 { color: #ff3b70; border-bottom: 2px solid #ff3b70; padding-bottom: 10px; }
+                .meta-table { width: 100%; margin-bottom: 30px; border-collapse: collapse; }
+                .meta-table td { padding: 8px; border: 1px solid #e2e8f0; }
+                .meta-table td.label { font-weight: bold; background: #f8fafc; width: 30%; }
+                .timeline-list { margin-top: 20px; }
+                .timeline-item { border-left: 2px solid #e2e8f0; padding-left: 20px; position: relative; margin-bottom: 15px; }
+                .timeline-item::before { content: ''; position: absolute; left: -6px; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: #ff3b70; }
+                .time { font-size: 0.8rem; color: #64748b; font-weight: bold; }
+                .state { font-weight: bold; margin-top: 4px; }
+                .loc { font-size: 0.75rem; color: #64748b; margin-top: 2px; }
+            </style>
+        </head>
+        <body>
+            <h1>Fleetly Replay Report</h1>
+            <table class="meta-table">
+                <tr><td class="label">Vehicle Name</td><td>${devName}</td></tr>
+                <tr><td class="label">IMEI</td><td>${activeImei}</td></tr>
+                <tr><td class="label">Time Range</td><td>${startT} - ${endT}</td></tr>
+                <tr><td class="label">Total Distance</td><td>${document.getElementById('tripTotalDistance').innerText}</td></tr>
+                <tr><td class="label">Engine On Time</td><td>${document.getElementById('tripEngineTime').innerText}</td></tr>
+            </table>
+            
+            <h2>Route Timeline Log</h2>
+            <div class="timeline-list">
+                ${document.getElementById('replayTimelineList').innerHTML}
+            </div>
+            
+            <script>
+                window.onload = function() {
+                    window.print();
+                    setTimeout(function() { window.close(); }, 500);
+                }
+            </script>
+        </body>
+        </html>
+    `);
+    printWindow.document.close();
+}
+
+function exportReplayExcel() {
+    if (!activeImei) return;
+    window.location.href = `/api/export/history/${activeImei}`;
 }
 
 function exitHistoryMode() {
@@ -1629,6 +2300,11 @@ function exitHistoryMode() {
     
     document.querySelector('.bottom-filter').style.display = 'flex';
     document.getElementById('playbackControls').style.display = 'none';
+    
+    // Toggle sidebar content back
+    document.getElementById('liveSidebarContent').style.display = 'flex';
+    document.getElementById('replaySidebar').style.display = 'none';
+    document.getElementById('datePresetContainer').style.display = 'none';
     
     // Keep sidebar open, select the Live tab
     const tabLive = document.getElementById('tabLive');
@@ -1673,6 +2349,43 @@ async function renameDevicePrompt(imei, currentName, event) {
         }
     } catch(e) {
         showToast("❌ Error", "Network error while renaming.", "danger");
+    }
+}
+
+async function assignDriverPrompt(imei, currentDriver) {
+    const newDriver = prompt("Enter driver name to assign:", currentDriver === 'Unassigned' ? '' : currentDriver);
+    if (newDriver === null) return; // cancelled
+    
+    try {
+        const res = await fetch('/api/customer/update-driver', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ userId: user.id, imei, driverName: newDriver.trim() })
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast("✅ Driver Assigned", "Driver assigned successfully.", "success");
+            
+            // update local device array
+            const dev = myDevices.find(d => d.imei === imei);
+            if (dev) dev.driverName = newDriver.trim() || 'Unassigned';
+            
+            // update the panel driver element
+            const driverNameEl = document.getElementById('panelDriverName');
+            if (driverNameEl && activeImei === imei) {
+                driverNameEl.innerText = newDriver.trim() || 'Unassigned';
+            }
+            
+            // Re-render map marker popup
+            if (markers[imei] && latestData[imei]) {
+                const deviceName = dev ? dev.name : imei;
+                markers[imei].setPopupContent(buildTelemetryHTML(latestData[imei], deviceName));
+            }
+        } else {
+            showToast("❌ Error", "Failed to assign driver.", "danger");
+        }
+    } catch(e) {
+        showToast("❌ Error", "Network error while assigning driver.", "danger");
     }
 }
 
@@ -1902,3 +2615,9 @@ setInterval(() => {
         updatePanelData(latestData[activeImei], device ? device.name : activeImei);
     }
 }, 10000);
+
+// Close speed multiplier dropdown when clicking outside
+window.addEventListener('click', () => {
+    const dropdown = document.getElementById('speedDropdown');
+    if (dropdown) dropdown.style.display = 'none';
+});

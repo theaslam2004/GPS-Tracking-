@@ -566,10 +566,29 @@ body {
 }
 
 /* Custom Vehicle Marker & Beacons */
-.custom-vehicle-marker {
-    background: transparent;
-    border: none;
+.custom-vehicle-marker, .custom-vehicle-marker-svg {
+    background: transparent !important;
+    border: none !important;
+    box-shadow: none !important;
 }
+
+/* Premium SVG Marker Pulse Animation */
+@keyframes svg-marker-pulse {
+    0% {
+        transform: scale(1);
+    }
+    50% {
+        transform: scale(1.06);
+    }
+    100% {
+        transform: scale(1);
+    }
+}
+
+.svg-marker-running {
+    animation: svg-marker-pulse 2s infinite ease-in-out;
+}
+
 
 .vehicle-beacon {
     width: 28px;
