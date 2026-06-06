@@ -221,40 +221,22 @@ function updateVehicleOnMap(telemetry, name) {
 
     const popupHTML = buildTelemetryHTML(telemetry, name);
     
-    // Calculate iconType for share page
-    let iconType = 'ace';
-    if (name.toLowerCase().includes('heavy') || profile === 'heavy' || name.toLowerCase().includes('truck') || name.toLowerCase().includes('excavator') || name.toLowerCase().includes('tractor') || name.toLowerCase().includes('dumper')) {
-        iconType = 'heavy';
-    } else if (name.toLowerCase().includes('eicher') || name.toLowerCase().includes('tempo') || name.toLowerCase().includes('van') || name.toLowerCase().includes('bus')) {
-        iconType = 'eicher';
-    } else if (name.toLowerCase().includes('ace') || name.toLowerCase().includes('chota') || name.toLowerCase().includes('mini')) {
-        iconType = 'ace';
-    } else if (name.toLowerCase().includes('rickshaw') || name.toLowerCase().includes('auto') || name.toLowerCase().includes('tuk')) {
-        iconType = 'rickshaw';
-    } else if (telemetry.voltage !== undefined && telemetry.voltage !== null) {
-        const v = parseFloat(telemetry.voltage);
-        if (v > 36) iconType = 'heavy';
-        else if (v > 18) iconType = 'eicher';
-        else iconType = 'ace';
-    }
-
     if (marker) {
-        // Recreate icon only if type or status changed to avoid Leaflet DOM thrashing
-        if (marker.iconType !== iconType || marker.status !== status) {
+        // Recreate icon only if status changed to avoid Leaflet DOM thrashing
+        if (marker.status !== status) {
             marker.setIcon(markerIcon);
-            marker.iconType = iconType;
             marker.status = status;
         }
         
         // Slide smoothly to new coordinates
         slideMarker(marker, latlng, 1500);
         
-        // Rotate inner container smoothly
+        // Rotate heading arrow smoothly
         const element = marker.getElement();
         if (element) {
-            const rotateContainer = element.querySelector('.rotate-container');
-            if (rotateContainer) {
-                rotateContainer.style.transform = `rotate(${heading || 0}deg)`;
+            const headingArrow = element.querySelector('.heading-arrow');
+            if (headingArrow) {
+                headingArrow.style.transform = `rotate(${heading || 0}deg)`;
             }
         }
 
@@ -267,7 +249,6 @@ function updateVehicleOnMap(telemetry, name) {
         marker = L.marker(latlng, { icon: markerIcon }).addTo(map)
             .bindPopup(popupHTML)
             .openPopup();
-        marker.iconType = iconType;
         marker.status = status;
         map.setView(latlng, 15);
     }
@@ -335,34 +316,6 @@ function updateVehicleOnMap(telemetry, name) {
 
 // // Custom vehicle divIcon rotation helper using premium top-down vehicle SVGs based on name, profile, and voltage
 function getVehicleIcon(heading, status, voltage) {
-    const profile = vehicleProfile || 'standard';
-    const name = (document.getElementById('vehicleName') ? document.getElementById('vehicleName').innerText : '').toLowerCase();
-    const imei = targetImei || 'share';
-    
-    let iconType = 'ace'; // Default fallback is Tata Ace instead of generic car
-    
-    // 1. Classification by Name / Profile
-    if (name.includes('heavy') || profile === 'heavy' || name.includes('truck') || name.includes('excavator') || name.includes('tractor') || name.includes('dumper')) {
-        iconType = 'heavy';
-    } else if (name.includes('eicher') || name.includes('tempo') || name.includes('van') || name.includes('bus')) {
-        iconType = 'eicher';
-    } else if (name.includes('ace') || name.includes('chota') || name.includes('mini')) {
-        iconType = 'ace';
-    } else if (name.includes('rickshaw') || name.includes('auto') || name.includes('tuk')) {
-        iconType = 'rickshaw';
-    }
-    // 2. Classification fallback by Battery Voltage (12V: Ace, 24V: Eicher, 48V: Heavy) if no specific match
-    else if (voltage !== undefined && voltage !== null) {
-        const v = parseFloat(voltage);
-        if (v > 36) {
-            iconType = 'heavy';
-        } else if (v > 18) {
-            iconType = 'eicher';
-        } else {
-            iconType = 'ace';
-        }
-    }
-    
     let color = '#FF3D00'; // Halt (Red)
     if (status === 'running') {
         color = '#00E676'; // Moving (Green)
@@ -372,148 +325,21 @@ function getVehicleIcon(heading, status, voltage) {
         color = '#94a3b8'; // Offline (Gray)
     }
     
-    let svgHtml = '';
-    let size = [30, 60];
-    let anchor = [15, 30];
+    let borderStyle = 'border: 1.5px solid rgba(255, 255, 255, 0.4); box-shadow: 0 0 8px ' + color + ';';
+    const pulseClass = (status === 'running') ? 'beacon-pulse' : '';
     
-    if (iconType === 'heavy') {
-        size = [32, 74];
-        anchor = [16, 37];
-        svgHtml = `
-        <svg viewBox="0 0 100 240" width="32" height="74" style="display:block;">
-          <rect x="2" y="50" width="14" height="30" rx="5" fill="#111" />
-          <rect x="84" y="50" width="14" height="30" rx="5" fill="#111" />
-          <rect x="2" y="155" width="14" height="35" rx="5" fill="#111" />
-          <rect x="84" y="155" width="14" height="35" rx="5" fill="#111" />
-          <rect x="2" y="195" width="14" height="35" rx="5" fill="#111" />
-          <rect x="84" y="195" width="14" height="35" rx="5" fill="#111" />
-          <rect x="30" y="70" width="40" height="150" fill="#0f172a" />
-          <rect x="15" y="15" width="70" height="65" rx="8" fill="url(#heavyCab-${imei})" stroke="#854d0e" stroke-width="3" />
-          <path d="M 22 25 L 26 42 H 74 L 78 25 Z" fill="#94a3b8" opacity="0.8" />
-          <rect x="10" y="35" width="5" height="25" fill="#ca8a04" />
-          <rect x="85" y="35" width="5" height="25" fill="#ca8a04" />
-          <circle cx="35" cy="55" r="5" fill="#1e293b" />
-          <circle cx="35" cy="55" r="2" fill="#000" />
-          <rect x="10" y="85" width="80" height="142" rx="4" fill="url(#heavyBucket-${imei})" stroke="#0f172a" stroke-width="3" />
-          <line x1="20" y1="110" x2="80" y2="110" stroke="#0f172a" stroke-width="3" />
-          <line x1="20" y1="135" x2="80" y2="135" stroke="#0f172a" stroke-width="3" />
-          <line x1="20" y1="160" x2="80" y2="160" stroke="#0f172a" stroke-width="3" />
-          <line x1="20" y1="185" x2="80" y2="185" stroke="#0f172a" stroke-width="3" />
-          <line x1="20" y1="210" x2="80" y2="210" stroke="#0f172a" stroke-width="3" />
-          <polygon points="18,15 28,15 25,22 18,22" fill="#fef08a" />
-          <polygon points="82,15 72,15 75,22 82,22" fill="#fef08a" />
-          <defs>
-            <linearGradient id="heavyCab-${imei}" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#eab308"/>
-              <stop offset="100%" stop-color="#ca8a04"/>
-            </linearGradient>
-            <linearGradient id="heavyBucket-${imei}" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#475569"/>
-              <stop offset="100%" stop-color="#1e293b"/>
-            </linearGradient>
-          </defs>
-        </svg>`;
-    } else if (iconType === 'eicher') {
-        size = [30, 72];
-        anchor = [15, 36];
-        svgHtml = `
-        <svg viewBox="0 0 100 240" width="30" height="72" style="display:block;">
-          <rect x="6" y="55" width="10" height="25" rx="3" fill="#000" />
-          <rect x="84" y="55" width="10" height="25" rx="3" fill="#000" />
-          <rect x="4" y="160" width="12" height="25" rx="3" fill="#000" />
-          <rect x="84" y="160" width="12" height="25" rx="3" fill="#000" />
-          <rect x="4" y="195" width="12" height="25" rx="3" fill="#000" />
-          <rect x="84" y="195" width="12" height="25" rx="3" fill="#000" />
-          <rect x="35" y="75" width="30" height="150" fill="#1e293b" />
-          <rect x="12" y="12" width="76" height="72" rx="10" fill="url(#eicherCab-${imei})" stroke="#14532d" stroke-width="2" />
-          <path d="M 18 25 L 22 42 H 78 L 82 25 Z" fill="#94a3b8" opacity="0.8" stroke="#0f291e" />
-          <rect x="35" y="50" width="30" height="20" rx="3" fill="#15803d" stroke="#14532d" />
-          <rect x="1" y="38" width="11" height="18" rx="2" fill="#1e293b" />
-          <rect x="88" y="38" width="11" height="18" rx="2" fill="#1e293b" />
-          <rect x="10" y="90" width="80" height="138" rx="3" fill="url(#eicherBed-${imei})" stroke="#451a03" stroke-width="2" />
-          <rect x="14" y="94" width="72" height="130" fill="#451a03" opacity="0.4" />
-          <circle cx="24" cy="18" r="5" fill="#fffae0" />
-          <circle cx="76" cy="18" r="5" fill="#fffae0" />
-          <defs>
-            <linearGradient id="eicherCab-${imei}" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#15803d"/>
-              <stop offset="100%" stop-color="#166534"/>
-            </linearGradient>
-            <linearGradient id="eicherBed-${imei}" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#b45309"/>
-              <stop offset="100%" stop-color="#78350f"/>
-            </linearGradient>
-          </defs>
-        </svg>`;
-    } else if (iconType === 'rickshaw') {
-        size = [26, 48];
-        anchor = [13, 24];
-        svgHtml = `
-        <svg viewBox="0 0 100 180" width="26" height="48" style="display:block;">
-          <rect x="46" y="10" width="8" height="20" rx="2" fill="#000" />
-          <rect x="8" y="125" width="10" height="22" rx="2" fill="#000" />
-          <rect x="82" y="125" width="10" height="22" rx="2" fill="#000" />
-          <path d="M 45 30 L 15 110 V 150 H 85 V 110 L 55 30 Z" fill="#1e293b" />
-          <path d="M 46 38 C 46 38, 18 100, 18 115 C 18 140, 82 140, 82 115 C 82 100, 54 38, 54 38 Z" fill="url(#rickshawYellow-${imei})" stroke="#854d0e" stroke-width="2" />
-          <path d="M 45 42 L 35 65 H 65 L 55 42 Z" fill="#000" />
-          <rect x="24" y="58" width="8" height="4" fill="#000" />
-          <rect x="68" y="58" width="8" height="4" fill="#000" />
-          <path d="M 18 110 C 18 110, 20 148, 30 148 H 70 C 80 148, 82 110, 82 110 Z" fill="#0f172a" />
-          <circle cx="50" cy="28" r="5" fill="#fffae0" />
-          <defs>
-            <linearGradient id="rickshawYellow-${imei}" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#facc15"/>
-              <stop offset="100%" stop-color="#ca8a04"/>
-            </linearGradient>
-          </defs>
-        </svg>`;
-    } else { // ace (default fallback)
-        size = [30, 60];
-        anchor = [15, 30];
-        svgHtml = `
-        <svg viewBox="0 0 100 200" width="30" height="60" style="display:block;">
-          <rect x="8" y="35" width="10" height="25" rx="3" fill="#000" />
-          <rect x="82" y="35" width="10" height="25" rx="3" fill="#000" />
-          <rect x="8" y="145" width="10" height="25" rx="3" fill="#000" />
-          <rect x="82" y="145" width="10" height="25" rx="3" fill="#000" />
-          <rect x="40" y="70" width="20" height="80" fill="#1e293b" />
-          <rect x="15" y="12" width="70" height="68" rx="15" fill="url(#cabinGrad-${imei})" stroke="#cbd5e1" stroke-width="2" />
-          <rect x="3" y="45" width="12" height="8" rx="2" fill="#334155" />
-          <rect x="85" y="45" width="12" height="8" rx="2" fill="#334155" />
-          <path d="M 22 25 L 26 38 H 74 L 78 25 Z" fill="#94a3b8" opacity="0.8" />
-          <rect x="25" y="45" width="50" height="25" rx="5" fill="#94a3b8" opacity="0.3" />
-          <rect x="12" y="82" width="76" height="106" rx="4" fill="url(#bedGrad-${imei})" stroke="#1e293b" stroke-width="2" />
-          <rect x="16" y="86" width="68" height="98" fill="#1e293b" opacity="0.4" />
-          <rect x="48" y="86" width="4" height="98" fill="#475569" opacity="0.7" />
-          <circle cx="28" cy="20" r="5" fill="#fffae0" />
-          <circle cx="72" cy="20" r="5" fill="#fffae0" />
-          <defs>
-            <linearGradient id="cabinGrad-${imei}" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#ffffff"/>
-              <stop offset="100%" stop-color="#e2e8f0"/>
-            </linearGradient>
-            <linearGradient id="bedGrad-${imei}" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stop-color="#475569"/>
-              <stop offset="100%" stop-color="#334155"/>
-            </linearGradient>
-          </defs>
-        </svg>`;
-    }
-    
-    const shadowFilter = `filter: drop-shadow(0 0 5px ${color}) drop-shadow(0 0 1px ${color});`;
-
     return L.divIcon({
         className: 'custom-vehicle-marker-svg',
         html: `
-            <div class="marker-container" style="${shadowFilter} width: ${size[0]}px; height: ${size[1]}px; display: flex; align-items: center; justify-content: center; position: relative;">
-                <div class="rotate-container" style="transform: rotate(${heading || 0}deg); width: 100%; height: 100%; display: flex; align-items: center; justify-content: center; transition: transform 0.4s ease-out;">
-                    ${svgHtml}
+            <div class="vehicle-beacon ${pulseClass}" style="background: ${color}; color: ${color}; ${borderStyle} width: 28px; height: 28px;">
+                <div class="heading-arrow" style="transform: rotate(${heading || 0}deg); color: #ffffff; transition: transform 0.4s ease-out; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+                    <i class="fa-solid fa-location-arrow"></i>
                 </div>
             </div>
         `,
-        iconSize: size,
-        iconAnchor: anchor,
-        popupAnchor: [0, -anchor[1]]
+        iconSize: [28, 28],
+        iconAnchor: [14, 14],
+        popupAnchor: [0, -18]
     });
 }
 
