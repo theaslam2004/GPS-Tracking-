@@ -1935,6 +1935,13 @@ body.in-geofence-mode .vehicle-details-panel {
     border-radius: 4px;
 }
 
+/* Ensure pre-positioned labels (e.g. top: -20px in modals) are visible and transparent */
+.form-control + label[style*="top: -20px"] {
+    opacity: 1 !important;
+    background: transparent !important;
+}
+
+
 /* ==========================================================================
    Admin Tab Navigation
    ========================================================================== */
