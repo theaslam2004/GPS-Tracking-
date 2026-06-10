@@ -61,7 +61,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
 app.get('/api/version', (req, res) => {
-    res.json({ version: '1.0.3-hybrid-migration', timestamp: new Date().toISOString() });
+    res.json({ version: '1.0.4-data-json-added', timestamp: new Date().toISOString() });
 });
 
 // Authentication Middlewares
