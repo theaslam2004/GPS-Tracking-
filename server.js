@@ -60,6 +60,10 @@ setInterval(() => {
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
+app.get('/api/version', (req, res) => {
+    res.json({ version: '1.0.3-hybrid-migration', timestamp: new Date().toISOString() });
+});
+
 // Authentication Middlewares
 const requireLogin = (req, res, next) => {
     if (req.session && req.session.user) {
