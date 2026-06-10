@@ -354,221 +354,236 @@ async function ensureDbConnected() {
 async function migrateJsonToMongo() {
     try {
         console.log('[Migration] Checking for users to migrate from data.json...');
-        if (!fs.existsSync(dataFile)) {
-            console.log('[Migration] data.json not found. Skipping.');
-            return;
+        
+        const pathsToMigrate = [];
+        const localGitPath = path.join(__dirname, 'data.json');
+        
+        if (fs.existsSync(localGitPath)) {
+            pathsToMigrate.push(localGitPath);
         }
-
-        const raw = fs.readFileSync(dataFile, 'utf8');
-        const data = JSON.parse(raw);
-
-        // 1. Migrate Users
-        if (data.users && data.users.length > 0) {
-            console.log(`[Migration] Migrating ${data.users.length} users...`);
-            for (const u of data.users) {
-                const exists = await User.findOne({ username: u.username });
-                if (!exists) {
-                    await User.create({
-                        id: u.id,
-                        parentId: u.parentId || null,
-                        username: u.username,
-                        password: u.password,
-                        role: u.role,
-                        phone: u.phone || '',
-                        email: u.email || ''
-                    });
-                }
+        if (process.env.DATA_FILE_PATH) {
+            const envPath = path.resolve(process.env.DATA_FILE_PATH);
+            if (fs.existsSync(envPath) && envPath !== localGitPath) {
+                pathsToMigrate.push(envPath);
             }
         }
 
-        // 2. Migrate Devices
-        if (data.devices && data.devices.length > 0) {
-            console.log(`[Migration] Migrating ${data.devices.length} devices...`);
-            for (const d of data.devices) {
-                const exists = await Device.findOne({ imei: d.imei });
-                if (!exists) {
-                    await Device.create({
-                        imei: d.imei,
-                        ownerId: d.ownerId,
-                        name: d.name || 'New Asset',
-                        pinned: d.pinned || false,
-                        driverName: d.driverName || 'Unassigned',
-                        vehicleProfile: d.vehicleProfile || 'standard',
-                        initialOdometer: d.initialOdometer || 0,
-                        assignedTo: d.assignedTo || []
-                    });
+        console.log(`[Migration] Found ${pathsToMigrate.length} JSON sources to migrate:`, pathsToMigrate);
+
+        for (const filePath of pathsToMigrate) {
+            console.log(`[Migration] Reading file: ${filePath}`);
+            const raw = fs.readFileSync(filePath, 'utf8');
+            const data = JSON.parse(raw);
+
+            // 1. Migrate Users
+            if (data.users && data.users.length > 0) {
+                console.log(`[Migration] Migrating ${data.users.length} users from ${filePath}...`);
+                for (const u of data.users) {
+                    const exists = await User.findOne({ username: u.username });
+                    if (!exists) {
+                        await User.create({
+                            id: u.id,
+                            parentId: u.parentId || null,
+                            username: u.username,
+                            password: u.password,
+                            role: u.role,
+                            phone: u.phone || '',
+                            email: u.email || ''
+                        });
+                        console.log(`[Migration] Imported user: ${u.username}`);
+                    }
                 }
             }
-        }
 
-        // 3. Migrate Device Requests
-        if (data.deviceRequests && data.deviceRequests.length > 0) {
-            console.log(`[Migration] Migrating ${data.deviceRequests.length} device requests...`);
-            for (const r of data.deviceRequests) {
-                const exists = await DeviceRequest.findOne({ id: r.id });
-                if (!exists) {
-                    await DeviceRequest.create({
-                        id: r.id,
-                        imei: r.imei,
-                        userId: r.userId,
-                        status: r.status || 'pending',
-                        timestamp: new Date(r.timestamp)
-                    });
+            // 2. Migrate Devices
+            if (data.devices && data.devices.length > 0) {
+                console.log(`[Migration] Migrating ${data.devices.length} devices from ${filePath}...`);
+                for (const d of data.devices) {
+                    const exists = await Device.findOne({ imei: d.imei });
+                    if (!exists) {
+                        await Device.create({
+                            imei: d.imei,
+                            ownerId: d.ownerId,
+                            name: d.name || 'New Asset',
+                            pinned: d.pinned || false,
+                            driverName: d.driverName || 'Unassigned',
+                            vehicleProfile: d.vehicleProfile || 'standard',
+                            initialOdometer: d.initialOdometer || 0,
+                            assignedTo: d.assignedTo || []
+                        });
+                    }
                 }
             }
-        }
 
-        // 4. Migrate Subscriptions
-        if (data.subscriptions && data.subscriptions.length > 0) {
-            console.log(`[Migration] Migrating ${data.subscriptions.length} subscriptions...`);
-            for (const s of data.subscriptions) {
-                const exists = await Subscription.findOne({ userId: s.userId });
-                if (!exists) {
-                    await Subscription.create({
-                        userId: s.userId,
-                        planName: s.planName || 'Trial',
-                        deviceLimit: s.deviceLimit || 100,
-                        pricePaid: s.pricePaid || 0,
-                        validityDays: s.validityDays || 10,
-                        expirationDate: new Date(s.expirationDate)
-                    });
+            // 3. Migrate Device Requests
+            if (data.deviceRequests && data.deviceRequests.length > 0) {
+                console.log(`[Migration] Migrating ${data.deviceRequests.length} device requests from ${filePath}...`);
+                for (const r of data.deviceRequests) {
+                    const exists = await DeviceRequest.findOne({ id: r.id });
+                    if (!exists) {
+                        await DeviceRequest.create({
+                            id: r.id,
+                            imei: r.imei,
+                            userId: r.userId,
+                            status: r.status || 'pending',
+                            timestamp: new Date(r.timestamp)
+                        });
+                    }
                 }
             }
-        }
 
-        // 5. Migrate Device Last Seen
-        if (data.deviceLastSeen && Object.keys(data.deviceLastSeen).length > 0) {
-            console.log(`[Migration] Migrating device last seen records...`);
-            for (const imei of Object.keys(data.deviceLastSeen)) {
-                const ls = data.deviceLastSeen[imei];
-                const exists = await DeviceLastSeen.findOne({ imei });
-                if (!exists) {
-                    await DeviceLastSeen.create({
-                        imei: imei,
-                        timestamp: new Date(ls.timestamp || Date.now()),
-                        latitude: ls.latitude || 0,
-                        longitude: ls.longitude || 0,
-                        speed: ls.speed || 0,
-                        heading: ls.heading || 0,
-                        satellites: ls.satellites || 0,
-                        gpsValid: ls.gpsValid !== undefined ? ls.gpsValid : true,
-                        battery: ls.battery !== undefined ? ls.battery : 90,
-                        ignition: ls.ignition || false,
-                        packetType: ls.packetType || 'INIT',
-                        event: ls.event || '',
-                        odometer: ls.odometer || 0,
-                        accumulatedDistance: ls.accumulatedDistance || 0,
-                        rawHex: ls.rawHex || '',
-                        status: ls.status || 'offline',
-                        ignitionOnTime: ls.ignitionOnTime ? new Date(ls.ignitionOnTime) : null,
-                        ignitionOffTime: ls.ignitionOffTime ? new Date(ls.ignitionOffTime) : null,
-                        powerSource: ls.powerSource || 'primary',
-                        voltage: ls.voltage !== undefined ? ls.voltage : 12.0
-                    });
+            // 4. Migrate Subscriptions
+            if (data.subscriptions && data.subscriptions.length > 0) {
+                console.log(`[Migration] Migrating ${data.subscriptions.length} subscriptions from ${filePath}...`);
+                for (const s of data.subscriptions) {
+                    const exists = await Subscription.findOne({ userId: s.userId });
+                    if (!exists) {
+                        await Subscription.create({
+                            userId: s.userId,
+                            planName: s.planName || 'Trial',
+                            deviceLimit: s.deviceLimit || 100,
+                            pricePaid: s.pricePaid || 0,
+                            validityDays: s.validityDays || 10,
+                            expirationDate: new Date(s.expirationDate)
+                        });
+                    }
                 }
             }
-        }
 
-        // 6. Migrate Geofences
-        if (data.geofences && data.geofences.length > 0) {
-            console.log(`[Migration] Migrating ${data.geofences.length} geofences...`);
-            for (const g of data.geofences) {
-                const exists = await Geofence.findOne({ id: g.id });
-                if (!exists) {
-                    await Geofence.create({
-                        id: g.id,
-                        userId: g.userId,
-                        name: g.name,
-                        type: g.type,
-                        points: g.points,
-                        radius: g.radius || 0
-                    });
+            // 5. Migrate Device Last Seen
+            if (data.deviceLastSeen && Object.keys(data.deviceLastSeen).length > 0) {
+                console.log(`[Migration] Migrating device last seen records from ${filePath}...`);
+                for (const imei of Object.keys(data.deviceLastSeen)) {
+                    const ls = data.deviceLastSeen[imei];
+                    const exists = await DeviceLastSeen.findOne({ imei });
+                    if (!exists) {
+                        await DeviceLastSeen.create({
+                            imei: imei,
+                            timestamp: new Date(ls.timestamp || Date.now()),
+                            latitude: ls.latitude || 0,
+                            longitude: ls.longitude || 0,
+                            speed: ls.speed || 0,
+                            heading: ls.heading || 0,
+                            satellites: ls.satellites || 0,
+                            gpsValid: ls.gpsValid !== undefined ? ls.gpsValid : true,
+                            battery: ls.battery !== undefined ? ls.battery : 90,
+                            ignition: ls.ignition || false,
+                            packetType: ls.packetType || 'INIT',
+                            event: ls.event || '',
+                            odometer: ls.odometer || 0,
+                            accumulatedDistance: ls.accumulatedDistance || 0,
+                            rawHex: ls.rawHex || '',
+                            status: ls.status || 'offline',
+                            ignitionOnTime: ls.ignitionOnTime ? new Date(ls.ignitionOnTime) : null,
+                            ignitionOffTime: ls.ignitionOffTime ? new Date(ls.ignitionOffTime) : null,
+                            powerSource: ls.powerSource || 'primary',
+                            voltage: ls.voltage !== undefined ? ls.voltage : 12.0
+                        });
+                    }
                 }
             }
-        }
 
-        // 7. Migrate KYC Applications
-        if (data.kycApplications && data.kycApplications.length > 0) {
-            console.log(`[Migration] Migrating ${data.kycApplications.length} KYC applications...`);
-            for (const k of data.kycApplications) {
-                const exists = await KycApplication.findOne({ id: k.id });
-                if (!exists) {
-                    await KycApplication.create({
-                        id: k.id,
-                        userId: k.userId,
-                        applicantType: k.applicantType,
-                        fullName: k.fullName,
-                        docType: k.docType,
-                        docNumber: k.docNumber,
-                        orgName: k.orgName || '',
-                        gstNumber: k.gstNumber || '',
-                        authSignatory: k.authSignatory || '',
-                        status: k.status || 'under_review',
-                        submittedAt: new Date(k.submittedAt),
-                        reviewedAt: k.reviewedAt ? new Date(k.reviewedAt) : null,
-                        rejectReason: k.rejectReason || null
-                    });
+            // 6. Migrate Geofences
+            if (data.geofences && data.geofences.length > 0) {
+                console.log(`[Migration] Migrating ${data.geofences.length} geofences from ${filePath}...`);
+                for (const g of data.geofences) {
+                    const exists = await Geofence.findOne({ id: g.id });
+                    if (!exists) {
+                        await Geofence.create({
+                            id: g.id,
+                            userId: g.userId,
+                            name: g.name,
+                            type: g.type,
+                            points: g.points,
+                            radius: g.radius || 0
+                        });
+                    }
                 }
             }
-        }
 
-        // 8. Migrate User Settings
-        if (data.userSettings && Object.keys(data.userSettings).length > 0) {
-            console.log(`[Migration] Migrating user settings...`);
-            for (const userId of Object.keys(data.userSettings)) {
-                const exists = await UserSettings.findOne({ userId });
-                if (!exists) {
-                    await UserSettings.create({
-                        userId,
-                        settings: data.userSettings[userId]
-                    });
+            // 7. Migrate KYC Applications
+            if (data.kycApplications && data.kycApplications.length > 0) {
+                console.log(`[Migration] Migrating ${data.kycApplications.length} KYC applications from ${filePath}...`);
+                for (const k of data.kycApplications) {
+                    const exists = await KycApplication.findOne({ id: k.id });
+                    if (!exists) {
+                        await KycApplication.create({
+                            id: k.id,
+                            userId: k.userId,
+                            applicantType: k.applicantType,
+                            fullName: k.fullName,
+                            docType: k.docType,
+                            docNumber: k.docNumber,
+                            orgName: k.orgName || '',
+                            gstNumber: k.gstNumber || '',
+                            authSignatory: k.authSignatory || '',
+                            status: k.status || 'under_review',
+                            submittedAt: new Date(k.submittedAt),
+                            reviewedAt: k.reviewedAt ? new Date(k.reviewedAt) : null,
+                            rejectReason: k.rejectReason || null
+                        });
+                    }
                 }
             }
-        }
 
-        // 9. Migrate Device Settings
-        if (data.deviceSettings && Object.keys(data.deviceSettings).length > 0) {
-            console.log(`[Migration] Migrating device settings...`);
-            for (const imei of Object.keys(data.deviceSettings)) {
-                const exists = await DeviceSettings.findOne({ imei });
-                if (!exists) {
-                    await DeviceSettings.create({
-                        imei,
-                        settings: data.deviceSettings[imei]
-                    });
+            // 8. Migrate User Settings
+            if (data.userSettings && Object.keys(data.userSettings).length > 0) {
+                console.log(`[Migration] Migrating user settings from ${filePath}...`);
+                for (const userId of Object.keys(data.userSettings)) {
+                    const exists = await UserSettings.findOne({ userId });
+                    if (!exists) {
+                        await UserSettings.create({
+                            userId,
+                            settings: data.userSettings[userId]
+                        });
+                    }
                 }
             }
-        }
 
-        // 10. Migrate Payments
-        if (data.payments && data.payments.length > 0) {
-            console.log(`[Migration] Migrating ${data.payments.length} payments...`);
-            for (const p of data.payments) {
-                const exists = await Payment.findOne({ id: p.id });
-                if (!exists) {
-                    await Payment.create({
-                        id: p.id,
-                        userId: p.userId,
-                        username: p.username,
-                        planName: p.planName,
-                        amount: p.amount,
-                        timestamp: new Date(p.timestamp)
-                    });
+            // 9. Migrate Device Settings
+            if (data.deviceSettings && Object.keys(data.deviceSettings).length > 0) {
+                console.log(`[Migration] Migrating device settings from ${filePath}...`);
+                for (const imei of Object.keys(data.deviceSettings)) {
+                    const exists = await DeviceSettings.findOne({ imei });
+                    if (!exists) {
+                        await DeviceSettings.create({
+                            imei,
+                            settings: data.deviceSettings[imei]
+                        });
+                    }
                 }
             }
-        }
 
-        // 11. Migrate Shared Links
-        if (data.sharedLinks && data.sharedLinks.length > 0) {
-            console.log(`[Migration] Migrating ${data.sharedLinks.length} shared links...`);
-            for (const l of data.sharedLinks) {
-                const exists = await SharedLink.findOne({ id: l.id });
-                if (!exists) {
-                    await SharedLink.create({
-                        id: l.id,
-                        imei: l.imei,
-                        expiresAt: new Date(l.expiresAt)
-                    });
+            // 10. Migrate Payments
+            if (data.payments && data.payments.length > 0) {
+                console.log(`[Migration] Migrating ${data.payments.length} payments from ${filePath}...`);
+                for (const p of data.payments) {
+                    const exists = await Payment.findOne({ id: p.id });
+                    if (!exists) {
+                        await Payment.create({
+                            id: p.id,
+                            userId: p.userId,
+                            username: p.username,
+                            planName: p.planName,
+                            amount: p.amount,
+                            timestamp: new Date(p.timestamp)
+                        });
+                    }
+                }
+            }
+
+            // 11. Migrate Shared Links
+            if (data.sharedLinks && data.sharedLinks.length > 0) {
+                console.log(`[Migration] Migrating ${data.sharedLinks.length} shared links from ${filePath}...`);
+                for (const l of data.sharedLinks) {
+                    const exists = await SharedLink.findOne({ id: l.id });
+                    if (!exists) {
+                        await SharedLink.create({
+                            id: l.id,
+                            imei: l.imei,
+                            expiresAt: new Date(l.expiresAt)
+                        });
+                    }
                 }
             }
         }
@@ -587,11 +602,15 @@ async function migrateJsonToMongo() {
                         const points = JSON.parse(fileContent);
                         if (Array.isArray(points) && points.length > 0) {
                             console.log(`[Migration] Migrating ${points.length} history points for IMEI: ${imei}...`);
+                            
+                            // Fetch all existing points' timestamps for this imei in bulk to speed up checks
+                            const existingPoints = await DeviceHistoryPoint.find({ imei }, { timestamp: 1 }).lean();
+                            const existingSet = new Set(existingPoints.map(p => new Date(p.timestamp).getTime()));
+                            
                             const ops = [];
                             for (const pt of points) {
                                 const timestamp = new Date(pt.timestamp);
-                                const exists = await DeviceHistoryPoint.findOne({ imei, timestamp });
-                                if (!exists) {
+                                if (!existingSet.has(timestamp.getTime())) {
                                     ops.push({
                                         imei,
                                         timestamp,
@@ -619,6 +638,8 @@ async function migrateJsonToMongo() {
                             if (ops.length > 0) {
                                 await DeviceHistoryPoint.insertMany(ops);
                                 console.log(`[Migration] Inserted ${ops.length} new history points for IMEI: ${imei}.`);
+                            } else {
+                                console.log(`[Migration] All history points for IMEI ${imei} already exist in DB.`);
                             }
                         }
                     } catch (err) {

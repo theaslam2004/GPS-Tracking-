@@ -72,6 +72,39 @@ app.get('/api/debug-db', async (req, res) => {
     const resolvedPathEnv = process.env.DATA_FILE_PATH ? path.resolve(process.env.DATA_FILE_PATH) : 'not_set';
     const resolvedPathLocal = path.join(__dirname, 'data.json');
     
+    let dbCounts = {};
+    if (mongoose.connection.readyState === 1) {
+        try {
+            dbCounts = {
+                users: await mongoose.connection.db.collection('users').countDocuments().catch(() => -1),
+                devices: await mongoose.connection.db.collection('devices').countDocuments().catch(() => -1),
+                devicehistorypoints: await mongoose.connection.db.collection('devicehistorypoints').countDocuments().catch(() => -1),
+                devicelastseens: await mongoose.connection.db.collection('devicelastseens').countDocuments().catch(() => -1)
+            };
+        } catch (e) {
+            dbCounts = { error: e.message };
+        }
+    }
+
+    let dataDirContents = [];
+    if (fs.existsSync('/data')) {
+        try {
+            dataDirContents = fs.readdirSync('/data');
+        } catch (e) {
+            dataDirContents = [`Error reading: ${e.message}`];
+        }
+    }
+
+    let historyDirContents = [];
+    const localHistoryDir = path.join(__dirname, 'history');
+    if (fs.existsSync(localHistoryDir)) {
+        try {
+            historyDirContents = fs.readdirSync(localHistoryDir);
+        } catch (e) {
+            historyDirContents = [`Error reading: ${e.message}`];
+        }
+    }
+    
     res.json({
         useMongo: mongoose.connection.readyState === 1,
         mongoState: mongoose.connection.readyState,
@@ -83,7 +116,10 @@ app.get('/api/debug-db', async (req, res) => {
         __dirname,
         cwd: process.cwd(),
         dirContents: fs.readdirSync(__dirname).filter(f => !f.startsWith('.')),
-        mongodbUriConfigured: !!process.env.MONGODB_URI
+        mongodbUriConfigured: !!process.env.MONGODB_URI,
+        dbCounts,
+        dataDirContents,
+        historyDirContents
     });
 });
 
