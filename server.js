@@ -61,7 +61,30 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
 app.get('/api/version', (req, res) => {
-    res.json({ version: '1.0.4-data-json-added', timestamp: new Date().toISOString() });
+    res.json({ version: '1.0.5-debug-added', timestamp: new Date().toISOString() });
+});
+
+app.get('/api/debug-db', async (req, res) => {
+    const fs = require('fs');
+    const path = require('path');
+    const mongoose = require('mongoose');
+    
+    const resolvedPathEnv = process.env.DATA_FILE_PATH ? path.resolve(process.env.DATA_FILE_PATH) : 'not_set';
+    const resolvedPathLocal = path.join(__dirname, 'data.json');
+    
+    res.json({
+        useMongo: mongoose.connection.readyState === 1,
+        mongoState: mongoose.connection.readyState,
+        envDataFilePath: process.env.DATA_FILE_PATH || 'not_set',
+        resolvedPathEnv,
+        resolvedPathEnvExists: resolvedPathEnv !== 'not_set' ? fs.existsSync(resolvedPathEnv) : false,
+        resolvedPathLocal,
+        resolvedPathLocalExists: fs.existsSync(resolvedPathLocal),
+        __dirname,
+        cwd: process.cwd(),
+        dirContents: fs.readdirSync(__dirname).filter(f => !f.startsWith('.')),
+        mongodbUriConfigured: !!process.env.MONGODB_URI
+    });
 });
 
 // Authentication Middlewares
