@@ -272,6 +272,14 @@ function initMap() {
         
         exitGeofenceMode(); // Go back to normal UI
     });
+
+    // Close sidebar on map click for mobile devices
+    map.on('click', function() {
+        if (window.innerWidth <= 900) {
+            const sidebar = document.querySelector('.sidebar-wrapper');
+            if (sidebar) sidebar.classList.remove('open');
+        }
+    });
 }
 
 
@@ -927,6 +935,12 @@ function focusDevice(imei) {
         
         // Open Panel
         document.getElementById('vehiclePanel').classList.add('open');
+        
+        // Close sidebar drawer on mobile to show the map and details panel
+        if (window.innerWidth <= 900) {
+            const sidebar = document.querySelector('.sidebar-wrapper');
+            if (sidebar) sidebar.classList.remove('open');
+        }
         
         // Populate if we have data
         if(latestData[imei]) {

@@ -551,57 +551,82 @@
         /* Mobile responsive fixes */
         @media (max-width: 900px) {
             .app-layout {
-                flex-direction: column !important;
+                flex-direction: column-reverse !important;
             }
             .menu-sidebar {
                 width: 100% !important;
                 height: 60px !important;
                 flex-direction: row !important;
-                padding: 0 1rem !important;
-                justify-content: space-between !important;
+                padding: 0 !important;
+                justify-content: space-around !important;
                 align-items: center !important;
                 border-right: none !important;
-                border-bottom: 1px solid var(--border) !important;
+                border-top: 1px solid var(--border) !important;
+                border-bottom: none !important;
+                position: relative !important;
+                z-index: 1200 !important;
             }
             .menu-logo {
-                margin-bottom: 0 !important;
+                display: none !important;
             }
             .menu-items {
                 flex-direction: row !important;
-                gap: 0.5rem !important;
-                justify-content: center !important;
-                flex: auto !important;
+                gap: 0 !important;
+                justify-content: space-around !important;
+                align-items: center !important;
+                width: 100% !important;
+                flex: 1 !important;
             }
             .menu-item {
-                width: auto !important;
-                height: 45px !important;
-                padding: 0 8px !important;
+                width: 20% !important;
+                height: 60px !important;
+                padding: 0 !important;
+                gap: 2px !important;
+                border-radius: 0 !important;
+            }
+            .menu-item span {
+                font-size: 0.55rem !important;
+            }
+            .menu-footer {
+                display: none !important;
             }
             .sidebar-wrapper {
-                width: 100% !important;
-                height: calc(50vh - 60px) !important;
-                border-right: none !important;
-                border-bottom: 1px solid var(--border) !important;
+                position: absolute !important;
+                top: 52px !important;
+                left: 0 !important;
+                width: 320px !important;
+                max-width: 85vw !important;
+                height: calc(100vh - 112px) !important;
+                z-index: 1050 !important;
+                transform: translateX(-110%) !important;
+                transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+                border-right: 1px solid var(--border) !important;
+                border-bottom: none !important;
+                box-shadow: 5px 0 15px rgba(0,0,0,0.15) !important;
+            }
+            .sidebar-wrapper.open {
+                transform: translateX(0) !important;
             }
             .map-container {
-                height: 50vh !important;
+                height: calc(100vh - 60px) !important;
+                width: 100% !important;
             }
             .right-sidebar-wrapper {
                 position: absolute !important;
-                bottom: 0 !important;
+                bottom: 60px !important;
                 right: 0 !important;
                 width: 100% !important;
                 height: auto !important;
-                max-height: 48vh !important;
+                max-height: 50vh !important;
                 z-index: 1100 !important;
                 border-left: none !important;
                 border-top: 1px solid var(--border) !important;
-                box-shadow: 0 -4px 20px rgba(0,0,0,0.1) !important;
-                transform: translateY(100%);
+                box-shadow: 0 -4px 20px rgba(0,0,0,0.15) !important;
+                transform: translateY(100%) !important;
                 transition: transform 0.3s ease !important;
             }
             .right-sidebar-wrapper:has(.vehicle-details-panel.open) {
-                transform: translateY(0);
+                transform: translateY(0) !important;
             }
             #vehiclePlaceholder {
                 display: none !important;
@@ -609,6 +634,26 @@
             .vehicle-details-panel {
                 height: auto !important;
                 padding: 1.2rem !important;
+            }
+            .mobile-menu-btn {
+                display: block !important;
+            }
+            .map-layer-control {
+                top: 120px !important;
+            }
+            .date-presets-container {
+                top: 64px !important;
+                right: 12px !important;
+                left: 12px !important;
+                width: calc(100% - 24px) !important;
+                box-sizing: border-box !important;
+                flex-wrap: wrap !important;
+                height: auto !important;
+            }
+            .modal {
+                padding: 1.5rem !important;
+                width: calc(100% - 2rem) !important;
+                margin: 0 1rem !important;
             }
         }
 
@@ -950,6 +995,9 @@
         <!-- Map Area -->
         <div class="map-container">
             <div class="map-tabs-header">
+                <button class="mobile-menu-btn" onclick="toggleSidebar()" style="display: none; background: none; border: none; font-size: 1.25rem; color: var(--text-primary); cursor: pointer; padding: 4px 8px; margin-right: 8px;">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
                 <button class="map-tab active" id="tabLive" onclick="switchMapTab('live')">
                     <i class="fa-solid fa-crosshairs"></i> TRACKING LIVE
                 </button>
