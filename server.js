@@ -73,6 +73,7 @@ app.get('/api/debug-db', async (req, res) => {
     const resolvedPathLocal = path.join(__dirname, 'data.json');
     
     let dbCounts = {};
+    let uniqueImeis = [];
     if (mongoose.connection.readyState === 1) {
         try {
             dbCounts = {
@@ -81,6 +82,11 @@ app.get('/api/debug-db', async (req, res) => {
                 devicehistorypoints: await mongoose.connection.db.collection('devicehistorypoints').countDocuments().catch(() => -1),
                 devicelastseens: await mongoose.connection.db.collection('devicelastseens').countDocuments().catch(() => -1)
             };
+            
+            // Get unique IMEIs from history and lastseen collections
+            const histImeis = await mongoose.connection.db.collection('devicehistorypoints').distinct('imei').catch(() => []);
+            const lsImeis = await mongoose.connection.db.collection('devicelastseens').distinct('imei').catch(() => []);
+            uniqueImeis = Array.from(new Set([...histImeis, ...lsImeis]));
         } catch (e) {
             dbCounts = { error: e.message };
         }
@@ -118,6 +124,7 @@ app.get('/api/debug-db', async (req, res) => {
         dirContents: fs.readdirSync(__dirname).filter(f => !f.startsWith('.')),
         mongodbUriConfigured: !!process.env.MONGODB_URI,
         dbCounts,
+        uniqueImeis,
         dataDirContents,
         historyDirContents
     });
