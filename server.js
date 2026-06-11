@@ -292,6 +292,17 @@ app.post('/api/customer/rename-device', requireLogin, async (req, res) => {
     res.json({ success });
 });
 
+app.delete('/api/customer/device/:imei', requireLogin, async (req, res) => {
+    const { imei } = req.params;
+    const userId = req.session.user.id;
+    const success = await store.deleteDevice(imei, userId);
+    if (success) {
+        io.emit('admin_update');
+        io.emit('customer_update', { userId });
+    }
+    res.json({ success });
+});
+
 app.post('/api/customer/update-driver', requireLogin, async (req, res) => {
     const { userId, imei, driverName } = req.body;
     const success = await store.updateDriver(imei, userId, driverName);

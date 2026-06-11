@@ -838,6 +838,7 @@ function renderDeviceList() {
                     </div>
                     <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
                         <i class="fa-solid fa-pen-to-square rename-btn" style="cursor: pointer; opacity: 0.5; font-size: 0.75rem; flex-shrink: 0; color: var(--text-secondary);" onclick="renameDevicePrompt('${d.imei}', '${d.name || ''}', event)" title="Rename vehicle"></i>
+                        <i class="fa-solid fa-trash delete-device-btn" style="cursor: pointer; opacity: 0.5; font-size: 0.75rem; flex-shrink: 0; color: var(--danger);" onclick="deleteDevicePrompt('${d.imei}', '${d.name || ''}', event)" title="Delete vehicle"></i>
                         <span class="taabi-status-capsule ${statusClass}" style="transform: scale(0.9); transform-origin: right center;">
                             ${statusText}
                         </span>
@@ -2741,6 +2742,36 @@ async function renameDevicePrompt(imei, currentName, event) {
         }
     } catch(e) {
         showToast("❌ Error", "Network error while renaming.", "danger");
+    }
+}
+
+async function deleteDevicePrompt(imei, currentName, event) {
+    if (event) event.stopPropagation();
+    const confirmed = confirm(`Are you sure you want to delete vehicle "${currentName || imei}" (IMEI: ${imei})?\n\nThis will permanently remove the device and all its history from your account.`);
+    if (!confirmed) return;
+    
+    try {
+        const res = await fetch(`/api/customer/device/${imei}`, {
+            method: 'DELETE'
+        });
+        const data = await res.json();
+        if (data.success) {
+            showToast("🗑️ Deleted", "Vehicle deleted successfully.", "success");
+            myDevices = myDevices.filter(d => d.imei !== imei);
+            if (markers[imei]) {
+                map.removeLayer(markers[imei]);
+                delete markers[imei];
+            }
+            if (activeImei === imei) {
+                closeDetailsPanel();
+                activeImei = null;
+            }
+            renderDeviceList();
+        } else {
+            showToast("❌ Error", "Failed to delete vehicle.", "danger");
+        }
+    } catch(e) {
+        showToast("❌ Error", "Network error while deleting.", "danger");
     }
 }
 

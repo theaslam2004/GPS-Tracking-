@@ -2070,6 +2070,31 @@ module.exports = {
                 return true;
             }
             return false;
+    },
+    deleteDevice: async (imei, userId) => {
+        await ensureDbConnected();
+        if (useMongo) {
+            const dev = await Device.findOne({ imei, ownerId: userId });
+            if (!dev) return false;
+            await Device.deleteOne({ imei });
+            await DeviceLastSeen.deleteOne({ imei });
+            await DeviceHistoryPoint.deleteMany({ imei });
+            await DeviceSettings.deleteOne({ imei });
+            await SharedLink.deleteMany({ imei });
+            await DeviceRequest.deleteMany({ imei });
+            return true;
+        } else {
+            const data = readData();
+            const devIndex = data.devices.findIndex(d => d.imei === imei && d.ownerId === userId);
+            if (devIndex === -1) return false;
+            data.devices.splice(devIndex, 1);
+            if (data.deviceLastSeen[imei]) delete data.deviceLastSeen[imei];
+            if (data.deviceHistory[imei]) delete data.deviceHistory[imei];
+            if (data.deviceSettings[imei]) delete data.deviceSettings[imei];
+            data.sharedLinks = data.sharedLinks.filter(l => l.imei !== imei);
+            data.deviceRequests = data.deviceRequests.filter(r => r.imei !== imei);
+            writeData(data);
+            return true;
         }
     },
     updateDriver: async (imei, userId, driverName) => {
