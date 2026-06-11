@@ -1545,7 +1545,7 @@ async function startHistoryMode() {
     }
     
     // Reset inputs
-    document.getElementById('dateRangePreset').value = '24h';
+    document.getElementById('dateRangePreset').value = 'all';
     const customContainer = document.getElementById('pbCustomRangeContainer');
     if (customContainer) customContainer.style.display = 'none';
     
@@ -1615,7 +1615,9 @@ function filterAndProcessHistory() {
     const now = new Date();
     
     let filtered = [];
-    if (preset === '24h') {
+    if (preset === 'all') {
+        filtered = rawHistoryData;
+    } else if (preset === '24h') {
         const limit = now.getTime() - (24 * 60 * 60 * 1000);
         filtered = rawHistoryData.filter(pt => new Date(pt.timestamp).getTime() >= limit);
     } else if (preset === '7d') {

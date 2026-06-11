@@ -74,8 +74,6 @@ app.get('/api/debug-db', async (req, res) => {
     
     let dbCounts = {};
     let uniqueImeis = [];
-    let usersList = [];
-    let devicesList = [];
     let historyCountsByImei = {};
     if (mongoose.connection.readyState === 1) {
         try {
@@ -90,10 +88,6 @@ app.get('/api/debug-db', async (req, res) => {
             const histImeis = await mongoose.connection.db.collection('devicehistorypoints').distinct('imei').catch(() => []);
             const lsImeis = await mongoose.connection.db.collection('devicelastseens').distinct('imei').catch(() => []);
             uniqueImeis = Array.from(new Set([...histImeis, ...lsImeis]));
-
-            // Fetch users and devices
-            usersList = await mongoose.connection.db.collection('users').find({}).toArray().catch(() => []);
-            devicesList = await mongoose.connection.db.collection('devices').find({}).toArray().catch(() => []);
 
             // Count history points per IMEI
             for (const imei of uniqueImeis) {
@@ -139,8 +133,6 @@ app.get('/api/debug-db', async (req, res) => {
         dbCounts,
         uniqueImeis,
         historyCountsByImei,
-        usersList,
-        devicesList,
         dataDirContents,
         historyDirContents
     });
