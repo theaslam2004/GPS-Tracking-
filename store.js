@@ -2070,6 +2070,7 @@ module.exports = {
                 return true;
             }
             return false;
+        }
     },
     deleteDevice: async (imei, userId) => {
         await ensureDbConnected();
