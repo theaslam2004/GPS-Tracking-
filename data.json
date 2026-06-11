@@ -33,6 +33,14 @@
       "vehicleProfile": "standard"
     },
     {
+      "imei": "862170070000001",
+      "ownerId": "1780676500679",
+      "name": "Road Simulator",
+      "pinned": false,
+      "driverName": "Autonomous",
+      "vehicleProfile": "standard"
+    },
+    {
       "imei": "352914091691580",
       "ownerId": "1780676500679",
       "name": "New Asset",
@@ -58,10 +66,67 @@
       "deviceLimit": 10
     }
   ],
-  "deviceLastSeen": {},
+  "deviceLastSeen": {
+    "862170070000001": {
+      "timestamp": "2026-06-11T16:39:08Z",
+      "latitude": 12.975695,
+      "longitude": 77.620198,
+      "speed": 76,
+      "heading": 180,
+      "satellites": 12,
+      "gpsValid": true,
+      "battery": 90,
+      "ignition": true,
+      "packetType": "NR",
+      "event": "Location Update",
+      "odometer": 1128.402600000001,
+      "accumulatedDistance": 1128.402600000001,
+      "rawHex": "$Header,iTriangle1,010013,NR,1,L,862170070000001,KA01GPS,1,11062026,163908,12.975695,N,77.620198,E,76.0,180.0,12,206.0,1.26,0.68,Airtel,1,1,48.6,4.12,0,C,31,404,10,8ab,975e416,45,ab,de74335,38,8ab,e09c934,43,8ab,951a834,0000,0001,008273,0.0,0.0,4679.42*FF",
+      "status": "running",
+      "ignitionOnTime": null,
+      "ignitionOffTime": null,
+      "powerSource": "primary",
+      "voltage": 48.6
+    }
+  },
   "deviceHistory": {},
   "geofences": [],
   "kycApplications": [],
   "userSettings": {},
-  "deviceSettings": {}
+  "deviceSettings": {},
+  "deviceRequests": [],
+  "payments": [],
+  "sharedLinks": [],
+  "systemSettings": {
+    "Trial": {
+      "name": "Trial",
+      "price": 0,
+      "deviceLimit": 100,
+      "validityDays": 10
+    },
+    "Basic": {
+      "name": "Basic",
+      "price": 99,
+      "deviceLimit": 2,
+      "validityDays": 30
+    },
+    "Standard": {
+      "name": "Standard",
+      "price": 199,
+      "deviceLimit": 5,
+      "validityDays": 30
+    },
+    "Premium": {
+      "name": "Premium",
+      "price": 399,
+      "deviceLimit": 15,
+      "validityDays": 30
+    },
+    "Enterprise": {
+      "name": "Enterprise",
+      "price": 999,
+      "deviceLimit": 500,
+      "validityDays": 30
+    }
+  }
 }

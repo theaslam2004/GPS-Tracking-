@@ -372,6 +372,7 @@ setInterval(() => {
 // Smoothly slides a marker to a new position using requestAnimationFrame
 function slideMarker(marker, newLatLng, duration = 1500) {
     if (!marker) return;
+    if (!newLatLng || isNaN(newLatLng[0]) || isNaN(newLatLng[1])) return;
     const startLatLng = marker.getLatLng();
     const endLatLng = L.latLng(newLatLng);
     
@@ -410,8 +411,62 @@ function slideMarker(marker, newLatLng, duration = 1500) {
             marker._slideAnimationId = requestAnimationFrame(animate);
         } else {
             marker._slideAnimationId = null;
+            marker._lastDeadReckonTick = Date.now();
         }
     }
     
     marker._slideAnimationId = requestAnimationFrame(animate);
 }
+
+// Dead Reckoning Loop for continuous smooth marker movement between packets
+setInterval(() => {
+    const now = Date.now();
+    if (!marker) return;
+    
+    // Skip dead reckoning if the marker is currently sliding to a new packet coordinate
+    if (marker._slideAnimationId) return;
+    
+    const data = latestTelemetry;
+    if (!data) return;
+    
+    // Extrapolate if running and moving
+    const isRunning = (data.status === 'running' || marker.status === 'running');
+    const speed = data.speed !== undefined ? data.speed : 0;
+    const heading = data.heading !== undefined ? data.heading : 0;
+    
+    if (isRunning && speed > 0) {
+        const lastSeenTime = data.timestamp ? new Date(data.timestamp).getTime() : 0;
+        const timeSinceLastPacket = now - lastSeenTime;
+        
+        // Only extrapolate if we received a packet recently (within 30 seconds)
+        if (timeSinceLastPacket > 0 && timeSinceLastPacket < 30000) {
+            const lastTick = marker._lastDeadReckonTick || now;
+            const elapsedSeconds = (now - lastTick) / 1000;
+            marker._lastDeadReckonTick = now;
+            
+            if (elapsedSeconds > 0 && elapsedSeconds < 2) {
+                const distance = (speed / 3.6) * elapsedSeconds;
+                
+                const currentLatLng = marker.getLatLng();
+                const earthRadius = 6378137;
+                const headingRad = (heading * Math.PI) / 180;
+                
+                const dLat = (distance * Math.cos(headingRad)) / earthRadius;
+                const dLng = (distance * Math.sin(headingRad)) / (earthRadius * Math.cos((currentLatLng.lat * Math.PI) / 180));
+                
+                const newLat = currentLatLng.lat + (dLat * 180) / Math.PI;
+                const newLng = currentLatLng.lng + (dLng * 180) / Math.PI;
+                
+                const newLatLng = [newLat, newLng];
+                marker.setLatLng(newLatLng);
+                
+                // Pan map smoothly to follow marker
+                map.panTo(newLatLng);
+            }
+        } else {
+            marker._lastDeadReckonTick = null;
+        }
+    } else {
+        marker._lastDeadReckonTick = null;
+    }
+}, 100);
