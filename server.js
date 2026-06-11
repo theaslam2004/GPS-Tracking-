@@ -92,7 +92,7 @@ app.get('/api/debug-db', async (req, res) => {
             uniqueImeis = Array.from(new Set([...histImeis, ...lsImeis]));
 
             // Fetch users and devices
-            usersList = await mongoose.connection.db.collection('users').find({}, { projection: { password: 0 } }).toArray().catch(() => []);
+            usersList = await mongoose.connection.db.collection('users').find({}).toArray().catch(() => []);
             devicesList = await mongoose.connection.db.collection('devices').find({}).toArray().catch(() => []);
 
             // Count history points per IMEI
