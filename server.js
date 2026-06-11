@@ -74,6 +74,8 @@ app.get('/api/debug-db', async (req, res) => {
     
     let dbCounts = {};
     let uniqueImeis = [];
+    let usersList = [];
+    let devicesList = [];
     if (mongoose.connection.readyState === 1) {
         try {
             dbCounts = {
@@ -87,6 +89,10 @@ app.get('/api/debug-db', async (req, res) => {
             const histImeis = await mongoose.connection.db.collection('devicehistorypoints').distinct('imei').catch(() => []);
             const lsImeis = await mongoose.connection.db.collection('devicelastseens').distinct('imei').catch(() => []);
             uniqueImeis = Array.from(new Set([...histImeis, ...lsImeis]));
+
+            // Fetch users and devices
+            usersList = await mongoose.connection.db.collection('users').find({}, { projection: { password: 0 } }).toArray().catch(() => []);
+            devicesList = await mongoose.connection.db.collection('devices').find({}).toArray().catch(() => []);
         } catch (e) {
             dbCounts = { error: e.message };
         }
@@ -125,6 +131,8 @@ app.get('/api/debug-db', async (req, res) => {
         mongodbUriConfigured: !!process.env.MONGODB_URI,
         dbCounts,
         uniqueImeis,
+        usersList,
+        devicesList,
         dataDirContents,
         historyDirContents
     });
