@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script type="module" src="https://ajax.googleapis.com/ajax/libs/model-viewer/3.5.0/model-viewer.min.js"></script>
     <style>
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
         
@@ -279,6 +280,31 @@
         <div class="info-row"><span>Speed</span> <span id="valSpeed">0 km/h</span></div>
         <div class="info-row"><span>Odometer</span> <span id="valOdometer">--</span></div>
         <div class="info-row"><span>Last Seen</span> <span id="valTime">Just now</span></div>
+        
+        <div style="margin-top: 10px; display: flex; justify-content: center;">
+            <button id="panel3DBtn" onclick="toggle3DView()" style="display: none; width: 100%; padding: 6px; font-size: 0.75rem; border-radius: 6px; background: none; border: 1px solid var(--border); font-weight: 700; color: var(--text); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 4px;">
+                <i class="fa-solid fa-cube"></i> 3D View
+            </button>
+        </div>
+
+        <!-- 3D Model Container in Share link -->
+        <div id="panel3DContainer" style="display: none; margin-top: 10px; padding: 8px; border-top: 1px solid var(--border); flex-direction: column; gap: 6px;">
+            <div style="font-size: 0.72rem; color: var(--muted); font-weight: 700; text-transform: uppercase; display: flex; justify-content: space-between; align-items: center;">
+                <span>Interactive 3D Model</span>
+                <button onclick="toggle3DView()" style="background: none; border: none; cursor: pointer; color: var(--muted); font-size: 0.8rem;"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div style="position: relative; width: 100%; height: 160px; background: #fafafa; border: 1px dashed var(--border); border-radius: 6px; overflow: hidden;">
+                <model-viewer id="tataModelViewer" src="/models/tata_407.glb" alt="Tata 407 Gold Cargo Truck SFC" auto-rotate camera-controls style="width: 100%; height: 100%; background-color: transparent;" bounds="tight">
+                    <div slot="progress-bar" style="display: none;"></div>
+                    <div id="modelViewerFallback" style="position: absolute; inset: 0; padding: 8px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; background: #ffffff; z-index: 10;">
+                        <i class="fa-solid fa-cube" style="font-size: 1.5rem; color: var(--warning); margin-bottom: 4px;"></i>
+                        <span style="font-size: 0.72rem; font-weight: 800;">3D Preview Offline</span>
+                        <p style="font-size: 0.62rem; color: var(--muted); margin: 2px 0 6px 0; line-height: 1.25;">Open from your local server dashboard to test the 3D model file.</p>
+                        <a href="https://www.meshy.ai/3d-models/Tata-407-Gold-Cargo-Truck-v2-019eb9f9-d5e1-7a36-ad61-3bbb4e29baac" target="_blank" style="padding: 3px 8px; font-size: 0.62rem; background: var(--primary); color: white; border-radius: 4px; text-decoration: none; font-weight: 700;">View on Meshy</a>
+                    </div>
+                </model-viewer>
+            </div>
+        </div>
     </div>
 
     <!-- Expiration Error overlay -->

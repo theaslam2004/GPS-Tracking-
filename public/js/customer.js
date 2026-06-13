@@ -1019,6 +1019,20 @@ function updatePanelData(data, deviceName) {
         warningEl.style.display = isSecondaryMode ? 'block' : 'none';
     }
 
+    // Toggle 3D View button and container based on vehicle voltage
+    const panel3DBtn = document.getElementById('panel3DBtn');
+    const panel3DContainer = document.getElementById('panel3DContainer');
+    if (panel3DBtn) {
+        if (volt > 16.0 && volt <= 32.0) {
+            panel3DBtn.style.display = 'inline-flex';
+        } else {
+            panel3DBtn.style.display = 'none';
+            if (panel3DContainer) {
+                panel3DContainer.style.display = 'none';
+            }
+        }
+    }
+
     // Toggle check lights in panel header
     const checkLightEl = document.getElementById('panelCheckLight');
     const normalLightEl = document.getElementById('panelNormalLight');
@@ -1577,107 +1591,10 @@ function getVehicleIcon(heading, status, pinned, imei, voltage) {
             </svg>
         `;
     } else if (volt > 16 && volt <= 32) {
-        // Eicher Truck (Medium Commercial Premium Illustration)
-        width = 24;
-        height = 28;
+        width = 44;
+        height = 44;
         svgContent = `
-            <svg width="${width}" height="${height}" viewBox="0 0 40 46" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <defs>
-                    <linearGradient id="bodyGrad_${id}" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stop-color="${topColor}"/>
-                        <stop offset="35%" stop-color="#ffffff" stop-opacity="0.35"/>
-                        <stop offset="70%" stop-color="${topColor}"/>
-                        <stop offset="100%" stop-color="${bottomColor}"/>
-                    </linearGradient>
-                    <linearGradient id="glassGrad_${id}" x1="0%" y1="0%" x2="0%" y2="100%">
-                        <stop offset="0%" stop-color="#38bdf8"/>
-                        <stop offset="50%" stop-color="#0284c7"/>
-                        <stop offset="100%" stop-color="#0369a1"/>
-                    </linearGradient>
-                    <linearGradient id="lightBeamGrad_${id}" x1="0%" y1="100%" x2="0%" y2="0%">
-                        <stop offset="0%" stop-color="#fef08a" stop-opacity="0.6"/>
-                        <stop offset="100%" stop-color="#fef08a" stop-opacity="0"/>
-                    </linearGradient>
-                    <linearGradient id="cabGrad_${id}" x1="0%" y1="0%" x2="100%" y2="100%">
-                        <stop offset="0%" stop-color="#ffffff"/>
-                        <stop offset="40%" stop-color="#e2e8f0"/>
-                        <stop offset="70%" stop-color="#cbd5e1"/>
-                        <stop offset="100%" stop-color="#94a3b8"/>
-                    </linearGradient>
-                    <linearGradient id="chromeGrad_${id}" x1="0%" y1="0%" x2="100%" y2="0%">
-                        <stop offset="0%" stop-color="#94a3b8"/>
-                        <stop offset="20%" stop-color="#f8fafc"/>
-                        <stop offset="50%" stop-color="#cbd5e1"/>
-                        <stop offset="80%" stop-color="#f8fafc"/>
-                        <stop offset="100%" stop-color="#475569"/>
-                    </linearGradient>
-                </defs>
-                ${headlights}
-                <!-- Soft Under-Vehicle Shadow -->
-                <rect x="3.5" y="3" width="33" height="40" rx="5" fill="#000000" opacity="0.26" filter="blur(1.5px)"/>
-                
-                <!-- Front Tires -->
-                <rect x="2" y="8" width="4.5" height="9" rx="2" fill="#1e293b"/>
-                <rect x="33.5" y="8" width="4.5" height="9" rx="2" fill="#1e293b"/>
-                <!-- Rear Dual Axle Tires -->
-                <rect x="1" y="29" width="5.5" height="9.5" rx="2" fill="#1e293b"/>
-                <rect x="33.5" y="29" width="5.5" height="9.5" rx="2" fill="#1e293b"/>
-                
-                <!-- Side Steps -->
-                <rect x="3.5" y="13" width="2.5" height="4" rx="0.5" fill="url(#chromeGrad_${id})" stroke="#1e293b" stroke-width="0.3"/>
-                <rect x="34" y="13" width="2.5" height="4" rx="0.5" fill="url(#chromeGrad_${id})" stroke="#1e293b" stroke-width="0.3"/>
-
-                <!-- Side mirrors (Extended chrome arms) -->
-                <path d="M 2,12.5 L 6.5,14" stroke="#94a3b8" stroke-width="1.5"/>
-                <path d="M 38,12.5 L 33.5,14" stroke="#94a3b8" stroke-width="1.5"/>
-                <rect x="1" y="9.5" width="2" height="4.5" rx="0.5" fill="#0f172a"/>
-                <rect x="37" y="9.5" width="2" height="4.5" rx="0.5" fill="#0f172a"/>
-                
-                <!-- Cabin Roof (premium white/silver gradient) -->
-                <rect x="6.5" y="5" width="27" height="12.5" rx="2.5" fill="url(#cabGrad_${id})" stroke="#475569" stroke-width="0.75"/>
-                
-                <!-- Cab Spoiler / Wind Deflector -->
-                <path d="M 9.5,6.5 L 30.5,6.5 C 30.5,6.5 28,8.2 20,8.2 C 12,8.2 9.5,6.5 9.5,6.5 Z" fill="url(#bodyGrad_${id})" stroke="#000000" stroke-width="0.3"/>
-
-                <!-- Roof Bars -->
-                <rect x="7" y="5.5" width="2" height="11" rx="0.5" fill="url(#chromeGrad_${id})" opacity="0.8"/>
-                <rect x="31" y="5.5" width="2" height="11" rx="0.5" fill="url(#chromeGrad_${id})" opacity="0.8"/>
-
-                <!-- Cab Visor -->
-                <path d="M 8.5,9 C 8.5,9 12,10.2 20,10.2 C 28,10.2 31.5,9 31.5,9 L 30.5,10.5 C 30.5,10.5 25,11.2 20,11.2 C 15,11.2 9.5,10.5 9.5,10.5 Z" fill="#1e293b" opacity="0.85"/>
-
-                <!-- Windshield -->
-                <path d="M 8.5,12.5 C 8.5,10.5 11.5,9.5 20,9.5 C 28.5,9.5 31.5,10.5 31.5,12.5 L 30.5,15 C 30.5,15 25,14 20,14 C 15,14 9.5,15 9.5,15 Z" fill="url(#glassGrad_${id})" stroke="#0f172a" stroke-width="0.5"/>
-                <path d="M 11,11.5 L 29,10" stroke="#ffffff" stroke-width="1.2" opacity="0.45"/>
-                <path d="M 14,13 L 26,11.8" stroke="#ffffff" stroke-width="0.8" opacity="0.25"/>
-                
-                <!-- Windshield Wipers -->
-                <line x1="15" y1="14.5" x2="17.5" y2="11.5" stroke="#0f172a" stroke-width="0.8"/>
-                <line x1="25" y1="14.5" x2="22.5" y2="11.5" stroke="#0f172a" stroke-width="0.8"/>
-
-                <!-- Chrome Front Bumper -->
-                <rect x="7" y="4" width="26" height="2" rx="1" fill="url(#chromeGrad_${id})" stroke="#475569" stroke-width="0.4"/>
-                
-                <!-- Cargo Box (back container) -->
-                <rect x="5.5" y="18" width="29" height="24" rx="2" fill="url(#bodyGrad_${id})" stroke="#ffffff" stroke-width="0.75"/>
-                
-                <!-- Ridges on container for premium 3D look -->
-                <line x1="7.5" y1="22" x2="32.5" y2="22" stroke="#ffffff" stroke-width="1" opacity="0.3"/>
-                <line x1="7.5" y1="26" x2="32.5" y2="26" stroke="#ffffff" stroke-width="1" opacity="0.3"/>
-                <line x1="7.5" y1="30" x2="32.5" y2="30" stroke="#ffffff" stroke-width="1" opacity="0.3"/>
-                <line x1="7.5" y1="34" x2="32.5" y2="34" stroke="#ffffff" stroke-width="1" opacity="0.3"/>
-                <line x1="7.5" y1="38" x2="32.5" y2="38" stroke="#ffffff" stroke-width="1" opacity="0.3"/>
-                
-                <!-- Headlights -->
-                <rect x="8" y="5.2" width="3.5" height="1.8" rx="0.5" fill="#ffffff" stroke="#fef08a" stroke-width="0.5"/>
-                <rect x="28.5" y="5.2" width="3.5" height="1.8" rx="0.5" fill="#ffffff" stroke="#fef08a" stroke-width="0.5"/>
-                <circle cx="9.75" cy="6.1" r="0.75" fill="#fef08a"/>
-                <circle cx="30.25" cy="6.1" r="0.75" fill="#fef08a"/>
-                
-                <!-- Tail Lights -->
-                <rect x="6.8" y="41.5" width="4.5" height="1.2" fill="#ef4444"/>
-                <rect x="28.7" y="41.5" width="4.5" height="1.2" fill="#ef4444"/>
-            </svg>
+            <model-viewer src="/models/tata_407.glb" style="width: 44px; height: 44px; pointer-events: none; background-color: transparent;" camera-orbit="145deg 60deg auto" bounds="tight" interaction-prompt="none"></model-viewer>
         `;
     } else {
         // Heavy 12-Wheel Truck / Trailer (Premium Long Body Semi Truck Illustration)
@@ -3523,3 +3440,32 @@ async function submitDeviceAssignments() {
         showToast("❌ Error", "Failed to update assignments.", "danger");
     }
 }
+
+// ==========================================
+// 3D Model Viewer Logic
+// ==========================================
+function toggle3DView() {
+    const container = document.getElementById('panel3DContainer');
+    if (!container) return;
+    
+    const isVisible = container.style.display === 'flex';
+    container.style.display = isVisible ? 'none' : 'flex';
+}
+
+// Global model-viewer event listener to hide fallback immediately on load (avoid race conditions)
+document.addEventListener('DOMContentLoaded', () => {
+    const modelViewer = document.getElementById('tataModelViewer');
+    const fallback = document.getElementById('modelViewerFallback');
+    if (modelViewer) {
+        modelViewer.addEventListener('load', () => {
+            if (fallback) fallback.style.display = 'none';
+        });
+        modelViewer.addEventListener('error', () => {
+            if (fallback) fallback.style.display = 'flex';
+        });
+        // Check if already loaded
+        if (modelViewer.loaded) {
+            if (fallback) fallback.style.display = 'none';
+        }
+    }
+});
