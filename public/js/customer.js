@@ -1334,33 +1334,24 @@ function handleDeviceData(data, isLive = true) {
         if (!liveTrails[imei]) {
             liveTrails[imei] = [];
         }
-        const lastPt = liveTrails[imei][liveTrails[imei].length - 1];
-        const timestampMs = new Date(timestamp).getTime();
-        if (!lastPt || lastPt.lat !== latitude || lastPt.lng !== longitude) {
-            liveTrails[imei].push({ lat: latitude, lng: longitude, timestamp: timestampMs });
-        } else if (lastPt) {
-            lastPt.timestamp = timestampMs;
-        }
         
-        const oneMinuteAgo = Date.now() - 60000;
-        liveTrails[imei] = liveTrails[imei].filter(pt => pt.timestamp >= oneMinuteAgo);
-        
-        const latlngs = liveTrails[imei].map(pt => [pt.lat, pt.lng]);
-        if (latlngs.length >= 2) {
-            if (liveTrailPolylines[imei]) {
-                liveTrailPolylines[imei].setLatLngs(latlngs);
-            } else {
-                liveTrailPolylines[imei] = L.polyline(latlngs, {
-                    color: '#ff3b70',
-                    weight: 3,
-                    dashArray: '6, 6',
-                    opacity: 0.8
-                }).addTo(map);
+        // Push the current position of the marker before sliding as a confirmed point
+        if (markers[imei]) {
+            const currentLatLng = markers[imei].getLatLng();
+            const lastPt = liveTrails[imei][liveTrails[imei].length - 1];
+            const timestampMs = new Date(timestamp).getTime();
+            if (!lastPt || lastPt.lat !== currentLatLng.lat || lastPt.lng !== currentLatLng.lng) {
+                liveTrails[imei].push({ lat: currentLatLng.lat, lng: currentLatLng.lng, timestamp: timestampMs });
+            } else if (lastPt) {
+                lastPt.timestamp = timestampMs;
             }
-        } else if (liveTrailPolylines[imei]) {
-            map.removeLayer(liveTrailPolylines[imei]);
-            delete liveTrailPolylines[imei];
+        } else {
+            // First load: initialize with start coordinate
+            const timestampMs = new Date(timestamp).getTime();
+            liveTrails[imei].push({ lat: latitude, lng: longitude, timestamp: timestampMs });
         }
+        
+        updateTrail(imei, markers[imei] ? markers[imei].getLatLng() : { lat: latitude, lng: longitude });
     }
 
     // Auto-recenter map to follow the arrow (if live and not in history playback)
@@ -2505,18 +2496,54 @@ setInterval(() => {
     Object.keys(liveTrails).forEach(imei => {
         if (liveTrails[imei]) {
             liveTrails[imei] = liveTrails[imei].filter(pt => pt.timestamp >= oneMinuteAgo);
-            const latlngs = liveTrails[imei].map(pt => [pt.lat, pt.lng]);
-            if (liveTrailPolylines[imei]) {
-                if (latlngs.length < 2) {
-                    map.removeLayer(liveTrailPolylines[imei]);
-                    delete liveTrailPolylines[imei];
-                } else {
-                    liveTrailPolylines[imei].setLatLngs(latlngs);
-                }
+            if (markers[imei]) {
+                updateTrail(imei, markers[imei].getLatLng());
+            } else if (liveTrails[imei].length > 0) {
+                const last = liveTrails[imei][liveTrails[imei].length - 1];
+                updateTrail(imei, { lat: last.lat, lng: last.lng });
+            } else {
+                updateTrail(imei, null);
             }
         }
     });
-}, 5000);
+}, 1000); // Check every second for a smoother trail decay
+
+function updateTrail(imei, currentLatLng) {
+    const isHistoryActive = document.getElementById('playbackControls') && 
+                            document.getElementById('playbackControls').style.display === 'flex';
+    if (isHistoryActive) return;
+
+    if (!liveTrails[imei]) {
+        liveTrails[imei] = [];
+    }
+    
+    const oneMinuteAgo = Date.now() - 60000;
+    liveTrails[imei] = liveTrails[imei].filter(pt => pt.timestamp >= oneMinuteAgo);
+    
+    const latlngs = liveTrails[imei].map(pt => [pt.lat, pt.lng]);
+    
+    if (currentLatLng) {
+        latlngs.push([currentLatLng.lat, currentLatLng.lng]);
+    }
+    
+    if (latlngs.length >= 2) {
+        if (liveTrailPolylines[imei]) {
+            liveTrailPolylines[imei].setLatLngs(latlngs);
+        } else {
+            liveTrailPolylines[imei] = L.polyline(latlngs, {
+                color: '#38bdf8', // Sleek modern sky blue
+                weight: 5,
+                dashArray: '0, 12', // Perfect circular dots
+                opacity: 0.9,
+                lineCap: 'round',
+                lineJoin: 'round'
+            }).addTo(map);
+        }
+    } else if (liveTrailPolylines[imei]) {
+        map.removeLayer(liveTrailPolylines[imei]);
+        delete liveTrailPolylines[imei];
+    }
+}
 
 // Periodically refresh the device list and active panel to sync elapsed time and offline status
 setInterval(() => {
@@ -2572,6 +2599,11 @@ function slideMarker(marker, newLatLng, duration = 1500, imei = null) {
         const lng = startLatLng.lng + (endLatLng.lng - startLatLng.lng) * ease;
         
         marker.setLatLng([lat, lng]);
+        
+        // Update the trail polylines smoothly frame-by-frame
+        if (imei) {
+            updateTrail(imei, { lat, lng });
+        }
         
         // Follow the active vehicle smoothly frame-by-frame during the sliding animation
         if (activeImei && activeImei === imei) {
@@ -2642,6 +2674,9 @@ setInterval(() => {
                     const newLng = currentLatLng.lng + (dLng * 180) / Math.PI;
                     
                     marker.setLatLng([newLat, newLng]);
+                    
+                    // Update trail smoothly during dead reckoning
+                    updateTrail(imei, { lat: newLat, lng: newLng });
                     
                     // Pan map smoothly to follow focused device
                     const isHistoryActive = document.getElementById('playbackControls') && 
