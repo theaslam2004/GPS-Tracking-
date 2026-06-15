@@ -561,6 +561,9 @@
         }
 
         @media (max-width: 900px) {
+            .bottom-filter {
+                display: none !important;
+            }
             .mobile-app-header {
                 display: flex !important;
                 justify-content: space-between;
@@ -583,77 +586,96 @@
                 overflow: hidden !important;
             }
             .menu-sidebar {
-                position: absolute !important;
-                top: 56px !important;
-                left: 0 !important;
-                width: 64px !important;
-                height: calc(100vh - 56px) !important;
-                z-index: 1060 !important;
-                transform: translateX(-100%) !important;
-                transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
-                flex-direction: column !important;
-                justify-content: space-between !important;
-                padding: 12px 0 !important;
-                background: var(--bg-surface) !important;
-                border-right: 1px solid var(--border) !important;
-                border-top: none !important;
-                border-bottom: none !important;
-            }
-            .menu-sidebar.open {
-                transform: translateX(0) !important;
-            }
-            .menu-logo {
-                display: none !important;
-            }
-            .menu-items {
-                flex-direction: column !important;
-                gap: 8px !important;
-                justify-content: flex-start !important;
-                align-items: center !important;
-                width: 100% !important;
-            }
-            .menu-item {
-                width: 48px !important;
-                height: 48px !important;
-                padding: 0 !important;
-                gap: 2px !important;
-                border-radius: var(--radius-md) !important;
-                display: flex !important;
-                flex-direction: column !important;
-                justify-content: center !important;
-                align-items: center !important;
-            }
-            .menu-item i {
-                font-size: 1.1rem !important;
-            }
-            .menu-item span {
-                font-size: 0.55rem !important;
-            }
-            .menu-footer {
-                display: block !important;
-                width: 100% !important;
-                text-align: center !important;
-            }
-            .menu-logout-btn {
-                width: 48px !important;
-                height: 48px !important;
-                border-radius: var(--radius-md) !important;
-            }
-            .sidebar-wrapper {
-                position: absolute !important;
-                top: 56px !important;
-                left: 64px !important;
-                width: calc(100% - 64px) !important;
-                max-width: 100% !important;
-                height: calc(100vh - 56px) !important;
-                z-index: 1050 !important;
-                transform: translateX(calc(-100% - 64px)) !important;
-                transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
-                border-right: none !important;
-                border-bottom: none !important;
-                box-shadow: none !important;
-                background: var(--bg-surface) !important;
-            }
+                 position: absolute !important;
+                 top: 56px !important;
+                 left: 0 !important;
+                 width: 250px !important;
+                 height: calc(100vh - 56px) !important;
+                 z-index: 1200 !important;
+                 transform: translateX(-100%) !important;
+                 transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+                 flex-direction: column !important;
+                 justify-content: space-between !important;
+                 padding: 16px 0 !important;
+                 background: var(--bg-surface) !important;
+                 border-right: 1px solid var(--border) !important;
+                 border-top: none !important;
+                 border-bottom: none !important;
+                 box-shadow: 4px 0 20px rgba(0,0,0,0.15) !important;
+             }
+             .menu-sidebar.open {
+                 transform: translateX(0) !important;
+             }
+             .menu-logo {
+                 display: none !important;
+             }
+             .menu-items {
+                 flex-direction: column !important;
+                 gap: 10px !important;
+                 justify-content: flex-start !important;
+                 align-items: flex-start !important;
+                 width: 100% !important;
+                 padding: 0 16px !important;
+             }
+             .menu-item {
+                 width: 100% !important;
+                 height: 48px !important;
+                 padding: 0 16px !important;
+                 gap: 12px !important;
+                 border-radius: var(--radius-md) !important;
+                 display: flex !important;
+                 flex-direction: row !important;
+                 justify-content: flex-start !important;
+                 align-items: center !important;
+             }
+             .menu-item i {
+                 font-size: 1.2rem !important;
+                 width: 20px !important;
+                 text-align: center !important;
+             }
+             .menu-item span {
+                 font-size: 0.9rem !important;
+                 font-weight: 700 !important;
+             }
+             .menu-footer {
+                 display: block !important;
+                 width: 100% !important;
+                 padding: 0 16px !important;
+             }
+             .menu-logout-btn {
+                 width: 100% !important;
+                 height: 48px !important;
+                 border-radius: var(--radius-md) !important;
+                 display: flex !important;
+                 align-items: center !important;
+                 justify-content: flex-start !important;
+                 padding: 0 16px !important;
+                 gap: 12px !important;
+                 background: transparent !important;
+                 color: var(--text-secondary) !important;
+                 border: 1px solid var(--border) !important;
+             }
+             .menu-logout-btn::after {
+                 content: "Logout" !important;
+                 font-size: 0.9rem !important;
+                 font-weight: 700 !important;
+                 font-family: 'Outfit', sans-serif !important;
+             }
+             .sidebar-wrapper {
+                 position: absolute !important;
+                 top: 56px !important;
+                 left: 0 !important;
+                 width: 100% !important;
+                 max-width: 100% !important;
+                 height: calc(100vh - 56px) !important;
+                 z-index: 1050 !important;
+                 transform: translateX(-100vw) !important;
+                 transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
+                 border-right: none !important;
+                 border-bottom: none !important;
+                 box-shadow: none !important;
+                 background: var(--bg-surface) !important;
+             }
             .sidebar-wrapper.open {
                 transform: translateX(0) !important;
             }
@@ -873,7 +895,7 @@
     <!-- Mobile App Header Bar -->
     <div class="mobile-app-header">
         <div style="display: flex; align-items: center; gap: 12px;">
-            <button class="mobile-menu-trigger" onclick="toggleSidebar()" style="background: none; border: none; font-size: 1.25rem; color: var(--text-primary); cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center;">
+            <button class="mobile-menu-trigger" onclick="toggleMobileMenu()" style="background: none; border: none; font-size: 1.25rem; color: var(--text-primary); cursor: pointer; padding: 4px; display: flex; align-items: center; justify-content: center;">
                 <i class="fa-solid fa-bars"></i>
             </button>
             <div class="mobile-logo" style="display: flex; align-items: center; gap: 6px;">
@@ -899,37 +921,37 @@
                 <i class="fa-solid fa-truck-fast"></i>
             </div>
             <div class="menu-items">
-                <a class="menu-item active" href="#" title="Dashboard" onclick="switchMapTab('live'); if(window.innerWidth <= 900) toggleSidebar();">
+                <a class="menu-item active" href="#" title="Dashboard" onclick="switchMapTab('live'); if(window.innerWidth <= 900) { toggleMobileMenu(); document.querySelector('.sidebar-wrapper').classList.add('open'); }">
                     <i class="fa-solid fa-gauge-high"></i>
                     <span>Dashboard</span>
                 </a>
-                <a class="menu-item" href="#" title="Add Device" onclick="showAddDeviceModal()">
+                <a class="menu-item" href="#" title="Add Device" onclick="if(window.innerWidth <= 900) { toggleMobileMenu(); } showAddDeviceModal()">
                     <i class="fa-solid fa-circle-plus"></i>
                     <span>Add Device</span>
                 </a>
-                <a class="menu-item" href="#" title="Travel Replay" onclick="switchMapTab('replay')">
+                <a class="menu-item" href="#" title="Travel Replay" onclick="switchMapTab('replay'); if(window.innerWidth <= 900) { toggleMobileMenu(); document.querySelector('.sidebar-wrapper').classList.remove('open'); }">
                     <i class="fa-solid fa-clock-rotate-left"></i>
                     <span>Replay</span>
                 </a>
-                <a class="menu-item" href="#" id="menu-item-subusers" title="Manage Clients" onclick="showSubUsersModal()" style="display: none !important;">
+                <a class="menu-item" href="#" id="menu-item-subusers" title="Manage Clients" onclick="if(window.innerWidth <= 900) { toggleMobileMenu(); } showSubUsersModal()" style="display: none !important;">
                     <i class="fa-solid fa-users-gear"></i>
                     <span>Clients</span>
                 </a>
-                <a class="menu-item" href="#" id="menu-item-geofence" title="Geofences" onclick="toggleGeofenceMode()" style="display: none !important;">
+                <a class="menu-item" href="#" id="menu-item-geofence" title="Geofences" onclick="if(window.innerWidth <= 900) { toggleMobileMenu(); } toggleGeofenceMode()" style="display: none !important;">
                     <i class="fa-solid fa-draw-polygon"></i>
                     <span>Geofence</span>
                 </a>
-                <a class="menu-item" href="#" id="menu-item-upgrade" title="Upgrade Plan" onclick="showUpgradeModal()" style="display: none !important;">
+                <a class="menu-item" href="#" id="menu-item-upgrade" title="Upgrade Plan" onclick="if(window.innerWidth <= 900) { toggleMobileMenu(); } showUpgradeModal()" style="display: none !important;">
                     <i class="fa-solid fa-arrow-up-from-bracket"></i>
                     <span>Upgrade</span>
                 </a>
-                <a class="menu-item" href="#" id="menu-item-settings" title="Settings" onclick="showSettingsModal()">
+                <a class="menu-item" href="#" id="menu-item-settings" title="Settings" onclick="if(window.innerWidth <= 900) { toggleMobileMenu(); } showSettingsModal()">
                     <i class="fa-solid fa-gear"></i>
                     <span>Settings</span>
                 </a>
             </div>
             <div class="menu-footer">
-                <button class="menu-logout-btn" onclick="logout()" title="Logout">
+                <button class="menu-logout-btn" onclick="if(window.innerWidth <= 900) { toggleMobileMenu(); } logout()" title="Logout">
                     <i class="fa-solid fa-power-off"></i>
                 </button>
             </div>
@@ -1839,6 +1861,13 @@
             if (menuSidebar) menuSidebar.classList.toggle('open', isOpen);
             if (isOpen && window.innerWidth <= 900) {
                 closeVehiclePanel();
+            }
+        }
+
+        function toggleMobileMenu() {
+            const menuSidebar = document.querySelector('.menu-sidebar');
+            if (menuSidebar) {
+                menuSidebar.classList.toggle('open');
             }
         }
 
