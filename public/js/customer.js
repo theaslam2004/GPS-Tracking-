@@ -516,7 +516,21 @@ async function loadData() {
         const defaultDev = pinnedDev || myDevices[0];
         if (defaultDev && latestData[defaultDev.imei]) {
             window.initialFocusDone = true;
-            focusDevice(defaultDev.imei);
+            if (window.innerWidth > 900) {
+                focusDevice(defaultDev.imei);
+            } else {
+                // On mobile, show the device list (home page) by default
+                const sidebar = document.querySelector('.sidebar-wrapper');
+                const menuSidebar = document.querySelector('.menu-sidebar');
+                if (sidebar) sidebar.classList.add('open');
+                if (menuSidebar) menuSidebar.classList.add('open');
+            }
+        } else if (window.innerWidth <= 900) {
+            // If no active device data, still show the list drawer on mobile
+            const sidebar = document.querySelector('.sidebar-wrapper');
+            const menuSidebar = document.querySelector('.menu-sidebar');
+            if (sidebar) sidebar.classList.add('open');
+            if (menuSidebar) menuSidebar.classList.add('open');
         }
         
         // Global Feature Visibility
@@ -1003,7 +1017,9 @@ function focusDevice(imei) {
         // Close sidebar drawer on mobile to show the map and details panel
         if (window.innerWidth <= 900) {
             const sidebar = document.querySelector('.sidebar-wrapper');
+            const menuSidebar = document.querySelector('.menu-sidebar');
             if (sidebar) sidebar.classList.remove('open');
+            if (menuSidebar) menuSidebar.classList.remove('open');
         }
         
         // Populate if we have data
@@ -2646,6 +2662,14 @@ function switchMapTab(mode) {
         tabLive.classList.remove('active');
         tabReplay.classList.add('active');
         startHistoryMode();
+        
+        // On mobile, close sidebars when starting history mode to show the replay map and controls
+        if (window.innerWidth <= 900) {
+            const sidebar = document.querySelector('.sidebar-wrapper');
+            const menuSidebar = document.querySelector('.menu-sidebar');
+            if (sidebar) sidebar.classList.remove('open');
+            if (menuSidebar) menuSidebar.classList.remove('open');
+        }
     }
 }
 
