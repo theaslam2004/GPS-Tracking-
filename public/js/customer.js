@@ -7,6 +7,16 @@ window.onerror = function(message, source, lineno, colno, error) {
     return false;
 };
 
+function formatDateTime(dateObj) {
+    const day = String(dateObj.getDate()).padStart(2, '0');
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const year = dateObj.getFullYear();
+    const hours = String(dateObj.getHours()).padStart(2, '0');
+    const minutes = String(dateObj.getMinutes()).padStart(2, '0');
+    const seconds = String(dateObj.getSeconds()).padStart(2, '0');
+    return `${day}-${month}-${year} ${hours}:${minutes}:${seconds}`;
+}
+
 let user = null;
 
 // Perform startup authentication validation check
@@ -799,76 +809,130 @@ function renderDeviceList() {
         return true;
     });
     
-    container.innerHTML = filteredDevices.map(d => {
-        const odoHidden = !isFeatureEnabled(d.imei, 'odometer') ? 'display:none' : '';
-        const speedHidden = !isFeatureEnabled(d.imei, 'speedAlert') ? 'display:none' : '';
-        
-        // Use live telemetry values if available
-        const live = latestData[d.imei] || {};
-        const speedVal = live.speed !== undefined ? live.speed : 0;
-        const isOdoVerified = (live.odometer !== undefined && live.odometer >= 0);
-        const odoVal = isOdoVerified ? live.odometer.toFixed(1) : '--';
-        const timeVal = live.timestamp ? new Date(live.timestamp).toLocaleTimeString() : '--';
-        
-        // Offline status check
-        let statusClass = 'offline';
-        let statusText = 'Offline';
-        if (live.timestamp) {
-            const isStale = (Date.now() - new Date(live.timestamp)) > 60000;
-            if (!isStale) {
-                statusClass = live.status || 'halt';
-                statusText = statusClass.charAt(0).toUpperCase() + statusClass.slice(1);
-                if (statusClass === 'halt') statusText = 'Halted';
-            }
-        }
-        
-        const isSecondary = (live.powerSource === 'secondary');
-        const batAlert = isSecondary ? `<i class="fa-solid fa-triangle-exclamation" style="color: var(--danger); margin-left: 6px; animation: pulseGlow 1.5s infinite ease-in-out;" title="Warning: Running on Backup Battery!"></i>` : '';
-        const activeClass = (d.imei === activeImei) ? 'active' : '';
+    const isMobile = window.innerWidth <= 900;
+    if (isMobile) {
+        const mobileCountPill = document.getElementById('mobileTotalCountPill');
+        if (mobileCountPill) mobileCountPill.innerText = filteredDevices.length;
 
-        return `
-            <div class="device-card ${statusClass} ${activeClass}" id="card-${d.imei}" onclick="focusDevice('${d.imei}')">
-                <!-- Card Header -->
-                <div class="device-header" style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 8px;">
-                    <div class="device-title" style="display: flex; align-items: center; gap: 6px; font-size: 0.88rem; font-weight: 700; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 65%;">
-                        <i class="fa-solid fa-star" style="color: ${d.pinned ? 'var(--warning)' : 'var(--text-secondary)'}; opacity: ${d.pinned ? '1' : '0.5'}; cursor: pointer; transition: all 0.2s;" onclick="togglePin('${d.imei}', event)" title="${d.pinned ? 'Unpin' : 'Pin to top'}"></i>
-                        <i class="fa-solid fa-truck" style="font-size: 0.85rem; flex-shrink: 0; color: var(--text-secondary);"></i>
-                        <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 800; color: var(--text-primary);" title="${d.name || d.imei}">${d.name || d.imei}</span>
-                        ${batAlert}
-                    </div>
-                    <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
-                        <i class="fa-solid fa-pen-to-square rename-btn" style="cursor: pointer; opacity: 0.5; font-size: 0.75rem; flex-shrink: 0; color: var(--text-secondary);" onclick="renameDevicePrompt('${d.imei}', '${d.name || ''}', event)" title="Rename vehicle"></i>
-                        <span class="taabi-status-capsule ${statusClass}" style="transform: scale(0.9); transform-origin: right center;">
-                            ${statusText}
-                        </span>
-                    </div>
+        const headerHTML = `
+            <div class="mobile-list-header" style="display: flex; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border-light); font-size: 0.72rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; background: rgba(0,0,0,0.15);">
+                <div style="width: 12%; display: flex; align-items: center; justify-content: center;">
+                    <input type="checkbox" id="selectAllDevicesMobile" onchange="toggleSelectAllMobile(this.checked)" style="accent-color: var(--primary); width: 14px; height: 14px; cursor: pointer;">
                 </div>
-
-                <!-- Stats Grid -->
-                <div class="device-stats" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.25rem; background: none; border: none; padding: 0.5rem 0 0; margin-top: 0.5rem;">
-                    <div class="stat-item" style="display: flex; flex-direction: column; align-items: center; text-align: center; justify-content: center; ${speedHidden}">
-                        <i class="fa-solid fa-gauge-high" style="color: var(--success); font-size: 0.95rem; margin-bottom: 2px;"></i>
-                        <span style="color: var(--text-primary); font-weight: 700; font-family: 'Outfit', sans-serif; font-size: 0.82rem;" id="speed-${d.imei}">${speedVal}</span>
-                        <span style="color: var(--text-secondary); font-size: 0.65rem; text-transform: uppercase; font-weight: 500; letter-spacing: 0.3px;">km/h</span>
-                    </div>
-                    <div class="stat-item" style="display: flex; flex-direction: column; align-items: center; text-align: center; justify-content: center; ${odoHidden}">
-                        <i class="fa-solid fa-road" style="color: var(--primary); font-size: 0.95rem; margin-bottom: 2px;"></i>
-                        <span style="color: var(--text-primary); font-weight: 700; font-family: 'Outfit', sans-serif; font-size: 0.82rem;" id="odo-${d.imei}">${odoVal}</span>
-                        <span style="color: var(--text-secondary); font-size: 0.65rem; text-transform: uppercase; font-weight: 500; letter-spacing: 0.3px;">km</span>
-                    </div>
-                    <div class="stat-item" style="display: flex; flex-direction: column; align-items: center; text-align: center; justify-content: center;">
-                        <i class="fa-regular fa-clock" style="color: var(--primary); font-size: 0.95rem; margin-bottom: 2px;"></i>
-                        <span style="color: var(--text-primary); font-weight: 700; font-family: 'Outfit', sans-serif; font-size: 0.72rem; line-height: 1.2; word-break: break-word; white-space: normal;" id="time-${d.imei}">${timeVal}</span>
-                        <span style="color: var(--text-secondary); font-size: 0.65rem; text-transform: uppercase; font-weight: 500; letter-spacing: 0.3px;">Updated</span>
-                    </div>
-                </div>
+                <div style="width: 44%; padding-left: 8px; cursor: pointer;" onclick="toggleMobileSort()">Name <i class="fa-solid fa-sort" style="margin-left: 4px; font-size: 0.7rem; color: var(--text-secondary);"></i></div>
+                <div style="width: 44%; text-align: right;">Device Name</div>
             </div>
         `;
-    }).join('');
+        
+        const rowsHTML = filteredDevices.map(d => {
+            const activeClass = (d.imei === activeImei) ? 'active' : '';
+            const live = latestData[d.imei] || {};
+            let statusColor = 'var(--text-secondary)';
+            if (live.timestamp) {
+                const isStale = (Date.now() - new Date(live.timestamp)) > 60000;
+                if (!isStale) {
+                    const statusClass = live.status || 'halt';
+                    if (statusClass === 'running') statusColor = 'var(--success)';
+                    else if (statusClass === 'idle') statusColor = 'var(--warning)';
+                    else if (statusClass === 'halt') statusColor = 'var(--danger)';
+                }
+            }
+
+            return `
+                <div class="mobile-device-row ${activeClass}" onclick="focusDevice('${d.imei}')" style="display: flex; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--border-light); cursor: pointer; transition: all 0.2s; background: ${d.imei === activeImei ? 'rgba(59, 130, 246, 0.08)' : 'transparent'};">
+                    <div style="width: 12%; display: flex; align-items: center; justify-content: center;" onclick="event.stopPropagation();">
+                        <input type="checkbox" class="device-checkbox-mobile" data-imei="${d.imei}" style="accent-color: var(--primary); width: 14px; height: 14px; cursor: pointer;">
+                    </div>
+                    <div style="width: 44%; padding-left: 8px; display: flex; align-items: center; gap: 8px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">
+                        <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${statusColor}; flex-shrink: 0;" title="Status Indicator"></span>
+                        <span style="font-weight: 700; color: var(--text-primary); font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${d.name || d.imei}</span>
+                        <i class="fa-solid fa-chart-line" style="color: #3b82f6; font-size: 0.85rem; flex-shrink: 0; cursor: pointer;" title="View Travel Replay" onclick="event.stopPropagation(); focusDevice('${d.imei}'); startHistoryMode();"></i>
+                    </div>
+                    <div style="width: 44%; text-align: right; color: var(--text-secondary); font-size: 0.8rem; font-family: monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                        ${d.imei}
+                    </div>
+                </div>
+            `;
+        }).join('');
+        
+        container.innerHTML = headerHTML + rowsHTML;
+    } else {
+        container.innerHTML = filteredDevices.map(d => {
+            const odoHidden = !isFeatureEnabled(d.imei, 'odometer') ? 'display:none' : '';
+            const speedHidden = !isFeatureEnabled(d.imei, 'speedAlert') ? 'display:none' : '';
+            
+            // Use live telemetry values if available
+            const live = latestData[d.imei] || {};
+            const speedVal = live.speed !== undefined ? live.speed : 0;
+            const isOdoVerified = (live.odometer !== undefined && live.odometer >= 0);
+            const odoVal = isOdoVerified ? live.odometer.toFixed(1) : '--';
+            const timeVal = live.timestamp ? new Date(live.timestamp).toLocaleTimeString() : '--';
+            
+            // Offline status check
+            let statusClass = 'offline';
+            let statusText = 'Offline';
+            if (live.timestamp) {
+                const isStale = (Date.now() - new Date(live.timestamp)) > 60000;
+                if (!isStale) {
+                    statusClass = live.status || 'halt';
+                    statusText = statusClass.charAt(0).toUpperCase() + statusClass.slice(1);
+                    if (statusClass === 'halt') statusText = 'Halted';
+                }
+            }
+            
+            const isSecondary = (live.powerSource === 'secondary');
+            const batAlert = isSecondary ? `<i class="fa-solid fa-triangle-exclamation" style="color: var(--danger); margin-left: 6px; animation: pulseGlow 1.5s infinite ease-in-out;" title="Warning: Running on Backup Battery!"></i>` : '';
+            const activeClass = (d.imei === activeImei) ? 'active' : '';
+
+            return `
+                <div class="device-card ${statusClass} ${activeClass}" id="card-${d.imei}" onclick="focusDevice('${d.imei}')">
+                    <!-- Card Header -->
+                    <div class="device-header" style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 8px;">
+                        <div class="device-title" style="display: flex; align-items: center; gap: 6px; font-size: 0.88rem; font-weight: 700; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 65%;">
+                            <i class="fa-solid fa-star" style="color: ${d.pinned ? 'var(--warning)' : 'var(--text-secondary)'}; opacity: ${d.pinned ? '1' : '0.5'}; cursor: pointer; transition: all 0.2s;" onclick="togglePin('${d.imei}', event)" title="${d.pinned ? 'Unpin' : 'Pin to top'}"></i>
+                            <i class="fa-solid fa-truck" style="font-size: 0.85rem; flex-shrink: 0; color: var(--text-secondary);"></i>
+                            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 800; color: var(--text-primary);" title="${d.name || d.imei}">${d.name || d.imei}</span>
+                            ${batAlert}
+                        </div>
+                        <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
+                            <i class="fa-solid fa-pen-to-square rename-btn" style="cursor: pointer; opacity: 0.5; font-size: 0.75rem; flex-shrink: 0; color: var(--text-secondary);" onclick="renameDevicePrompt('${d.imei}', '${d.name || ''}', event)" title="Rename vehicle"></i>
+                            <span class="taabi-status-capsule ${statusClass}" style="transform: scale(0.9); transform-origin: right center;">
+                                ${statusText}
+                            </span>
+                        </div>
+                    </div>
+
+                    <!-- Stats Grid -->
+                    <div class="device-stats" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.25rem; background: none; border: none; padding: 0.5rem 0 0; margin-top: 0.5rem;">
+                        <div class="stat-item" style="display: flex; flex-direction: column; align-items: center; text-align: center; justify-content: center; ${speedHidden}">
+                            <i class="fa-solid fa-gauge-high" style="color: var(--success); font-size: 0.95rem; margin-bottom: 2px;"></i>
+                            <span style="color: var(--text-primary); font-weight: 700; font-family: 'Outfit', sans-serif; font-size: 0.82rem;" id="speed-${d.imei}">${speedVal}</span>
+                            <span style="color: var(--text-secondary); font-size: 0.65rem; text-transform: uppercase; font-weight: 500; letter-spacing: 0.3px;">km/h</span>
+                        </div>
+                        <div class="stat-item" style="display: flex; flex-direction: column; align-items: center; text-align: center; justify-content: center; ${odoHidden}">
+                            <i class="fa-solid fa-road" style="color: var(--primary); font-size: 0.95rem; margin-bottom: 2px;"></i>
+                            <span style="color: var(--text-primary); font-weight: 700; font-family: 'Outfit', sans-serif; font-size: 0.82rem;" id="odo-${d.imei}">${odoVal}</span>
+                            <span style="color: var(--text-secondary); font-size: 0.65rem; text-transform: uppercase; font-weight: 500; letter-spacing: 0.3px;">km</span>
+                        </div>
+                        <div class="stat-item" style="display: flex; flex-direction: column; align-items: center; text-align: center; justify-content: center;">
+                            <i class="fa-regular fa-clock" style="color: var(--primary); font-size: 0.95rem; margin-bottom: 2px;"></i>
+                            <span style="color: var(--text-primary); font-weight: 700; font-family: 'Outfit', sans-serif; font-size: 0.72rem; line-height: 1.2; word-break: break-word; white-space: normal;" id="time-${d.imei}">${timeVal}</span>
+                            <span style="color: var(--text-secondary); font-size: 0.65rem; text-transform: uppercase; font-weight: 500; letter-spacing: 0.3px;">Updated</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+    }
     
     document.getElementById('countAll').innerText = myDevices.length;
     updateFleetCounts();
     if (typeof filterVehicleList === 'function') filterVehicleList();
+}
+
+function toggleSelectAllMobile(checked) {
+    const checkboxes = document.querySelectorAll('.device-checkbox-mobile');
+    checkboxes.forEach(cb => cb.checked = checked);
 }
 
 function updateFleetCounts() {
@@ -1143,6 +1207,109 @@ function updatePanelData(data, deviceName) {
         }
     }
 
+    // Update Mobile-specific Panel Elements
+    const mobileNameEl = document.getElementById('mobilePanelDeviceName');
+    if (mobileNameEl) mobileNameEl.innerText = deviceName || imei;
+
+    const mobileStatusEl = document.getElementById('mobilePanelStatusBadge');
+    if (mobileStatusEl) {
+        mobileStatusEl.className = `taabi-status-capsule ${currentStatus}`;
+        let statusText = 'Offline';
+        if (currentStatus === 'running') statusText = 'Moving';
+        else if (currentStatus === 'idle') statusText = 'Idle';
+        else if (currentStatus === 'halt') statusText = 'Halted';
+        mobileStatusEl.innerText = statusText;
+    }
+
+    const mobileAddrEl = document.getElementById('mobilePanelAddress');
+    if (mobileAddrEl) {
+        mobileAddrEl.innerText = 'Fetching address...';
+        getAddress(imei, latitude, longitude, (addr) => {
+            mobileAddrEl.innerText = addr;
+        });
+    }
+
+    const dateObj = new Date(timestamp);
+    const mobileGpsTimeEl = document.getElementById('mobilePanelGpsTime');
+    if (mobileGpsTimeEl) {
+        mobileGpsTimeEl.innerHTML = formatDateTimeMobile(dateObj);
+    }
+
+    const mobileGprsTimeEl = document.getElementById('mobilePanelGprsTime');
+    if (mobileGprsTimeEl) {
+        const gprsDate = isReplayMode ? new Date(dateObj.getTime() + 2000) : new Date();
+        mobileGprsTimeEl.innerHTML = formatDateTimeMobile(gprsDate);
+    }
+
+    const mobileSpeedEl = document.getElementById('mobilePanelSpeed');
+    if (mobileSpeedEl) {
+        mobileSpeedEl.innerHTML = `${speed} <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 500;">km/h</span>`;
+    }
+
+    const mobileVoltEl = document.getElementById('mobilePanelPowerVolt');
+    if (mobileVoltEl) {
+        mobileVoltEl.innerText = `${volt.toFixed(1)}v`;
+    }
+
+    const rawBat = battery !== undefined ? battery : 100;
+    const batVolt = (3.4 + (rawBat / 100) * 0.8).toFixed(1);
+    const mobileBatVoltEl = document.getElementById('mobilePanelBatteryVolt');
+    if (mobileBatVoltEl) {
+        mobileBatVoltEl.innerText = `${batVolt}v`;
+    }
+
+    const mobileBatIconEl = document.getElementById('mobilePanelBatteryIcon');
+    if (mobileBatIconEl) {
+        mobileBatIconEl.className = 'fa-solid';
+        let batColor = 'var(--success)';
+        if (rawBat < 20) {
+            mobileBatIconEl.classList.add('fa-battery-empty');
+            batColor = 'var(--danger)';
+        } else if (rawBat < 50) {
+            mobileBatIconEl.classList.add('fa-battery-quarter');
+            batColor = 'var(--warning)';
+        } else if (rawBat < 80) {
+            mobileBatIconEl.classList.add('fa-battery-half');
+            batColor = 'var(--warning)';
+        } else {
+            mobileBatIconEl.classList.add('fa-battery-full');
+        }
+        mobileBatIconEl.style.color = batColor;
+    }
+
+    const isAcOn = (data.ignition === true);
+    const mobileAcTextEl = document.getElementById('mobilePanelAcText');
+    if (mobileAcTextEl) {
+        mobileAcTextEl.innerText = isAcOn ? 'AC On' : 'AC Off';
+    }
+
+    const mobileAcIconEl = document.getElementById('mobilePanelAcIcon');
+    if (mobileAcIconEl) {
+        mobileAcIconEl.className = 'fa-solid fa-snowflake';
+        mobileAcIconEl.style.color = isAcOn ? '#10b981' : 'var(--text-secondary)';
+        if (isAcOn) {
+            mobileAcIconEl.classList.add('fa-spin');
+        } else {
+            mobileAcIconEl.classList.remove('fa-spin');
+        }
+    }
+
+    const mobileIconEl = document.getElementById('mobilePanelIcon');
+    const mobileIconCircleEl = document.getElementById('mobilePanelIconCircle');
+    if (mobileIconEl && mobileIconCircleEl) {
+        mobileIconEl.className = 'fa-solid';
+        if (profile === 'heavy') {
+            mobileIconEl.classList.add('fa-truck');
+            mobileIconCircleEl.style.borderColor = 'var(--accent)';
+            mobileIconCircleEl.style.color = 'var(--accent)';
+            mobileIconCircleEl.style.background = 'rgba(59, 130, 246, 0.1)';
+        } else {
+            mobileIconEl.classList.add('fa-car');
+            mobileIconCircleEl.style.borderColor = 'var(--success)';
+            mobileIconCircleEl.style.color = 'var(--success)';
+            mobileIconCircleEl.style.background = 'rgba(16, 185, 129, 0.1)';
+        }
+    }
 
 }
 
@@ -3061,3 +3228,74 @@ async function submitDeviceAssignments() {
         showToast("❌ Error", "Failed to update assignments.", "danger");
     }
 }
+
+window.addEventListener('resize', renderDeviceList);
+
+// ==========================================
+// Mobile Responsive Helper Functions
+// ==========================================
+
+function formatDateTimeMobile(dateObj) {
+    const day = String(dateObj.getDate()).padStart(2, '0');
+    const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+    const year = dateObj.getFullYear();
+    const hours = String(dateObj.getHours()).padStart(2, '0');
+    const minutes = String(dateObj.getMinutes()).padStart(2, '0');
+    const seconds = String(dateObj.getSeconds()).padStart(2, '0');
+    return `<div style="font-weight: 700; color: var(--text-primary); font-size: 0.82rem;">${day}-${month}-${year}</div><div style="font-weight: 500; color: var(--text-secondary); font-size: 0.76rem; margin-top: 2px;">${hours}:${minutes}:${seconds}</div>`;
+}
+
+window.filterMobileVehicleList = function() {
+    const q = document.getElementById('mobileSearchInput').value.toLowerCase();
+    const rows = document.querySelectorAll('.mobile-device-row');
+    rows.forEach(row => {
+        const nameText = row.querySelector('span:nth-child(2)').innerText.toLowerCase();
+        const imeiText = row.querySelector('div:nth-child(3)').innerText.trim().toLowerCase();
+        if (nameText.includes(q) || imeiText.includes(q)) {
+            row.style.display = 'flex';
+        } else {
+            row.style.display = 'none';
+        }
+    });
+};
+
+let mobileFilters = ['all', 'running', 'idle', 'halt', 'offline'];
+window.toggleMobileFilterMenu = function() {
+    const currentIdx = mobileFilters.indexOf(currentFilter);
+    const nextFilter = mobileFilters[(currentIdx + 1) % mobileFilters.length];
+    window.applyFilter(nextFilter);
+    
+    // Highlight the bottom filter pill too
+    const pillEl = document.querySelector(`.filter-${nextFilter}`);
+    if (pillEl) {
+        document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
+        pillEl.classList.add('active');
+    }
+    showToast("🔍 Filter Updated", `Showing status: ${nextFilter.toUpperCase()}`, "info");
+};
+
+window.handleMobileExport = function(val) {
+    if (val === 'csv') {
+        if (activeImei) {
+            window.location.href = `/api/export/history/${activeImei}`;
+        } else {
+            window.location.href = `/api/export/devices?userId=${user.id}&role=${user.role}`;
+        }
+        // Reset select
+        document.getElementById('mobileExportSelect').value = '';
+    }
+};
+
+let mobileSortAsc = true;
+window.toggleMobileSort = function() {
+    mobileSortAsc = !mobileSortAsc;
+    myDevices.sort((a, b) => {
+        const nameA = String(a.name || a.imei).toLowerCase();
+        const nameB = String(b.name || b.imei).toLowerCase();
+        if (nameA < nameB) return mobileSortAsc ? -1 : 1;
+        if (nameA > nameB) return mobileSortAsc ? 1 : -1;
+        return 0;
+    });
+    renderDeviceList();
+    showToast("📶 Sort Order Updated", `Sorted by name: ${mobileSortAsc ? 'A-Z' : 'Z-A'}`, "info");
+};
