@@ -825,19 +825,9 @@ function renderDeviceList() {
     
     const isMobile = window.innerWidth <= 900;
     if (isMobile) {
-        const mobileCountPill = document.getElementById('mobileTotalCountPill');
-        if (mobileCountPill) mobileCountPill.innerText = filteredDevices.length;
+        const mobileAllEl = document.getElementById('mobileCountAll');
+        if (mobileAllEl) mobileAllEl.innerText = myDevices.length;
 
-        const headerHTML = `
-            <div class="mobile-list-header" style="display: flex; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border-light); font-size: 0.72rem; font-weight: 800; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.5px; background: rgba(0,0,0,0.15);">
-                <div style="width: 12%; display: flex; align-items: center; justify-content: center;">
-                    <input type="checkbox" id="selectAllDevicesMobile" onchange="toggleSelectAllMobile(this.checked)" style="accent-color: var(--primary); width: 14px; height: 14px; cursor: pointer;">
-                </div>
-                <div style="width: 44%; padding-left: 8px; cursor: pointer;" onclick="toggleMobileSort()">Name <i class="fa-solid fa-sort" style="margin-left: 4px; font-size: 0.7rem; color: var(--text-secondary);"></i></div>
-                <div style="width: 44%; text-align: right;">Device Name</div>
-            </div>
-        `;
-        
         const rowsHTML = filteredDevices.map(d => {
             const activeClass = (d.imei === activeImei) ? 'active' : '';
             const live = latestData[d.imei] || {};
@@ -853,23 +843,20 @@ function renderDeviceList() {
             }
 
             return `
-                <div class="mobile-device-row ${activeClass}" onclick="focusDevice('${d.imei}')" style="display: flex; align-items: center; padding: 14px 16px; border-bottom: 1px solid var(--border-light); cursor: pointer; transition: all 0.2s; background: ${d.imei === activeImei ? 'rgba(59, 130, 246, 0.08)' : 'transparent'};">
-                    <div style="width: 12%; display: flex; align-items: center; justify-content: center;" onclick="event.stopPropagation();">
-                        <input type="checkbox" class="device-checkbox-mobile" data-imei="${d.imei}" style="accent-color: var(--primary); width: 14px; height: 14px; cursor: pointer;">
+                <div class="mobile-device-row ${activeClass}" onclick="focusDevice('${d.imei}')" style="display: flex; align-items: center; justify-content: space-between; padding: 16px; border-bottom: 1px solid var(--border-light); cursor: pointer; transition: all 0.2s; background: ${d.imei === activeImei ? 'rgba(244, 63, 94, 0.08)' : 'transparent'}; border-left: 3px solid ${d.imei === activeImei ? 'var(--primary)' : 'transparent'};">
+                    <div style="display: flex; align-items: center; gap: 12px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; flex: 1; min-width: 0;">
+                        <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: ${statusColor}; flex-shrink: 0;" title="Status Indicator"></span>
+                        <span style="font-weight: 700; color: var(--text-primary); font-size: 0.92rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${d.name || d.imei}</span>
+                        <i class="fa-solid fa-chart-line" style="color: #3b82f6; font-size: 0.9rem; flex-shrink: 0; cursor: pointer; padding: 4px;" title="View Travel Replay" onclick="event.stopPropagation(); focusDevice('${d.imei}'); startHistoryMode();"></i>
                     </div>
-                    <div style="width: 44%; padding-left: 8px; display: flex; align-items: center; gap: 8px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis;">
-                        <span style="display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: ${statusColor}; flex-shrink: 0;" title="Status Indicator"></span>
-                        <span style="font-weight: 700; color: var(--text-primary); font-size: 0.85rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${d.name || d.imei}</span>
-                        <i class="fa-solid fa-chart-line" style="color: #3b82f6; font-size: 0.85rem; flex-shrink: 0; cursor: pointer;" title="View Travel Replay" onclick="event.stopPropagation(); focusDevice('${d.imei}'); startHistoryMode();"></i>
-                    </div>
-                    <div style="width: 44%; text-align: right; color: var(--text-secondary); font-size: 0.8rem; font-family: monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">
+                    <div style="color: var(--text-secondary); font-size: 0.82rem; font-family: monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; flex-shrink: 0; padding-left: 10px;">
                         ${d.imei}
                     </div>
                 </div>
             `;
         }).join('');
         
-        container.innerHTML = headerHTML + rowsHTML;
+        container.innerHTML = rowsHTML;
     } else {
         container.innerHTML = filteredDevices.map(d => {
             const odoHidden = !isFeatureEnabled(d.imei, 'odometer') ? 'display:none' : '';
@@ -991,10 +978,36 @@ function updateFleetCounts() {
     if(haltEl) haltEl.innerText = halt;
     if(offlineEl) offlineEl.innerText = offline;
     if(allEl) allEl.innerText = myDevices.length;
+
+    // Mobile counts
+    const mobActiveEl = document.getElementById('mobileCountActive');
+    const mobIdleEl = document.getElementById('mobileCountIdle');
+    const mobHaltEl = document.getElementById('mobileCountHalt');
+    const mobOfflineEl = document.getElementById('mobileCountOffline');
+    const mobAllEl = document.getElementById('mobileCountAll');
+    
+    if(mobActiveEl) mobActiveEl.innerText = active;
+    if(mobIdleEl) mobIdleEl.innerText = idle;
+    if(mobHaltEl) mobHaltEl.innerText = halt;
+    if(mobOfflineEl) mobOfflineEl.innerText = offline;
+    if(mobAllEl) mobAllEl.innerText = myDevices.length;
 }
 
 function closeVehiclePanel() {
-    document.getElementById('vehiclePanel').classList.remove('open');
+    const panel = document.getElementById('vehiclePanel');
+    if (panel) {
+        panel.classList.remove('open');
+        panel.classList.remove('expanded');
+    }
+    const mapContainer = document.querySelector('.map-container');
+    if (mapContainer) mapContainer.classList.remove('map-minimized');
+    
+    if (window.innerWidth <= 900) {
+        const sidebar = document.querySelector('.sidebar-wrapper');
+        const menuSidebar = document.querySelector('.menu-sidebar');
+        if (sidebar) sidebar.classList.add('open');
+        if (menuSidebar) menuSidebar.classList.add('open');
+    }
 }
 
 function focusDevice(imei) {

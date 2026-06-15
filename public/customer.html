@@ -664,12 +664,16 @@
                 display: block !important;
             }
             .map-container {
-                height: calc(100vh - 56px) !important;
+                height: 50vh !important;
                 width: 100% !important;
                 position: absolute !important;
                 top: 56px !important;
                 left: 0 !important;
                 z-index: 100 !important;
+                transition: height 0.3s ease !important;
+            }
+            .map-container.map-minimized {
+                height: 25vh !important;
             }
             .map-tabs-header {
                 display: none !important;
@@ -679,17 +683,34 @@
                 bottom: 0 !important;
                 right: 0 !important;
                 width: 100% !important;
-                height: auto !important;
-                max-height: 50vh !important;
+                height: 40vh !important;
+                max-height: 80vh !important;
                 z-index: 1100 !important;
                 border-left: none !important;
                 border-top: 1px solid var(--border) !important;
                 box-shadow: 0 -4px 20px rgba(0,0,0,0.15) !important;
                 transform: translateY(100%) !important;
-                transition: transform 0.3s ease !important;
+                transition: transform 0.3s ease, height 0.3s ease !important;
+                background: var(--bg-surface) !important;
+                overflow-y: auto !important;
             }
             .right-sidebar-wrapper:has(.vehicle-details-panel.open) {
                 transform: translateY(0) !important;
+            }
+            .right-sidebar-wrapper:has(.vehicle-details-panel.expanded) {
+                height: 65vh !important;
+            }
+            .right-sidebar-wrapper:not(:has(.vehicle-details-panel.expanded)) .collapsible-mobile {
+                display: none !important;
+            }
+            .right-sidebar-wrapper:has(.vehicle-details-panel.expanded) .collapsible-mobile {
+                display: block !important;
+            }
+            .right-sidebar-wrapper:has(.vehicle-details-panel.expanded) .collapsible-mobile-grid {
+                display: grid !important;
+            }
+            .right-sidebar-wrapper:has(.vehicle-details-panel.expanded) .collapsible-mobile-flex {
+                display: flex !important;
             }
             #vehiclePlaceholder {
                 display: none !important;
@@ -922,39 +943,61 @@
                 <div id="liveSidebarContent" style="display: flex; flex-direction: column; height: 100%;">
                     <!-- Mobile Only List Header -->
                     <div class="mobile-only-list-header" style="display: none;">
+                        <!-- Search container (Clean, centered, full width) -->
                         <div style="padding: 12px 16px 6px 16px;">
-                            <h1 style="font-size: 1.4rem; font-weight: 800; color: var(--text-primary); margin: 0;">Live</h1>
-                            <div style="font-size: 0.75rem; color: var(--text-secondary); margin-top: 4px;">Home / Live / List</div>
-                        </div>
-                        <div style="display: flex; gap: 8px; padding: 6px 16px 12px 16px;">
-                            <button class="btn btn-outline" style="flex: 1; padding: 8px 12px; font-size: 0.8rem; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 6px;" onclick="showAddDeviceModal()">
-                                <i class="fa-solid fa-file-lines"></i> Change Configuration
-                            </button>
-                            <button class="btn btn-outline" style="flex: 1; padding: 8px 12px; font-size: 0.8rem; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 6px;" onclick="loadData()">
-                                <i class="fa-solid fa-arrows-rotate"></i> Refresh
-                            </button>
-                        </div>
-                        <div style="display: flex; justify-content: space-between; align-items: center; padding: 8px 16px; border-top: 1px solid var(--border-light);">
-                            <div style="display: flex; align-items: center; gap: 6px;">
-                                <span style="font-size: 0.82rem; font-weight: 700; color: var(--text-primary);">Total Count:</span>
-                                <span id="mobileTotalCountPill" style="background: rgba(59, 130, 246, 0.15); color: #3b82f6; font-size: 0.78rem; font-weight: 800; padding: 2px 8px; border-radius: 10px;">0</span>
-                            </div>
-                            <div style="display: flex; align-items: center; gap: 4px; cursor: pointer; color: var(--text-secondary); font-size: 0.82rem; font-weight: 700;" onclick="toggleMobileFilterMenu()">
-                                <span>Status Filter</span>
-                                <i class="fa-solid fa-filter"></i>
+                            <div class="search-container" style="width: 100%; position: relative;">
+                                <i class="fa-solid fa-magnifying-glass search-icon" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); color: var(--text-secondary); font-size: 0.85rem;"></i>
+                                <input type="text" id="mobileSearchInput" placeholder="Search vehicle number..." onkeyup="filterMobileVehicleList()" style="width: 100%; padding: 10px 12px 10px 34px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg-surface); color: var(--text-primary); font-size: 0.85rem; outline: none; font-family: 'Outfit', sans-serif;">
                             </div>
                         </div>
-                        <div style="display: grid; grid-template-columns: 1.5fr 1fr; gap: 8px; padding: 6px 16px 12px 16px;">
-                            <div class="search-container" style="width: 100%;">
-                                <i class="fa-solid fa-magnifying-glass search-icon" style="left: 10px;"></i>
-                                <input type="text" id="mobileSearchInput" placeholder="Search" onkeyup="filterMobileVehicleList()" style="width: 100%; padding: 6px 10px 6px 28px; border-radius: 6px; border: 1px solid var(--border-light); background: var(--bg-main); color: var(--text-primary); font-size: 0.82rem;">
+                        <!-- Horizontal Category Capsule Bar -->
+                        <div class="mobile-category-bar" style="display: flex; gap: 8px; overflow-x: auto; padding: 6px 16px 12px 16px; scrollbar-width: none; -ms-overflow-style: none; align-items: center;">
+                            <style>
+                                .mobile-category-bar::-webkit-scrollbar { display: none; }
+                                .mobile-category-pill {
+                                    display: flex;
+                                    align-items: center;
+                                    gap: 6px;
+                                    background: var(--bg-surface);
+                                    border: 1px solid var(--border);
+                                    padding: 6px 14px;
+                                    border-radius: var(--radius-full);
+                                    flex-shrink: 0;
+                                    cursor: pointer;
+                                    font-size: 0.75rem;
+                                    font-weight: 700;
+                                    color: var(--text-secondary);
+                                    transition: all 0.2s ease;
+                                }
+                                .mobile-category-pill.active {
+                                    border-color: #f43f5e !important; /* Rose/Pink active border color */
+                                    color: var(--text-primary);
+                                    background: rgba(244, 63, 94, 0.05);
+                                }
+                            </style>
+                            <div class="mobile-category-pill active" onclick="setFilter('all')">
+                                <span id="mobileCountAll" style="font-weight: 800; color: var(--text-primary);">0</span> 
+                                <span style="font-size: 0.72rem; letter-spacing: 0.3px;">FLEET</span>
                             </div>
-                            <div style="position: relative;">
-                                <select id="mobileExportSelect" onchange="handleMobileExport(this.value)" style="width: 100%; padding: 6px 24px 6px 10px; border-radius: 6px; border: 1px solid var(--border-light); background: var(--bg-main); color: var(--text-primary); font-size: 0.82rem; font-weight: 700; cursor: pointer; appearance: none; -webkit-appearance: none;">
-                                    <option value="" disabled selected>Export</option>
-                                    <option value="csv">Export CSV</option>
-                                </select>
-                                <i class="fa-solid fa-chevron-down" style="position: absolute; right: 10px; top: 50%; transform: translateY(-50%); pointer-events: none; font-size: 0.75rem; color: var(--text-secondary);"></i>
+                            <div class="mobile-category-pill" onclick="setFilter('running')">
+                                <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--success); display: inline-block;"></span>
+                                <span id="mobileCountActive" style="font-weight: 800; color: var(--text-primary);">0</span> 
+                                <span style="font-size: 0.72rem; letter-spacing: 0.3px;">ACTIVE</span>
+                            </div>
+                            <div class="mobile-category-pill" onclick="setFilter('idle')">
+                                <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--warning); display: inline-block;"></span>
+                                <span id="mobileCountIdle" style="font-weight: 800; color: var(--text-primary);">0</span> 
+                                <span style="font-size: 0.72rem; letter-spacing: 0.3px;">IDLE</span>
+                            </div>
+                            <div class="mobile-category-pill" onclick="setFilter('halt')">
+                                <span style="width: 8px; height: 8px; border-radius: 50%; background: var(--danger); display: inline-block;"></span>
+                                <span id="mobileCountHalt" style="font-weight: 800; color: var(--text-primary);">0</span> 
+                                <span style="font-size: 0.72rem; letter-spacing: 0.3px;">HALT</span>
+                            </div>
+                            <div class="mobile-category-pill" onclick="setFilter('offline')">
+                                <span style="width: 8px; height: 8px; border-radius: 50%; background: #94a3b8; display: inline-block;"></span>
+                                <span id="mobileCountOffline" style="font-weight: 800; color: var(--text-primary);">0</span> 
+                                <span style="font-size: 0.72rem; letter-spacing: 0.3px;">OFFLINE</span>
                             </div>
                         </div>
                     </div>
@@ -1397,11 +1440,16 @@
                 <!-- Mobile Only Details Layout -->
                 <div class="mobile-only-details">
                     <!-- Mobile Details Header -->
-                    <div class="mobile-details-header" style="background: var(--bg-surface); padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); margin: -1.2rem -1.2rem 12px -1.2rem;">
+                    <div class="mobile-details-header" style="background: var(--bg-surface); padding: 12px 16px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); margin: -1.2rem -1.2rem 12px -1.2rem; cursor: pointer;" onclick="toggleMobileDetailsExpand()">
                         <span style="font-weight: 800; font-size: 0.95rem; color: var(--text-primary); text-transform: uppercase; letter-spacing: 0.5px;">Device Tracking</span>
-                        <button onclick="closeVehiclePanel()" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; width: 24px; height: 24px;">
-                            <i class="fa-solid fa-xmark"></i>
-                        </button>
+                        <div style="display: flex; gap: 12px; align-items: center;">
+                            <button id="mobileDetailsExpandBtn" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; width: 24px; height: 24px;">
+                                <i class="fa-solid fa-chevron-up"></i>
+                            </button>
+                            <button onclick="event.stopPropagation(); closeVehiclePanel()" style="background: none; border: none; color: var(--text-secondary); cursor: pointer; font-size: 1.1rem; display: flex; align-items: center; justify-content: center; width: 24px; height: 24px;">
+                                <i class="fa-solid fa-xmark"></i>
+                            </button>
+                        </div>
                     </div>
 
                     <!-- Top Row: Icon + Name + Status Badge -->
@@ -1423,50 +1471,52 @@
                         <div id="mobilePanelAddress" style="color: var(--text-primary); font-weight: 500;">Fetching address...</div>
                     </div>
 
-                    <!-- Times & Speed Grid -->
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; border-top: 1px solid var(--border-light); border-bottom: 1px solid var(--border-light); padding: 10px 0;">
-                        <div>
-                            <div style="font-size: 0.65rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">GPS TIME</div>
-                            <div id="mobilePanelGpsTime" style="font-size: 0.8rem; font-weight: 700; color: var(--text-primary); margin-top: 2px;">--</div>
-                        </div>
-                        <div>
-                            <div style="font-size: 0.65rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">GPRS TIME</div>
-                            <div id="mobilePanelGprsTime" style="font-size: 0.8rem; font-weight: 700; color: var(--text-primary); margin-top: 2px;">--</div>
-                        </div>
+                    <!-- Speed (Always visible) -->
+                    <div style="margin-bottom: 12px; border-top: 1px solid var(--border-light); padding-top: 10px;">
+                        <div style="font-size: 0.65rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">SPEED</div>
+                        <div id="mobilePanelSpeed" style="font-size: 1.35rem; font-weight: 800; color: var(--text-primary); font-family: 'Outfit', sans-serif; margin-top: 2px;">0 <span style="font-size: 0.8rem; color: var(--text-secondary); font-weight: 500;">km/h</span></div>
                     </div>
 
-                    <!-- Speed and Details Row -->
-                    <div style="display: grid; grid-template-columns: 1fr 1.2fr; gap: 10px; margin-bottom: 14px;">
-                        <div>
-                            <div style="font-size: 0.65rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">SPEED</div>
-                            <div id="mobilePanelSpeed" style="font-size: 1.15rem; font-weight: 800; color: var(--text-primary); font-family: 'Outfit', sans-serif; margin-top: 2px;">0 <span style="font-size: 0.75rem; color: var(--text-secondary); font-weight: 500;">km/h</span></div>
+                    <!-- Collapsible Content (Only visible in expanded state) -->
+                    <div class="collapsible-mobile">
+                        <!-- Times Grid -->
+                        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; border-top: 1px solid var(--border-light); border-bottom: 1px solid var(--border-light); padding: 10px 0;">
+                            <div>
+                                <div style="font-size: 0.65rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">GPS TIME</div>
+                                <div id="mobilePanelGpsTime" style="font-size: 0.8rem; font-weight: 700; color: var(--text-primary); margin-top: 2px;">--</div>
+                            </div>
+                            <div>
+                                <div style="font-size: 0.65rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px;">GPRS TIME</div>
+                                <div id="mobilePanelGprsTime" style="font-size: 0.8rem; font-weight: 700; color: var(--text-primary); margin-top: 2px;">--</div>
+                            </div>
                         </div>
-                        <div>
-                            <div style="font-size: 0.65rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 4px;">Details</div>
-                            <div style="display: flex; flex-direction: column; gap: 4px;">
-                                <div style="font-size: 0.75rem; display: flex; align-items: center; gap: 6px; color: var(--text-primary); font-weight: 600;">
+
+                        <!-- Details Grid -->
+                        <div style="margin-bottom: 14px;">
+                            <div style="font-size: 0.65rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Details</div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+                                <div style="font-size: 0.75rem; display: flex; align-items: center; gap: 6px; color: var(--text-primary); font-weight: 600; background: var(--bg-main); padding: 8px; border-radius: var(--radius-sm); border: 1px solid var(--border-light);">
                                     <i class="fa-solid fa-car-battery" style="color: var(--success); font-size: 0.8rem; width: 14px; text-align: center;"></i>
-                                    <span>Power <span id="mobilePanelPowerVolt">--</span></span>
+                                    <span>Power: <span id="mobilePanelPowerVolt">--</span></span>
                                 </div>
-                                <div style="font-size: 0.75rem; display: flex; align-items: center; gap: 6px; color: var(--text-primary); font-weight: 600;">
+                                <div style="font-size: 0.75rem; display: flex; align-items: center; gap: 6px; color: var(--text-primary); font-weight: 600; background: var(--bg-main); padding: 8px; border-radius: var(--radius-sm); border: 1px solid var(--border-light);">
                                     <i class="fa-solid fa-battery-three-quarters" style="color: var(--success); font-size: 0.8rem; width: 14px; text-align: center;" id="mobilePanelBatteryIcon"></i>
-                                    <span>Battery <span id="mobilePanelBatteryVolt">--</span></span>
+                                    <span>Battery: <span id="mobilePanelBatteryVolt">--</span></span>
                                 </div>
-                                <div style="font-size: 0.75rem; display: flex; align-items: center; gap: 6px; color: var(--text-primary); font-weight: 600;">
+                                <div style="font-size: 0.75rem; display: flex; align-items: center; gap: 6px; color: var(--text-primary); font-weight: 600; background: var(--bg-main); padding: 8px; border-radius: var(--radius-sm); border: 1px solid var(--border-light); grid-column: span 2;">
                                     <i class="fa-solid fa-snowflake" id="mobilePanelAcIcon" style="color: var(--text-secondary); font-size: 0.8rem; width: 14px; text-align: center;"></i>
-                                    <span id="mobilePanelAcText">AC Off</span>
+                                    <span>Air Conditioning: <span id="mobilePanelAcText">AC Off</span></span>
                                 </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Actions Row (Keep it clean on mobile) -->
-                    <div style="display: flex; gap: 8px;">
-                        <button class="btn btn-outline" style="flex: 1; padding: 6px 10px; font-size: 0.75rem; font-weight: 700;" onclick="startHistoryMode()"><i class="fa-solid fa-clock-rotate-left"></i> History</button>
-                        <button class="btn btn-primary" style="flex: 1; padding: 6px 10px; font-size: 0.75rem; font-weight: 700;" onclick="openShareModal()"><i class="fa-solid fa-share-nodes"></i> Share</button>
+                        <!-- Actions Row -->
+                        <div style="display: flex; gap: 8px; margin-top: 14px;">
+                            <button class="btn btn-outline" style="flex: 1; padding: 10px; font-size: 0.8rem; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 6px;" onclick="startHistoryMode()"><i class="fa-solid fa-clock-rotate-left"></i> History</button>
+                            <button class="btn btn-primary" style="flex: 1; padding: 10px; font-size: 0.8rem; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 6px;" onclick="openShareModal()"><i class="fa-solid fa-share-nodes"></i> Share</button>
+                        </div>
                     </div>
                 </div>
-            </div>
 
             <!-- Telemetry Placeholder -->
             <div id="vehiclePlaceholder">
@@ -1771,8 +1821,13 @@
     <script>
         function setFilter(type) {
             document.querySelectorAll('.filter-pill').forEach(p => p.classList.remove('active'));
-            document.querySelector(`.filter-${type}`).classList.add('active');
-            // This would interact with customer.js logic
+            const destPill = document.querySelector(`.filter-${type}`);
+            if (destPill) destPill.classList.add('active');
+            
+            document.querySelectorAll('.mobile-category-pill').forEach(p => p.classList.remove('active'));
+            const mobPill = document.querySelector(`.mobile-category-pill[onclick*='${type}']`);
+            if (mobPill) mobPill.classList.add('active');
+
             if(window.applyFilter) window.applyFilter(type);
         }
         
@@ -1784,6 +1839,29 @@
             if (menuSidebar) menuSidebar.classList.toggle('open', isOpen);
             if (isOpen && window.innerWidth <= 900) {
                 closeVehiclePanel();
+            }
+        }
+
+        function toggleMobileDetailsExpand() {
+            const panel = document.getElementById('vehiclePanel');
+            const mapContainer = document.querySelector('.map-container');
+            const expandBtn = document.getElementById('mobileDetailsExpandBtn');
+            if (!panel || !mapContainer) return;
+            
+            const isExpanded = panel.classList.toggle('expanded');
+            mapContainer.classList.toggle('map-minimized', isExpanded);
+            
+            if (expandBtn) {
+                expandBtn.innerHTML = isExpanded ? '<i class="fa-solid fa-chevron-down"></i>' : '<i class="fa-solid fa-chevron-up"></i>';
+            }
+            
+            if (typeof map !== 'undefined' && map) {
+                setTimeout(() => {
+                    map.invalidateSize({ animate: true });
+                    if (typeof activeImei !== 'undefined' && activeImei && typeof markers !== 'undefined' && markers[activeImei]) {
+                        map.setView(markers[activeImei].getLatLng(), map.getZoom(), { animate: true });
+                    }
+                }, 300);
             }
         }
     </script>
