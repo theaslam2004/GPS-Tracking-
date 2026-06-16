@@ -1399,6 +1399,12 @@ module.exports = {
                 if (prevRecord && prevRecord.latitude && prevRecord.longitude) {
                     finalLat = prevRecord.latitude;
                     finalLng = prevRecord.longitude;
+                } else {
+                    const lastValid = await DeviceHistoryPoint.findOne({ imei, latitude: { $ne: 0, $exists: true, $ne: null } }).sort({ timestamp: -1 });
+                    if (lastValid) {
+                        finalLat = lastValid.latitude;
+                        finalLng = lastValid.longitude;
+                    }
                 }
             }
 
@@ -1523,6 +1529,20 @@ module.exports = {
                 if (prevRecord && prevRecord.latitude && prevRecord.longitude) {
                     finalLat = prevRecord.latitude;
                     finalLng = prevRecord.longitude;
+                } else {
+                    const historyFile = path.join(__dirname, 'history', `${imei}.json`);
+                    if (fs.existsSync(historyFile)) {
+                        try {
+                            const historyData = JSON.parse(fs.readFileSync(historyFile, 'utf8'));
+                            for (let i = historyData.length - 1; i >= 0; i--) {
+                                if (historyData[i].latitude && historyData[i].latitude !== 0) {
+                                    finalLat = historyData[i].latitude;
+                                    finalLng = historyData[i].longitude;
+                                    break;
+                                }
+                            }
+                        } catch(e) {}
+                    }
                 }
             }
 
