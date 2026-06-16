@@ -1396,11 +1396,11 @@ module.exports = {
             let finalLat = locationData.latitude;
             let finalLng = locationData.longitude;
             if (!finalLat || finalLat === 0 || !finalLng || finalLng === 0) {
-                if (prevRecord && prevRecord.latitude && prevRecord.longitude) {
+                if (prevRecord && prevRecord.latitude && prevRecord.latitude !== 0 && prevRecord.longitude && prevRecord.longitude !== 0) {
                     finalLat = prevRecord.latitude;
                     finalLng = prevRecord.longitude;
                 } else {
-                    const lastValid = await DeviceHistoryPoint.findOne({ imei, latitude: { $ne: 0, $exists: true, $ne: null } }).sort({ timestamp: -1 });
+                    const lastValid = await DeviceHistoryPoint.findOne({ imei, latitude: { $nin: [0, null], $exists: true } }).sort({ timestamp: -1 });
                     if (lastValid) {
                         finalLat = lastValid.latitude;
                         finalLng = lastValid.longitude;
