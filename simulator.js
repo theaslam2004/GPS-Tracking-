@@ -68,10 +68,15 @@ async function startSimulation() {
     }
 
     const data = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
-    const devices = data.devices || [];
+    const simulatorUser = (data.users || []).find(u => u.username === 'simulator');
+    const simulatorUserId = simulatorUser ? simulatorUser.id : null;
+    
+    const devices = (data.devices || []).filter(d => {
+        return simulatorUserId && d.ownerId === simulatorUserId;
+    });
 
     if (devices.length === 0) {
-        console.warn("No devices found. Add a device in the dashboard to simulate data.");
+        console.warn("No simulator devices found for user 'simulator'.");
         return;
     }
 
