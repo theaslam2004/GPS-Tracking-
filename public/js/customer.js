@@ -129,6 +129,14 @@ function getAddress(imei, lat, lng, callback) {
             
             const cardAddrEl = document.getElementById(`card-address-${imei}`);
             if (cardAddrEl) cardAddrEl.innerText = addr;
+            
+            const telemetryAddrEl = document.getElementById(`telemetry-address-${imei}`);
+            if (telemetryAddrEl) telemetryAddrEl.innerText = addr;
+            
+            const mobileMapModalAddrEl = document.getElementById('mobileMapModalAddress');
+            if (mobileMapModalAddrEl && window.mobileMapModalActiveImei === imei) {
+                mobileMapModalAddrEl.innerText = addr;
+            }
         })
         .catch(() => {
             const addr = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
