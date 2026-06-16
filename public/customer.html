@@ -663,19 +663,19 @@
              }
              .sidebar-wrapper {
                  position: absolute !important;
-                 top: 56px !important;
-                 left: 0 !important;
-                 width: 100% !important;
-                 max-width: 100% !important;
-                 height: calc(100vh - 56px) !important;
-                 z-index: 1050 !important;
-                 transform: translateX(-100vw) !important;
-                 transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1) !important;
-                 border-right: none !important;
-                 border-bottom: none !important;
-                 box-shadow: none !important;
-                 background: var(--bg-surface) !important;
-             }
+                  position: relative !important;
+                  top: 0 !important;
+                  left: 0 !important;
+                  width: 100% !important;
+                  max-width: 100% !important;
+                  height: calc(100vh - 56px) !important;
+                  z-index: 1000 !important;
+                  transform: none !important;
+                  border-right: none !important;
+                  border-bottom: none !important;
+                  box-shadow: none !important;
+                  background: var(--bg-main) !important;
+              }
             .sidebar-wrapper.open {
                 transform: translateX(0) !important;
             }
@@ -914,7 +914,7 @@
         </div>
     </div>
 
-    <div class="app-layout">
+    <div class="app-layout tab-live">
         <!-- Narrow Icon Menu -->
         <div class="menu-sidebar">
             <div class="menu-logo" onclick="window.location.reload()">
@@ -1894,6 +1894,69 @@
             }
         }
     </script>
+
+    <!-- Mobile responsive overrides for Accordion-style layout -->
+    <style>
+        @media (max-width: 900px) {
+            /* Full screen sidebar device list in live tracking mode */
+            .app-layout.tab-live .sidebar-wrapper {
+                position: relative !important;
+                top: 0 !important;
+                left: 0 !important;
+                width: 100% !important;
+                max-width: 100% !important;
+                height: calc(100vh - 56px) !important;
+                z-index: 1000 !important;
+                transform: none !important;
+                border-right: none !important;
+                border-bottom: none !important;
+                box-shadow: none !important;
+                background: var(--bg-main) !important;
+                display: block !important;
+                overflow-y: auto !important;
+            }
+            .app-layout.tab-live .sidebar-wrapper.open {
+                transform: none !important;
+            }
+            
+            /* Hide main map and details panel on mobile when in live tracking mode */
+            .app-layout.tab-live .map-container {
+                display: none !important;
+            }
+            .app-layout.tab-live .right-sidebar-wrapper {
+                display: none !important;
+            }
+            
+            /* Full screen map view in history/replay mode */
+            .app-layout.tab-replay .map-container {
+                display: block !important;
+                height: calc(100vh - 56px) !important;
+                width: 100% !important;
+                position: absolute !important;
+                top: 56px !important;
+                left: 0 !important;
+                z-index: 100 !important;
+            }
+            .app-layout.tab-replay .sidebar-wrapper {
+                display: none !important;
+            }
+            .app-layout.tab-replay .right-sidebar-wrapper {
+                display: none !important;
+            }
+            
+            /* General styling for inline Leaflet mini maps inside device rows */
+            .mini-map-container {
+                position: relative;
+                width: 100%;
+                height: 180px;
+                border-radius: 12px;
+                border: 1px solid var(--border);
+                margin-bottom: 12px;
+                overflow: hidden;
+                box-shadow: inset 0 0 10px rgba(0, 0, 0, 0.2);
+            }
+        }
+    </style>
 
     <script src="/socket.io/socket.io.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>

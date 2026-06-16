@@ -826,34 +826,162 @@ function renderDeviceList() {
         if (mobileAllEl) mobileAllEl.innerText = myDevices.length;
 
         const rowsHTML = filteredDevices.map(d => {
-            const activeClass = (d.imei === activeImei) ? 'active' : '';
+            const isActive = (d.imei === activeImei);
+            const activeClass = isActive ? 'active' : '';
             const live = latestData[d.imei] || {};
+            
+            // Telemetry calculations
+            const speedVal = live.speed !== undefined ? live.speed : 0;
+            const isOdoVerified = (live.odometer !== undefined && live.odometer >= 0);
+            const odoVal = isOdoVerified ? live.odometer.toFixed(1) : '--';
+            const ignText = (live.ignition === 1 || live.ignition === true || live.acc === 1) ? 'ON' : 'OFF';
+            const ignColor = ignText === 'ON' ? 'var(--success)' : 'var(--text-secondary)';
+            const statusText = live.status || 'halt';
+            
             let statusColor = 'var(--text-secondary)';
             if (live.timestamp) {
                 const isStale = (Date.now() - new Date(live.timestamp)) > 60000;
                 if (!isStale) {
-                    const statusClass = live.status || 'halt';
-                    if (statusClass === 'running') statusColor = 'var(--success)';
-                    else if (statusClass === 'idle') statusColor = 'var(--warning)';
-                    else if (statusClass === 'halt') statusColor = 'var(--danger)';
+                    if (statusText === 'running') statusColor = 'var(--success)';
+                    else if (statusText === 'idle') statusColor = 'var(--warning)';
+                    else if (statusText === 'halt') statusColor = 'var(--danger)';
                 }
             }
+            
+            const addressVal = live.address || 'Fetching location...';
+            const powerVal = live.power !== undefined ? `${live.power}v` : '--';
+            const batteryVal = live.battery !== undefined ? `${live.battery}v` : '--';
+            const acVal = (live.ac === 1 || live.ac === 'ON') ? 'ON' : 'OFF';
 
             return `
-                <div class="mobile-device-row ${activeClass}" onclick="focusDevice('${d.imei}')" style="display: flex; align-items: center; justify-content: space-between; padding: 16px; border-bottom: 1px solid var(--border-light); cursor: pointer; transition: all 0.2s; background: ${d.imei === activeImei ? 'rgba(244, 63, 94, 0.08)' : 'transparent'}; border-left: 3px solid ${d.imei === activeImei ? 'var(--primary)' : 'transparent'};">
-                    <div style="display: flex; align-items: center; gap: 12px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; flex: 1; min-width: 0;">
-                        <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: ${statusColor}; flex-shrink: 0;" title="Status Indicator"></span>
-                        <span style="font-weight: 700; color: var(--text-primary); font-size: 0.92rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${d.name || d.imei}</span>
-                        <i class="fa-solid fa-chart-line" style="color: #3b82f6; font-size: 0.9rem; flex-shrink: 0; cursor: pointer; padding: 4px;" title="View Travel Replay" onclick="event.stopPropagation(); focusDevice('${d.imei}'); startHistoryMode();"></i>
+                <div class="mobile-device-row ${activeClass}" onclick="focusDevice('${d.imei}')" style="display: flex; flex-direction: column; padding: 16px; border-bottom: 1px solid var(--border-light); cursor: pointer; transition: all 0.25s ease; background: ${isActive ? 'rgba(255, 255, 255, 0.03)' : 'transparent'}; border-left: 3px solid ${isActive ? 'var(--primary)' : 'transparent'}; margin-bottom: ${isActive ? '8px' : '0'}; border-radius: ${isActive ? '8px' : '0'}; box-shadow: ${isActive ? '0 4px 15px rgba(0,0,0,0.1)' : 'none'};">
+                    <!-- Row Header (Always Visible) -->
+                    <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                        <div style="display: flex; align-items: center; gap: 12px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; flex: 1; min-width: 0;">
+                            <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: ${statusColor}; flex-shrink: 0;" title="Status Indicator"></span>
+                            <span style="font-weight: 700; color: var(--text-primary); font-size: 0.92rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${d.name || d.imei}</span>
+                            <i class="fa-solid fa-chart-line" style="color: #3b82f6; font-size: 0.9rem; flex-shrink: 0; cursor: pointer; padding: 4px;" title="View Travel Replay" onclick="event.stopPropagation(); focusDevice('${d.imei}'); switchMapTab('replay');"></i>
+                        </div>
+                        <div style="color: var(--text-secondary); font-size: 0.82rem; font-family: monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; flex-shrink: 0; padding-left: 10px; display: flex; align-items: center; gap: 8px;">
+                            <span>${d.imei}</span>
+                            <i class="fa-solid ${isActive ? 'fa-chevron-up' : 'fa-chevron-down'}" style="font-size: 0.8rem; color: var(--text-secondary);"></i>
+                        </div>
                     </div>
-                    <div style="color: var(--text-secondary); font-size: 0.82rem; font-family: monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; flex-shrink: 0; padding-left: 10px;">
-                        ${d.imei}
+                    
+                    <!-- Expanded Content (Visible only when active) -->
+                    ${isActive ? `
+                    <div class="device-row-expanded-content" style="padding-top: 16px; width: 100%; display: flex; flex-direction: column;">
+                        <!-- Inline Mini Map -->
+                        <div id="mini-map-${d.imei}" class="mini-map-container" style="height: 180px; width: 100%; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 12px; overflow: hidden; z-index: 10;"></div>
+                        
+                        <!-- Telemetry Grid -->
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px; width: 100%;">
+                            <div style="background: rgba(255,255,255,0.02); padding: 8px 12px; border-radius: var(--radius-md); border: 1px solid var(--border-light);">
+                                <div style="font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase;">Speed</div>
+                                <div id="telemetry-speed-${d.imei}" style="font-size: 0.88rem; font-weight: 800; color: var(--text-primary); margin-top: 2px;">${speedVal} km/h</div>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.02); padding: 8px 12px; border-radius: var(--radius-md); border: 1px solid var(--border-light);">
+                                <div style="font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase;">Odometer</div>
+                                <div id="telemetry-odo-${d.imei}" style="font-size: 0.88rem; font-weight: 800; color: var(--text-primary); margin-top: 2px;">${odoVal} km</div>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.02); padding: 8px 12px; border-radius: var(--radius-md); border: 1px solid var(--border-light);">
+                                <div style="font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase;">Ignition</div>
+                                <div id="telemetry-ignition-${d.imei}" style="font-size: 0.88rem; font-weight: 800; color: ${ignColor}; margin-top: 2px;">${ignText}</div>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.02); padding: 8px 12px; border-radius: var(--radius-md); border: 1px solid var(--border-light);">
+                                <div style="font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase;">Status</div>
+                                <div id="telemetry-status-${d.imei}" style="font-size: 0.88rem; font-weight: 800; color: ${statusColor}; margin-top: 2px; text-transform: uppercase;">${statusText}</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Address -->
+                        <div style="font-size: 0.8rem; color: var(--text-secondary); background: rgba(255,255,255,0.01); padding: 8px 12px; border-radius: var(--radius-md); border: 1px solid var(--border-light); margin-bottom: 12px; display: flex; align-items: flex-start; gap: 8px; white-space: normal; line-height: 1.3;">
+                            <i class="fa-solid fa-location-dot" style="color: var(--primary); margin-top: 2px; flex-shrink: 0;"></i>
+                            <span id="telemetry-address-${d.imei}">${addressVal}</span>
+                        </div>
+                        
+                        <!-- Extra Telemetry Grid -->
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 12px; width: 100%;">
+                            <div style="text-align: center; background: rgba(255,255,255,0.01); padding: 6px; border-radius: 8px; border: 1px solid var(--border-light); font-size: 0.68rem; color: var(--text-secondary);">
+                                Power<br><strong style="color: var(--text-primary); font-size: 0.72rem;">${powerVal}</strong>
+                            </div>
+                            <div style="text-align: center; background: rgba(255,255,255,0.01); padding: 6px; border-radius: 8px; border: 1px solid var(--border-light); font-size: 0.68rem; color: var(--text-secondary);">
+                                Battery<br><strong style="color: var(--text-primary); font-size: 0.72rem;">${batteryVal}</strong>
+                            </div>
+                            <div style="text-align: center; background: rgba(255,255,255,0.01); padding: 6px; border-radius: 8px; border: 1px solid var(--border-light); font-size: 0.68rem; color: var(--text-secondary);">
+                                AC<br><strong style="color: var(--text-primary); font-size: 0.72rem;">${acVal}</strong>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div style="display: flex; gap: 8px; width: 100%;">
+                            <button style="flex: 1; padding: 10px; font-size: 0.8rem; font-weight: 700; border: 1px solid var(--border); background: transparent; border-radius: 8px; color: var(--text-primary); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; font-family: 'Outfit';" onclick="event.stopPropagation(); focusDevice('${d.imei}'); switchMapTab('replay');">
+                                <i class="fa-solid fa-clock-rotate-left"></i> History
+                            </button>
+                            <button class="btn-primary" style="flex: 1; padding: 10px; font-size: 0.8rem; font-weight: 700; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; border: none; font-family: 'Outfit';" onclick="event.stopPropagation(); shareLocation('${d.imei}')">
+                                <i class="fa-solid fa-share-nodes"></i> Share
+                            </button>
+                        </div>
                     </div>
+                    ` : ''}
                 </div>
             `;
         }).join('');
         
         container.innerHTML = rowsHTML;
+
+        // Cleanup old mini maps
+        if (window.miniMaps) {
+            Object.keys(window.miniMaps).forEach(imei => {
+                if (window.miniMaps[imei]) {
+                    try { window.miniMaps[imei].remove(); } catch(e){}
+                }
+            });
+        }
+        window.miniMaps = {};
+        window.miniMapMarkers = {};
+        
+        if (activeImei && myDevices.some(d => d.imei === activeImei)) {
+            setTimeout(() => {
+                const mapId = `mini-map-${activeImei}`;
+                const mapEl = document.getElementById(mapId);
+                if (mapEl) {
+                    const live = latestData[activeImei] || {};
+                    const lat = live.lat || 20.5937;
+                    const lng = live.lng || 78.9629;
+                    
+                    try {
+                        const miniMap = L.map(mapId, {
+                            zoomControl: false,
+                            attributionControl: false
+                        }).setView([lat, lng], 15);
+                        
+                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(miniMap);
+                        
+                        const statusClass = live.status || 'halt';
+                        const angle = live.heading || live.angle || 0;
+                        
+                        let iconUrl = 'img/arrow-green.png';
+                        if (statusClass === 'idle') iconUrl = 'img/arrow-orange.png';
+                        else if (statusClass === 'halt') iconUrl = 'img/arrow-red.png';
+                        
+                        const customIcon = L.divIcon({
+                            className: 'custom-div-icon',
+                            html: `<div style="transform: rotate(${angle}deg); width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.15); border-radius: 50%; box-shadow: 0 0 10px rgba(0,0,0,0.2);"><img src="${iconUrl}" style="width: 22px; height: 22px;" /></div>`,
+                            iconSize: [36, 36],
+                            iconAnchor: [18, 18]
+                        });
+                        
+                        const marker = L.marker([lat, lng], { icon: customIcon }).addTo(miniMap);
+                        
+                        window.miniMaps[activeImei] = miniMap;
+                        window.miniMapMarkers[activeImei] = marker;
+                    } catch (err) {
+                        console.error('Failed to initialize inline mini map:', err);
+                    }
+                }
+            }, 100);
+        }
     } else {
         container.innerHTML = filteredDevices.map(d => {
             const odoHidden = !isFeatureEnabled(d.imei, 'odometer') ? 'display:none' : '';
@@ -990,6 +1118,22 @@ function updateFleetCounts() {
     if(mobAllEl) mobAllEl.innerText = myDevices.length;
 }
 
+function updateMobileListStatusInPlace(imei, status) {
+    const rows = document.querySelectorAll('.mobile-device-row');
+    rows.forEach(row => {
+        if (row.innerHTML.includes(imei)) {
+            const dot = row.querySelector('span[title="Status Indicator"]');
+            if (dot) {
+                let statusColor = 'var(--text-secondary)';
+                if (status === 'running') statusColor = 'var(--success)';
+                else if (status === 'idle') statusColor = 'var(--warning)';
+                else if (status === 'halt') statusColor = 'var(--danger)';
+                dot.style.background = statusColor;
+            }
+        }
+    });
+}
+
 function closeVehiclePanel() {
     const panel = document.getElementById('vehiclePanel');
     if (panel) {
@@ -1006,6 +1150,21 @@ function closeVehiclePanel() {
 }
 
 function focusDevice(imei) {
+    const isMobile = window.innerWidth <= 900;
+    if (isMobile) {
+        if (activeImei === imei) {
+            activeImei = null;
+        } else {
+            activeImei = imei;
+        }
+        renderDeviceList();
+        
+        if (activeImei && markers[activeImei]) {
+            map.setView(markers[activeImei].getLatLng(), 16, { animate: true });
+        }
+        return;
+    }
+
     activeImei = imei;
     if(markers[imei]) {
         map.flyTo(markers[imei].getLatLng(), 16, { animate: true, duration: 1.5 });
@@ -1021,14 +1180,6 @@ function focusDevice(imei) {
         
         // Open Panel
         document.getElementById('vehiclePanel').classList.add('open');
-        
-        // Close sidebar drawer on mobile to show the map and details panel
-        if (window.innerWidth <= 900) {
-            const sidebar = document.querySelector('.sidebar-wrapper');
-            const menuSidebar = document.querySelector('.menu-sidebar');
-            if (sidebar) sidebar.classList.remove('open');
-            if (menuSidebar) menuSidebar.classList.remove('open');
-        }
         
         // Populate if we have data
         if(latestData[imei]) {
@@ -1563,8 +1714,70 @@ function handleDeviceData(data, isLive = true) {
         }
     }
     
-    // Update Sidebar card list & status counts
-    renderDeviceList();
+    // Real-time update for inline Mobile Mini Map
+    if (window.miniMaps && window.miniMaps[imei] && window.innerWidth <= 900) {
+        const miniMap = window.miniMaps[imei];
+        const latlng = [latitude, longitude];
+        
+        if (window.miniMapMarkers && window.miniMapMarkers[imei]) {
+            window.miniMapMarkers[imei].setLatLng(latlng);
+            
+            const angle = data.heading || 0;
+            const statusClass = beaconStatus;
+            let iconUrl = 'img/arrow-green.png';
+            if (statusClass === 'idle') iconUrl = 'img/arrow-orange.png';
+            else if (statusClass === 'halt') iconUrl = 'img/arrow-red.png';
+            
+            window.miniMapMarkers[imei].setIcon(L.divIcon({
+                className: 'custom-div-icon',
+                html: `<div style="transform: rotate(${angle}deg); width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.15); border-radius: 50%; box-shadow: 0 0 10px rgba(0,0,0,0.2);"><img src="${iconUrl}" style="width: 22px; height: 22px;" /></div>`,
+                iconSize: [36, 36],
+                iconAnchor: [18, 18]
+            }));
+        }
+        
+        miniMap.setView(latlng, miniMap.getZoom(), { animate: true });
+        
+        const speedTextEl = document.getElementById(`telemetry-speed-${imei}`);
+        if (speedTextEl) speedTextEl.innerText = `${speed !== undefined ? speed : 0} km/h`;
+        
+        const odoTextEl = document.getElementById(`telemetry-odo-${imei}`);
+        if (odoTextEl) {
+            const isOdoVerified = (data.odometer !== undefined && data.odometer >= 0);
+            odoTextEl.innerText = `${isOdoVerified ? data.odometer.toFixed(1) : '--'} km`;
+        }
+        
+        const ignTextEl = document.getElementById(`telemetry-ignition-${imei}`);
+        if (ignTextEl) {
+            const ignText = (data.ignition === 1 || data.ignition === true || data.acc === 1) ? 'ON' : 'OFF';
+            ignTextEl.innerText = ignText;
+            ignTextEl.style.color = ignText === 'ON' ? 'var(--success)' : 'var(--text-secondary)';
+        }
+        
+        const statusTextEl = document.getElementById(`telemetry-status-${imei}`);
+        if (statusTextEl) {
+            const statusClass = beaconStatus;
+            statusTextEl.innerText = statusClass.toUpperCase();
+            let statusColor = 'var(--text-secondary)';
+            if (statusClass === 'running') statusColor = 'var(--success)';
+            else if (statusClass === 'idle') statusColor = 'var(--warning)';
+            else if (statusClass === 'halt') statusColor = 'var(--danger)';
+            statusTextEl.style.color = statusColor;
+        }
+        
+        const addressTextEl = document.getElementById(`telemetry-address-${imei}`);
+        if (addressTextEl) {
+            addressTextEl.innerText = data.address || 'Fetching location...';
+        }
+    }
+
+    // Update Sidebar card list & status counts (avoid full redraw on mobile to preserve leaflet mini map)
+    const isMobileLayout = window.innerWidth <= 900;
+    if (!isMobileLayout) {
+        renderDeviceList();
+    } else {
+        updateMobileListStatusInPlace(imei, beaconStatus);
+    }
     
     // Add to today's history points if active device and is today
     if (isLive && activeImei === imei && window.todayHistoryPoints) {
@@ -2660,15 +2873,24 @@ function clearVehicleSearch() {
 function switchMapTab(mode) {
     const tabLive = document.getElementById('tabLive');
     const tabReplay = document.getElementById('tabReplay');
+    const layout = document.querySelector('.app-layout');
     if (!tabLive || !tabReplay) return;
     
     if (mode === 'live') {
         tabLive.classList.add('active');
         tabReplay.classList.remove('active');
+        if (layout) {
+            layout.classList.add('tab-live');
+            layout.classList.remove('tab-replay');
+        }
         exitHistoryMode();
     } else {
         tabLive.classList.remove('active');
         tabReplay.classList.add('active');
+        if (layout) {
+            layout.classList.add('tab-replay');
+            layout.classList.remove('tab-live');
+        }
         startHistoryMode();
     }
 }
