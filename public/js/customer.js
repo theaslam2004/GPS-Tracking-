@@ -871,8 +871,13 @@ function renderDeviceList() {
                     <!-- Expanded Content (Visible only when active) -->
                     ${isActive ? `
                     <div class="device-row-expanded-content" style="padding-top: 16px; width: 100%; display: flex; flex-direction: column;">
-                        <!-- Inline Mini Map -->
-                        <div id="mini-map-${d.imei}" class="mini-map-container" style="height: 180px; width: 100%; border-radius: 12px; border: 1px solid var(--border); margin-bottom: 12px; overflow: hidden; z-index: 10;"></div>
+                        <!-- Inline Mini Map with Expand Option Overlay -->
+                        <div style="position: relative; width: 100%; height: 180px; margin-bottom: 12px; border-radius: 12px; border: 1px solid var(--border); overflow: hidden; z-index: 10;">
+                            <div id="mini-map-${d.imei}" class="mini-map-container" style="height: 100%; width: 100%;"></div>
+                            <button onclick="event.stopPropagation(); openMobileMapModal('${d.imei}')" style="position: absolute; top: 8px; right: 8px; width: 32px; height: 32px; border-radius: 6px; background: rgba(255,255,255,0.9); border: 1px solid var(--border); color: var(--text-primary); display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 1000; box-shadow: 0 2px 6px rgba(0,0,0,0.15);" title="Expand Map">
+                                <i class="fa-solid fa-expand" style="font-size: 0.85rem;"></i>
+                            </button>
+                        </div>
                         
                         <!-- Telemetry Grid -->
                         <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px; width: 100%;">
@@ -961,15 +966,26 @@ function renderDeviceList() {
                         const statusClass = live.status || 'halt';
                         const angle = live.heading || live.angle || 0;
                         
-                        let iconUrl = 'img/arrow-green.png';
-                        if (statusClass === 'idle') iconUrl = 'img/arrow-orange.png';
-                        else if (statusClass === 'halt') iconUrl = 'img/arrow-red.png';
+                        let color = '#FF3D00'; // Halt (Red)
+                        if (statusClass === 'running') {
+                            color = '#00E676'; // Moving (Green)
+                        } else if (statusClass === 'idle') {
+                            color = '#FFab00'; // Idle (Amber)
+                        } else if (statusClass === 'offline') {
+                            color = '#94a3b8'; // Offline (Gray)
+                        }
                         
                         const customIcon = L.divIcon({
-                            className: 'custom-div-icon',
-                            html: `<div style="transform: rotate(${angle}deg); width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.15); border-radius: 50%; box-shadow: 0 0 10px rgba(0,0,0,0.2);"><img src="${iconUrl}" style="width: 22px; height: 22px;" /></div>`,
-                            iconSize: [36, 36],
-                            iconAnchor: [18, 18]
+                            className: 'custom-vehicle-marker-svg',
+                            html: `
+                                <div class="vehicle-beacon" style="background: ${color}; color: ${color}; border: 1.5px solid rgba(255, 255, 255, 0.4); box-shadow: 0 0 8px ${color}; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                                    <div class="heading-arrow" style="transform: rotate(${angle || 0}deg); color: #ffffff; transition: transform 0.4s ease-out; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+                                        <i class="fa-solid fa-location-arrow" style="transform: rotate(-45deg); display: inline-block; font-size: 14px;"></i>
+                                    </div>
+                                </div>
+                            `,
+                            iconSize: [28, 28],
+                            iconAnchor: [14, 14]
                         });
                         
                         const marker = L.marker([lat, lng], { icon: customIcon }).addTo(miniMap);
@@ -1714,6 +1730,97 @@ function handleDeviceData(data, isLive = true) {
         }
     }
     
+    // Real-time update for fullscreen Mobile Map Modal
+    if (typeof mobileModalActiveImei !== 'undefined' && mobileModalActiveImei === imei && mobileModalMap && mobileModalMarker) {
+        const latlng = [latitude, longitude];
+        mobileModalMarker.setLatLng(latlng);
+        
+        const angle = data.heading || 0;
+        const statusClass = beaconStatus;
+        let color = '#94a3b8'; // offline
+        if (statusClass === 'running') color = '#00E676';
+        else if (statusClass === 'idle') color = '#FFab00';
+        else if (statusClass === 'halt') color = '#FF3D00';
+        
+        mobileModalMarker.setIcon(L.divIcon({
+            className: 'custom-vehicle-marker-svg',
+            html: `
+                <div class="vehicle-beacon" style="background: ${color}; color: ${color}; border: 1.5px solid rgba(255, 255, 255, 0.4); box-shadow: 0 0 8px ${color}; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                    <div class="heading-arrow" style="transform: rotate(${angle}deg); color: #ffffff; transition: transform 0.4s ease-out; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+                        <i class="fa-solid fa-location-arrow" style="transform: rotate(-45deg); display: inline-block; font-size: 16px;"></i>
+                    </div>
+                </div>
+            `,
+            iconSize: [32, 32],
+            iconAnchor: [16, 16]
+        }));
+        
+        mobileModalMap.setView(latlng, mobileModalMap.getZoom(), { animate: true });
+        
+        // Update stats in real-time inside modal
+        const statusDot = document.getElementById('mobileMapModalStatusDot');
+        if (statusDot) statusDot.style.background = color;
+        
+        const odoVal = (data.odometer !== undefined && data.odometer >= 0) ? `${data.odometer.toFixed(1)} km` : '-- km';
+        const speedVal = speed !== undefined ? speed : 0;
+        const ignText = (data.ignition === 1 || data.ignition === true || data.acc === 1) ? 'ON' : 'OFF';
+        const ignColor = ignText === 'ON' ? 'var(--success)' : 'var(--text-secondary)';
+        
+        const powerVal = data.powerSource || '--';
+        const batteryVal = data.battery !== undefined ? `${data.battery.toFixed(1)}v` : '--';
+        const addressVal = data.address || 'Fetching location...';
+        
+        const odoEl = document.getElementById('mobileMapModalOdo');
+        if (odoEl) odoEl.innerText = odoVal;
+        
+        const speedEl = document.getElementById('mobileMapModalSpeedVal');
+        if (speedEl) speedEl.innerText = speedVal;
+        
+        // Animate circular speedometer fill
+        const maxSpeed = 120;
+        const circumference = 188.5;
+        const speedLimit = Math.min(speedVal, maxSpeed);
+        const offset = circumference - (speedLimit / maxSpeed) * circumference;
+        const circleFill = document.getElementById('mobileMapModalSpeedCircleFill');
+        if (circleFill) circleFill.style.strokeDashoffset = offset;
+        
+        const ignEl = document.getElementById('mobileMapModalIgn');
+        if (ignEl) {
+            ignEl.innerText = ignText;
+            ignEl.style.color = ignColor;
+        }
+        
+        const batteryEl = document.getElementById('mobileMapModalBattery');
+        if (batteryEl) {
+            batteryEl.innerText = `${batteryVal} (${powerVal === 'main' ? 'Main' : 'Internal'})`;
+        }
+        
+        const addressEl = document.getElementById('mobileMapModalAddress');
+        if (addressEl) addressEl.innerText = addressVal;
+        
+        let signalText = 'Strong';
+        let signalColor = 'var(--success)';
+        if (data.status === 'offline') {
+            signalText = 'No Signal';
+            signalColor = '#ef4444';
+        } else if (data.timestamp) {
+            const isStale = (Date.now() - new Date(data.timestamp)) > 120000;
+            if (isStale) {
+                signalText = 'Weak';
+                signalColor = '#FFab00';
+            }
+        }
+        const signalEl = document.getElementById('mobileMapModalSignal');
+        if (signalEl) {
+            signalEl.innerText = signalText;
+            signalEl.style.color = signalColor;
+        }
+        const updateEl = document.getElementById('mobileMapModalUpdatedTime');
+        if (updateEl) {
+            updateEl.innerText = data.timestamp ? timeSince(new Date(data.timestamp)) : 'Just now';
+        }
+    }
+    
     // Real-time update for inline Mobile Mini Map
     if (window.miniMaps && window.miniMaps[imei] && window.innerWidth <= 900) {
         const miniMap = window.miniMaps[imei];
@@ -1724,15 +1831,27 @@ function handleDeviceData(data, isLive = true) {
             
             const angle = data.heading || 0;
             const statusClass = beaconStatus;
-            let iconUrl = 'img/arrow-green.png';
-            if (statusClass === 'idle') iconUrl = 'img/arrow-orange.png';
-            else if (statusClass === 'halt') iconUrl = 'img/arrow-red.png';
+            
+            let color = '#FF3D00'; // Halt (Red)
+            if (statusClass === 'running') {
+                color = '#00E676'; // Moving (Green)
+            } else if (statusClass === 'idle') {
+                color = '#FFab00'; // Idle (Amber)
+            } else if (statusClass === 'offline') {
+                color = '#94a3b8'; // Offline (Gray)
+            }
             
             window.miniMapMarkers[imei].setIcon(L.divIcon({
-                className: 'custom-div-icon',
-                html: `<div style="transform: rotate(${angle}deg); width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; background: rgba(255,255,255,0.15); border-radius: 50%; box-shadow: 0 0 10px rgba(0,0,0,0.2);"><img src="${iconUrl}" style="width: 22px; height: 22px;" /></div>`,
-                iconSize: [36, 36],
-                iconAnchor: [18, 18]
+                className: 'custom-vehicle-marker-svg',
+                html: `
+                    <div class="vehicle-beacon" style="background: ${color}; color: ${color}; border: 1.5px solid rgba(255, 255, 255, 0.4); box-shadow: 0 0 8px ${color}; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                        <div class="heading-arrow" style="transform: rotate(${angle || 0}deg); color: #ffffff; transition: transform 0.4s ease-out; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+                            <i class="fa-solid fa-location-arrow" style="transform: rotate(-45deg); display: inline-block; font-size: 14px;"></i>
+                        </div>
+                    </div>
+                `,
+                iconSize: [28, 28],
+                iconAnchor: [14, 14]
             }));
         }
         
@@ -3195,6 +3314,19 @@ function updateTodayStatsUI() {
     if (runEl) runEl.innerText = formatToMins(driveMs);
     if (idleEl) idleEl.innerText = formatToMins(idleMs);
     if (haltEl) haltEl.innerText = formatToMins(haltMs);
+    
+    // Update mobile modal today summary elements
+    const mDistEl = document.getElementById('mobileMapModalSummaryDistance');
+    const mEngineEl = document.getElementById('mobileMapModalSummaryEngineActive');
+    const mRunEl = document.getElementById('mobileMapModalSummaryDrive');
+    const mIdleEl = document.getElementById('mobileMapModalSummaryIdle');
+    const mHaltEl = document.getElementById('mobileMapModalSummaryHalt');
+    
+    if (mDistEl) mDistEl.innerText = `${distanceKm} km`;
+    if (mEngineEl) mEngineEl.innerText = engineTimeStr;
+    if (mRunEl) mRunEl.innerText = formatToMins(driveMs);
+    if (mIdleEl) mIdleEl.innerText = formatToMins(idleMs);
+    if (mHaltEl) mHaltEl.innerText = formatToMins(haltMs);
 }
 
 function exportTodayReportPDF() {
@@ -3544,4 +3676,525 @@ window.toggleMobileSort = function() {
     });
     renderDeviceList();
     showToast("📶 Sort Order Updated", `Sorted by name: ${mobileSortAsc ? 'A-Z' : 'Z-A'}`, "info");
+};
+
+// Fullscreen Mobile Map Modal Logic
+let mobileModalMap = null;
+let mobileModalMarker = null;
+let mobileModalActiveImei = null;
+
+window.openMobileMapModal = function(imei) {
+    mobileModalActiveImei = imei;
+    const device = myDevices.find(d => d.imei === imei);
+    const live = latestData[imei] || {};
+    const lat = live.lat || 12.9716;
+    const lng = live.lng || 77.5946;
+    
+    // Reset bottom panel carousel slide to 0 (real-time stats)
+    setMobileModalSlide(0);
+    
+    // Close history drawer sidebar if open
+    const sidebar = document.getElementById('mobileModalHistorySidebar');
+    if (sidebar) {
+        sidebar.classList.remove('open');
+        sidebar.style.transform = 'translateX(100%)';
+    }
+    
+    // Stop any active replay playback
+    stopMobileReplayPlayback();
+    
+    // Fetch today's summary statistics
+    loadTodayStats(imei);
+    
+    // Populate select elements with options for all myDevices
+    const select = document.getElementById('mobileMapModalDeviceSelect');
+    if (select) {
+        select.innerHTML = myDevices.map(d => `
+            <option value="${d.imei}" ${d.imei === imei ? 'selected' : ''}>${d.name || d.imei}</option>
+        `).join('');
+    }
+    
+    // Update top bar status indicator dot
+    const statusDot = document.getElementById('mobileMapModalStatusDot');
+    if (statusDot) {
+        const statusClass = live.status || 'halt';
+        let color = '#94a3b8'; // offline
+        if (live.timestamp) {
+            const isStale = (Date.now() - new Date(live.timestamp)) > 60000;
+            if (!isStale) {
+                if (statusClass === 'running') color = '#00E676';
+                else if (statusClass === 'idle') color = '#FFab00';
+                else if (statusClass === 'halt') color = '#FF3D00';
+            }
+        }
+        statusDot.style.background = color;
+    }
+    
+    // Update stats panel
+    const odoVal = (live.odometer !== undefined && live.odometer >= 0) ? `${live.odometer.toFixed(1)} km` : '-- km';
+    const speedVal = live.speed !== undefined ? live.speed : 0;
+    const ignText = (live.ignition === 1 || live.ignition === true || live.acc === 1) ? 'ON' : 'OFF';
+    const ignColor = ignText === 'ON' ? 'var(--success)' : 'var(--text-secondary)';
+    
+    const powerVal = live.powerSource || '--';
+    const batteryVal = live.battery !== undefined ? `${live.battery.toFixed(1)}v` : '--';
+    const addressVal = live.address || 'Fetching location...';
+    
+    const odoEl = document.getElementById('mobileMapModalOdo');
+    if (odoEl) odoEl.innerText = odoVal;
+    
+    const speedEl = document.getElementById('mobileMapModalSpeedVal');
+    if (speedEl) speedEl.innerText = speedVal;
+    
+    // Animate circular speedometer fill
+    const maxSpeed = 120;
+    const circumference = 188.5;
+    const speedLimit = Math.min(speedVal, maxSpeed);
+    const offset = circumference - (speedLimit / maxSpeed) * circumference;
+    const circleFill = document.getElementById('mobileMapModalSpeedCircleFill');
+    if (circleFill) circleFill.style.strokeDashoffset = offset;
+    
+    const ignEl = document.getElementById('mobileMapModalIgn');
+    if (ignEl) {
+        ignEl.innerText = ignText;
+        ignEl.style.color = ignColor;
+    }
+    
+    const batteryEl = document.getElementById('mobileMapModalBattery');
+    if (batteryEl) {
+        batteryEl.innerText = `${batteryVal} (${powerVal === 'main' ? 'Main' : 'Internal'})`;
+    }
+    
+    const addressEl = document.getElementById('mobileMapModalAddress');
+    if (addressEl) addressEl.innerText = addressVal;
+    
+    // GPS Signal & Last Update elements
+    let signalText = 'Strong';
+    let signalColor = 'var(--success)';
+    if (live.status === 'offline') {
+        signalText = 'No Signal';
+        signalColor = '#ef4444';
+    } else if (live.timestamp) {
+        const isStale = (Date.now() - new Date(live.timestamp)) > 120000;
+        if (isStale) {
+            signalText = 'Weak';
+            signalColor = '#FFab00';
+        }
+    }
+    const signalEl = document.getElementById('mobileMapModalSignal');
+    if (signalEl) {
+        signalEl.innerText = signalText;
+        signalEl.style.color = signalColor;
+    }
+    const updateEl = document.getElementById('mobileMapModalUpdatedTime');
+    if (updateEl) {
+        updateEl.innerText = live.timestamp ? timeSince(new Date(live.timestamp)) : 'Just now';
+    }
+    
+    document.getElementById('mobileMapModal').style.display = 'flex'; // Use flex layout to enable header-map-footer distribution
+    
+    // Initialize touch swipe listener
+    setTimeout(() => {
+        initMobileModalSwipe();
+    }, 200);
+    
+    setTimeout(() => {
+        if (!mobileModalMap) {
+            mobileModalMap = L.map('mobileMapModalMap', {
+                zoomControl: true,
+                attributionControl: false
+            });
+            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mobileModalMap);
+        }
+        
+        mobileModalMap.setView([lat, lng], 16);
+        mobileModalMap.invalidateSize();
+        
+        const angle = live.heading || live.angle || 0;
+        const statusClass = live.status || 'halt';
+        let color = '#94a3b8'; // offline
+        if (statusClass === 'running') color = '#00E676';
+        else if (statusClass === 'idle') color = '#FFab00';
+        else if (statusClass === 'halt') color = '#FF3D00';
+        
+        const customIcon = L.divIcon({
+            className: 'custom-vehicle-marker-svg',
+            html: `
+                <div class="vehicle-beacon" style="background: ${color}; color: ${color}; border: 1.5px solid rgba(255, 255, 255, 0.4); box-shadow: 0 0 8px ${color}; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                    <div class="heading-arrow" style="transform: rotate(${angle}deg); color: #ffffff; transition: transform 0.4s ease-out; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+                        <i class="fa-solid fa-location-arrow" style="transform: rotate(-45deg); display: inline-block; font-size: 16px;"></i>
+                    </div>
+                </div>
+            `,
+            iconSize: [32, 32],
+            iconAnchor: [16, 16]
+        });
+        
+        if (mobileModalMarker) {
+            mobileModalMarker.setLatLng([lat, lng]);
+            mobileModalMarker.setIcon(customIcon);
+        } else {
+            mobileModalMarker = L.marker([lat, lng], { icon: customIcon }).addTo(mobileModalMap);
+        }
+    }, 100);
+};
+
+window.closeMobileMapModal = function() {
+    document.getElementById('mobileMapModal').style.display = 'none';
+    mobileModalActiveImei = null;
+    stopMobileReplayPlayback();
+};
+
+window.switchMobileModalDevice = function(imei) {
+    // Switch active device row selection in sidebar
+    activeImei = imei;
+    renderDeviceList();
+    // Focus the new device in the modal
+    openMobileMapModal(imei);
+};
+
+// Fullscreen Mobile Map History Replay Logic
+let mobileModalReplayPoints = [];
+let mobileModalReplayIndex = 0;
+let mobileModalReplayInterval = null;
+let mobileModalReplaySpeed = 1;
+let mobileModalReplayIsPlaying = false;
+let mobileModalPolyline = null;
+
+window.toggleMobileModalHistorySidebar = function() {
+    const sidebar = document.getElementById('mobileModalHistorySidebar');
+    if (sidebar) {
+        sidebar.classList.toggle('open');
+        if (sidebar.classList.contains('open')) {
+            sidebar.style.transform = 'translateX(0)';
+        } else {
+            sidebar.style.transform = 'translateX(100%)';
+        }
+    }
+};
+
+window.handleMobileHistoryPresetChange = function(val) {
+    const custom = document.getElementById('mobileModalCustomDates');
+    if (custom) {
+        custom.style.display = val === 'custom' ? 'flex' : 'none';
+    }
+};
+
+window.loadMobileHistoryReplay = async function() {
+    if (!mobileModalActiveImei) return;
+    
+    // Stop any existing playback
+    stopMobileReplayPlayback();
+    
+    // Clear old polyline
+    if (mobileModalPolyline && mobileModalMap) {
+        mobileModalPolyline.remove();
+        mobileModalPolyline = null;
+    }
+    
+    const preset = document.getElementById('mobileModalHistoryPreset').value;
+    let url = `/api/customer/history?imei=${mobileModalActiveImei}`;
+    
+    try {
+        showToast("⏳ Loading", "Fetching vehicle history logs...", "info");
+        const res = await fetch(url);
+        const data = await res.json();
+        let points = data.history || [];
+        
+        // Filter points based on preset
+        const now = Date.now();
+        if (preset === 'today') {
+            const startOfDay = new Date();
+            startOfDay.setHours(0,0,0,0);
+            points = points.filter(p => new Date(p.timestamp).getTime() >= startOfDay.getTime());
+        } else if (preset === '24h') {
+            const last24 = now - 24 * 60 * 60 * 1000;
+            points = points.filter(p => new Date(p.timestamp).getTime() >= last24);
+        } else if (preset === '7d') {
+            const last7 = now - 7 * 24 * 60 * 60 * 1000;
+            points = points.filter(p => new Date(p.timestamp).getTime() >= last7);
+        } else if (preset === 'custom') {
+            const startStr = document.getElementById('mobileModalStartDate').value;
+            const endStr = document.getElementById('mobileModalEndDate').value;
+            if (!startStr || !endStr) {
+                showToast("⚠️ Missing Dates", "Please enter start and end dates.", "warning");
+                return;
+            }
+            const startTime = new Date(startStr).getTime();
+            const endTime = new Date(endStr).getTime();
+            points = points.filter(p => {
+                const t = new Date(p.timestamp).getTime();
+                return t >= startTime && t <= endTime;
+            });
+        }
+        
+        if (points.length === 0) {
+            showToast("ℹ️ No Data", "No points found for the selected range.", "warning");
+            return;
+        }
+        
+        mobileModalReplayPoints = points;
+        mobileModalReplayIndex = 0;
+        
+        // Plot path on mobileModalMap
+        const latlngs = points.map(p => [p.latitude, p.longitude]);
+        mobileModalPolyline = L.polyline(latlngs, {
+            color: 'var(--primary)',
+            weight: 4,
+            opacity: 0.85,
+            dashArray: '5, 8'
+        }).addTo(mobileModalMap);
+        
+        // Fit bounds
+        mobileModalMap.fitBounds(mobileModalPolyline.getBounds(), { padding: [30, 30] });
+        
+        // Setup slider
+        const slider = document.getElementById('mobileModalReplaySlider');
+        if (slider) {
+            slider.max = points.length - 1;
+            slider.value = 0;
+        }
+        
+        const progText = document.getElementById('mobileModalReplayProgressText');
+        if (progText) progText.innerText = `1 / ${points.length}`;
+        
+        // Show controls
+        document.getElementById('mobileModalReplayControls').style.display = 'flex';
+        showToast("✅ Loaded", `${points.length} history coordinates loaded.`, "success");
+        
+        // Set initial marker position
+        updateMobileReplayMarker(0);
+        
+    } catch (e) {
+        console.error(e);
+        showToast("❌ Error", "Failed to load history replay.", "danger");
+    }
+};
+
+function updateMobileReplayMarker(idx) {
+    if (idx < 0 || idx >= mobileModalReplayPoints.length) return;
+    const pt = mobileModalReplayPoints[idx];
+    const latlng = [pt.latitude, pt.longitude];
+    
+    if (mobileModalMarker) {
+        mobileModalMarker.setLatLng(latlng);
+        
+        const angle = pt.heading || pt.angle || 0;
+        const speedVal = pt.speed !== undefined ? pt.speed : 0;
+        
+        let color = '#94a3b8'; // offline
+        if (speedVal > 2) color = '#00E676';
+        else if (pt.ignition || pt.acc) color = '#FFab00';
+        else color = '#FF3D00';
+        
+        mobileModalMarker.setIcon(L.divIcon({
+            className: 'custom-vehicle-marker-svg',
+            html: `
+                <div class="vehicle-beacon" style="background: ${color}; color: ${color}; border: 1.5px solid rgba(255, 255, 255, 0.4); box-shadow: 0 0 8px ${color}; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                    <div class="heading-arrow" style="transform: rotate(${angle}deg); color: #ffffff; transition: transform 0.2s ease-out; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+                        <i class="fa-solid fa-location-arrow" style="transform: rotate(-45deg); display: inline-block; font-size: 16px;"></i>
+                    </div>
+                </div>
+            `,
+            iconSize: [32, 32],
+            iconAnchor: [16, 16]
+        }));
+    }
+    
+    // Update slider and progress text
+    const slider = document.getElementById('mobileModalReplaySlider');
+    if (slider) slider.value = idx;
+    
+    const progText = document.getElementById('mobileModalReplayProgressText');
+    if (progText) progText.innerText = `${idx + 1} / ${mobileModalReplayPoints.length}`;
+    
+    // Update stats inside bottom panel in real-time
+    const odoVal = (pt.odometer !== undefined && pt.odometer >= 0) ? `${pt.odometer.toFixed(1)} km` : '-- km';
+    const speedVal = pt.speed !== undefined ? pt.speed : 0;
+    const ignText = (pt.ignition === 1 || pt.ignition === true || pt.acc === 1) ? 'ON' : 'OFF';
+    const ignColor = ignText === 'ON' ? 'var(--success)' : 'var(--text-secondary)';
+    
+    const odoEl = document.getElementById('mobileMapModalOdo');
+    if (odoEl) odoEl.innerText = odoVal;
+    
+    const speedEl = document.getElementById('mobileMapModalSpeedVal');
+    if (speedEl) speedEl.innerText = speedVal;
+    
+    // Speedometer animated progress ring
+    const maxSpeed = 120;
+    const circumference = 188.5;
+    const speedLimit = Math.min(speedVal, maxSpeed);
+    const offset = circumference - (speedLimit / maxSpeed) * circumference;
+    const circleFill = document.getElementById('mobileMapModalSpeedCircleFill');
+    if (circleFill) circleFill.style.strokeDashoffset = offset;
+    
+    const ignEl = document.getElementById('mobileMapModalIgn');
+    if (ignEl) {
+        ignEl.innerText = ignText;
+        ignEl.style.color = ignColor;
+    }
+    
+    if (pt.address) {
+        const addressEl = document.getElementById('mobileMapModalAddress');
+        if (addressEl) addressEl.innerText = pt.address;
+    }
+    
+    // GPS Signal & Last Update elements during replay
+    const signalEl = document.getElementById('mobileMapModalSignal');
+    if (signalEl) {
+        signalEl.innerText = 'Replay';
+        signalEl.style.color = 'var(--primary)';
+    }
+    const updateEl = document.getElementById('mobileMapModalUpdatedTime');
+    if (updateEl) {
+        updateEl.innerText = pt.timestamp ? new Date(pt.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '--';
+    }
+    
+    mobileModalMap.panTo(latlng, { animate: false });
+}
+
+window.toggleMobileReplayPlayback = function() {
+    if (mobileModalReplayIsPlaying) {
+        pauseMobileReplayPlayback();
+    } else {
+        startMobileReplayPlayback();
+    }
+};
+
+function startMobileReplayPlayback() {
+    if (mobileModalReplayPoints.length === 0) return;
+    mobileModalReplayIsPlaying = true;
+    
+    const playBtn = document.getElementById('mobileModalPlayBtn');
+    if (playBtn) playBtn.innerHTML = '<i class="fa-solid fa-pause"></i> Pause';
+    
+    const intervalMs = Math.max(50, 1000 / mobileModalReplaySpeed);
+    
+    mobileModalReplayInterval = setInterval(() => {
+        if (mobileModalReplayIndex >= mobileModalReplayPoints.length - 1) {
+            stopMobileReplayPlayback();
+            showToast("🏁 Replay Complete", "Finished playing history track.", "success");
+            return;
+        }
+        mobileModalReplayIndex++;
+        updateMobileReplayMarker(mobileModalReplayIndex);
+    }, intervalMs);
+}
+
+function pauseMobileReplayPlayback() {
+    mobileModalReplayIsPlaying = false;
+    const playBtn = document.getElementById('mobileModalPlayBtn');
+    if (playBtn) playBtn.innerHTML = '<i class="fa-solid fa-play"></i> Play';
+    if (mobileModalReplayInterval) {
+        clearInterval(mobileModalReplayInterval);
+        mobileModalReplayInterval = null;
+    }
+}
+
+window.stopMobileReplayPlayback = function() {
+    pauseMobileReplayPlayback();
+    mobileModalReplayIndex = 0;
+    if (mobileModalReplayPoints.length > 0) {
+        updateMobileReplayMarker(0);
+    }
+};
+
+window.setMobileReplaySpeed = function(val) {
+    mobileModalReplaySpeed = parseFloat(val) || 1;
+    if (mobileModalReplayIsPlaying) {
+        pauseMobileReplayPlayback();
+        startMobileReplayPlayback();
+    }
+};
+
+window.seekMobileReplay = function(val) {
+    const idx = parseInt(val);
+    mobileModalReplayIndex = idx;
+    updateMobileReplayMarker(idx);
+};
+
+// Bottom Panel Swipe Logic
+let touchStartX = 0;
+let touchEndX = 0;
+let currentMobileModalSlide = 0;
+
+window.setMobileModalSlide = function(slideIdx) {
+    currentMobileModalSlide = slideIdx;
+    const wrapper = document.getElementById('mobileModalCarouselWrapper');
+    const dot1 = document.getElementById('mobileModalDot1');
+    const dot2 = document.getElementById('mobileModalDot2');
+    
+    if (wrapper) {
+        wrapper.style.transform = `translateX(-${slideIdx * 50}%)`;
+        // Prevent subpixel rendering boundary leakage by hiding the inactive slide
+        const slides = wrapper.children;
+        if (slides.length >= 2) {
+            slides[0].style.opacity = slideIdx === 0 ? '1' : '0';
+            slides[0].style.pointerEvents = slideIdx === 0 ? 'auto' : 'none';
+            slides[0].style.transition = 'opacity 0.25s ease';
+            
+            slides[1].style.opacity = slideIdx === 1 ? '1' : '0';
+            slides[1].style.pointerEvents = slideIdx === 1 ? 'auto' : 'none';
+            slides[1].style.transition = 'opacity 0.25s ease';
+        }
+    }
+    if (dot1 && dot2) {
+        if (slideIdx === 0) {
+            dot1.style.background = 'var(--primary)';
+            dot1.style.width = '12px';
+            dot1.style.borderRadius = '4px';
+            
+            dot2.style.background = 'var(--border-light)';
+            dot2.style.width = '8px';
+            dot2.style.borderRadius = '50%';
+        } else {
+            dot1.style.background = 'var(--border-light)';
+            dot1.style.width = '8px';
+            dot1.style.borderRadius = '50%';
+            
+            dot2.style.background = 'var(--primary)';
+            dot2.style.width = '12px';
+            dot2.style.borderRadius = '4px';
+        }
+    }
+};
+
+function initMobileModalSwipe() {
+    const panel = document.getElementById('mobileMapModalBottomPanel');
+    if (!panel) return;
+    
+    // Clear old listeners by cloning
+    const newPanel = panel.cloneNode(true);
+    panel.parentNode.replaceChild(newPanel, panel);
+    
+    newPanel.addEventListener('touchstart', e => {
+        touchStartX = e.changedTouches[0].screenX;
+    }, { passive: true });
+    
+    newPanel.addEventListener('touchend', e => {
+        touchEndX = e.changedTouches[0].screenX;
+        const diff = touchStartX - touchEndX;
+        if (Math.abs(diff) > 40) { // threshold of 40px
+            if (diff > 0 && currentMobileModalSlide === 0) {
+                setMobileModalSlide(1);
+            } else if (diff < 0 && currentMobileModalSlide === 1) {
+                setMobileModalSlide(0);
+            }
+        }
+    }, { passive: true });
+}
+
+// Download/Export mobile options
+window.exportMobileReplayPDF = function() {
+    exportTodayReportPDF();
+};
+
+window.exportMobileReplayExcel = function() {
+    exportTodayReportExcel();
+};
+
+window.exportMobileDeviceHistory = function() {
+    if (mobileModalActiveImei) {
+        window.location.href = `/api/export/history/${mobileModalActiveImei}`;
+    }
 };
