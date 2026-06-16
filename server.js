@@ -465,15 +465,15 @@ app.get('/api/export/devices', requireLogin, async (req, res) => {
     const dataStore = await store.getData();
     const lastSeen = dataStore.deviceLastSeen;
     
-    let csv = "IMEI,Name,OwnerID,LastLatitude,LastLongitude,LastSpeed,LastTimestamp\n";
-    devices.forEach(d => {
-        const ls = lastSeen[d.imei] || {};
-        csv += `${d.imei},${d.name},${d.ownerId},${ls.latitude || ''},${ls.longitude || ''},${ls.speed || ''},${ls.timestamp || ''}\n`;
-    });
-    
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', 'attachment; filename="devices_export.csv"');
-    res.send(csv);
+    res.write("IMEI,Name,OwnerID,LastLatitude,LastLongitude,LastSpeed,LastTimestamp\n");
+    
+    devices.forEach(d => {
+        const ls = lastSeen[d.imei] || {};
+        res.write(`${d.imei},${d.name},${d.ownerId},${ls.latitude || ''},${ls.longitude || ''},${ls.speed || ''},${ls.timestamp || ''}\n`);
+    });
+    res.end();
 });
 
 app.get('/api/export/history/:imei', requireLogin, async (req, res) => {
@@ -489,14 +489,14 @@ app.get('/api/export/history/:imei', requireLogin, async (req, res) => {
     
     const history = await store.getHistory(imei);
     
-    let csv = "Timestamp,Latitude,Longitude,Speed,Odometer,RawData\n";
-    history.forEach(pt => {
-        csv += `${pt.timestamp},${pt.latitude},${pt.longitude},${pt.speed},${pt.odometer},"${pt.rawHex}"\n`;
-    });
-    
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', `attachment; filename="history_${imei}.csv"`);
-    res.send(csv);
+    res.write("Timestamp,Latitude,Longitude,Speed,Odometer,RawData\n");
+    
+    history.forEach(pt => {
+        res.write(`${pt.timestamp},${pt.latitude},${pt.longitude},${pt.speed},${pt.odometer},"${pt.rawHex}"\n`);
+    });
+    res.end();
 });
 
 // ── ADMIN API ENDPOINTS ──

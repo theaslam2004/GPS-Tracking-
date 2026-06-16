@@ -1233,6 +1233,12 @@ module.exports = {
             const user = await User.findOne({ id: userId });
             if (!user) return [];
             
+            const subUserId = user.parentId || user.id;
+            const sub = await Subscription.findOne({ userId: subUserId });
+            if (sub && new Date() > new Date(sub.expirationDate)) {
+                return []; // Subscription expired
+            }
+            
             if (user.parentId) {
                 const list = await Device.find({ assignedTo: userId });
                 return list.map(d => d.toObject());
@@ -1244,6 +1250,12 @@ module.exports = {
             const data = readData();
             const user = data.users.find(u => u.id === userId);
             if (!user) return [];
+            
+            const subUserId = user.parentId || user.id;
+            const sub = data.subscriptions && data.subscriptions.find(s => s.userId === subUserId);
+            if (sub && new Date() > new Date(sub.expirationDate)) {
+                return []; // Subscription expired
+            }
             
             if (user.parentId) {
                 return data.devices.filter(d => d.assignedTo && d.assignedTo.includes(userId));
@@ -1325,6 +1337,15 @@ module.exports = {
             const dev = await Device.findOne({ imei });
             const initialOdo = dev ? (dev.initialOdometer || 0) : 0;
             const prevRecord = await DeviceLastSeen.findOne({ imei });
+            
+            let isExpired = false;
+            if (dev && dev.ownerId) {
+                const sub = await Subscription.findOne({ userId: dev.ownerId });
+                if (sub && new Date() > new Date(sub.expirationDate)) {
+                    isExpired = true;
+                }
+            }
+
 
             let status = 'offline';
             let ignitionOnTime = prevRecord ? prevRecord.ignitionOnTime : null;
@@ -1400,7 +1421,7 @@ module.exports = {
                 { upsert: true, new: true }
             );
 
-            if (locationData.latitude && locationData.longitude && locationData.latitude !== 0 && locationData.longitude !== 0) {
+            if (!isExpired && locationData.latitude && locationData.longitude && locationData.latitude !== 0 && locationData.longitude !== 0) {
                 await DeviceHistoryPoint.create({
                     imei,
                     timestamp: point.timestamp,
@@ -1430,6 +1451,16 @@ module.exports = {
             const dev = data.devices.find(d => d.imei === imei);
             const initialOdo = dev ? (dev.initialOdometer || 0) : 0;
             const prevRecord = data.deviceLastSeen[imei];
+            
+            let isExpired = false;
+            if (dev && dev.ownerId) {
+                const owner = data.users.find(u => u.id === dev.ownerId);
+                const subUserId = owner ? (owner.parentId || owner.id) : dev.ownerId;
+                const sub = data.subscriptions && data.subscriptions.find(s => s.userId === subUserId);
+                if (sub && new Date() > new Date(sub.expirationDate)) {
+                    isExpired = true;
+                }
+            }
 
             let status = 'offline';
             let ignitionOnTime = prevRecord ? prevRecord.ignitionOnTime : null;
@@ -1500,8 +1531,9 @@ module.exports = {
             };
 
             data.deviceLastSeen[imei] = point;
+            writeData(data);
 
-            if (locationData.latitude && locationData.longitude && locationData.latitude !== 0 && locationData.longitude !== 0) {
+            if (!isExpired && locationData.latitude && locationData.longitude && locationData.latitude !== 0 && locationData.longitude !== 0) {
                 const historyDir = path.join(__dirname, 'history');
                 if (!fs.existsSync(historyDir)) {
                     fs.mkdirSync(historyDir, { recursive: true });
