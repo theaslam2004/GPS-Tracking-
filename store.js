@@ -1393,10 +1393,19 @@ module.exports = {
             let accumulatedDistance = prevAccumulated + deltaDistanceKm;
             let odometer = initialOdo + accumulatedDistance;
 
+            let finalLat = locationData.latitude;
+            let finalLng = locationData.longitude;
+            if (!finalLat || finalLat === 0 || !finalLng || finalLng === 0) {
+                if (prevRecord && prevRecord.latitude && prevRecord.longitude) {
+                    finalLat = prevRecord.latitude;
+                    finalLng = prevRecord.longitude;
+                }
+            }
+
             const point = {
                 timestamp: now,
-                latitude: locationData.latitude,
-                longitude: locationData.longitude,
+                latitude: finalLat,
+                longitude: finalLng,
                 speed: locationData.speed,
                 heading: locationData.heading,
                 satellites: locationData.satellites,
@@ -1508,10 +1517,19 @@ module.exports = {
             let accumulatedDistance = prevAccumulated + deltaDistanceKm;
             let odometer = initialOdo + accumulatedDistance;
 
+            let finalLat = locationData.latitude;
+            let finalLng = locationData.longitude;
+            if (!finalLat || finalLat === 0 || !finalLng || finalLng === 0) {
+                if (prevRecord && prevRecord.latitude && prevRecord.longitude) {
+                    finalLat = prevRecord.latitude;
+                    finalLng = prevRecord.longitude;
+                }
+            }
+
             const point = {
                 timestamp: locationData.timestamp,
-                latitude: locationData.latitude,
-                longitude: locationData.longitude,
+                latitude: finalLat,
+                longitude: finalLng,
                 speed: locationData.speed,
                 heading: locationData.heading,
                 satellites: locationData.satellites,
