@@ -1184,7 +1184,9 @@ function focusDevice(imei) {
     activeImei = imei;
     if(markers[imei]) {
         map.flyTo(markers[imei].getLatLng(), 16, { animate: true, duration: 1.5 });
-        markers[imei].openPopup();
+        if (window.innerWidth > 900) {
+            markers[imei].openPopup();
+        }
         
         // Highlight active card by re-rendering list
         renderDeviceList();
@@ -1672,16 +1674,27 @@ function handleDeviceData(data, isLive = true) {
             }
         }
         
-        if (marker.isPopupOpen()) {
-            marker.getPopup().setContent(popupHTML);
-        } else {
-            marker.setPopupContent(popupHTML);
+        if (window.innerWidth > 900) {
+            if (marker.isPopupOpen()) {
+                marker.getPopup().setContent(popupHTML);
+            } else {
+                marker.setPopupContent(popupHTML);
+            }
         }
     } else {
         const vehicleIcon = getVehicleIcon(data.heading, beaconStatus, isPinned, imei, data.voltage);
-        const marker = L.marker([latitude, longitude], { icon: vehicleIcon }).addTo(map)
-            .bindPopup(popupHTML)
-            .on('click', () => focusDevice(imei));
+        const marker = L.marker([latitude, longitude], { icon: vehicleIcon }).addTo(map);
+        if (window.innerWidth > 900) {
+            marker.bindPopup(popupHTML);
+        }
+        marker.on('click', (e) => {
+            if (window.innerWidth <= 900) {
+                if (typeof e.target.closePopup === 'function') {
+                    e.target.closePopup();
+                }
+            }
+            focusDevice(imei);
+        });
         marker.status = beaconStatus;
         marker.pinned = isPinned;
         markers[imei] = marker;
