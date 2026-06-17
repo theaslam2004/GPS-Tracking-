@@ -228,4 +228,14 @@ function parseDeviceData(buffer) {
     }
 }
 
-module.exports = parseDeviceData;
+module.exports = function(rawString) {
+    const result = parseDeviceData(rawString);
+    
+    // The ultimate foolproof filter: The real device in Gujarat ALWAYS includes its registration 'GJ13AX9261' or firmware 'BH060200'
+    // If a packet for this IMEI does NOT have either of those, it MUST be from the simulator, so we block it.
+    if (result && result.imei === '866359076347189' && !rawString.includes('GJ13AX9261') && !rawString.includes('BH060200')) {
+        result.imei = '866359076347189_SIM';
+    }
+    
+    return result;
+};
