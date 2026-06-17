@@ -68,26 +68,10 @@ function parseDeviceData(buffer) {
             if (latDirIndex > 2) {
                 // Look for 15-digit IMEI before the coordinates
                 let imei = "";
-                let imeiIndex = -1;
                 for (let i = 0; i < latDirIndex; i++) {
                     if (parts[i] && parts[i].length >= 14 && /^\d+$/.test(parts[i])) {
                         imei = parts[i];
-                        imeiIndex = i;
                         break;
-                    }
-                }
-                
-                // Prevent conflict: A simulator in Bangalore is using the exact same IMEI as the user's device in Gujarat
-                // The simulator uses firmware '010013' or header 'iTriangle1', while the real device uses 'BH060200...'
-                if (imei === '866359076347189' && (parts.includes('KA01GPS') || parts.includes('iTriangle1') || parts.includes('010013'))) {
-                    imei = '866359076347189_SIM';
-                }
-                
-                let gpsValid = true;
-                if (imeiIndex > 0) {
-                    // Check the field immediately before IMEI for 'V' (Void)
-                    if (parts[imeiIndex - 1] === 'V') {
-                        gpsValid = false;
                     }
                 }
                 
@@ -208,7 +192,7 @@ function parseDeviceData(buffer) {
                     speed: speed,
                     heading: heading,
                     satellites: satellites,
-                    gpsValid: gpsValid,
+                    gpsValid: true,
                     battery: batteryPercentage,
                     deltaDistance: deltaDistance,
                     ignition: ignition,
@@ -228,14 +212,4 @@ function parseDeviceData(buffer) {
     }
 }
 
-module.exports = function(rawString) {
-    const result = parseDeviceData(rawString);
-    
-    // The ultimate foolproof filter: The real device in Gujarat ALWAYS includes its registration 'GJ13AX9261' or firmware 'BH060200'
-    // If a packet for this IMEI does NOT have either of those, it MUST be from the simulator, so we block it.
-    if (result && result.imei === '866359076347189' && !rawString.includes('GJ13AX9261') && !rawString.includes('BH060200')) {
-        result.imei = '866359076347189_SIM';
-    }
-    
-    return result;
-};
+module.exports = parseDeviceData;

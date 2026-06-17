@@ -129,14 +129,6 @@ function getAddress(imei, lat, lng, callback) {
             
             const cardAddrEl = document.getElementById(`card-address-${imei}`);
             if (cardAddrEl) cardAddrEl.innerText = addr;
-            
-            const telemetryAddrEl = document.getElementById(`telemetry-address-${imei}`);
-            if (telemetryAddrEl) telemetryAddrEl.innerText = addr;
-            
-            const mobileMapModalAddrEl = document.getElementById('mobileMapModalAddress');
-            if (mobileMapModalAddrEl && window.mobileMapModalActiveImei === imei) {
-                mobileMapModalAddrEl.innerText = addr;
-            }
         })
         .catch(() => {
             const addr = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
@@ -838,7 +830,14 @@ function renderDeviceList() {
             const activeClass = isActive ? 'active' : '';
             const live = latestData[d.imei] || {};
             
+            // Telemetry calculations
+            const speedVal = live.speed !== undefined ? live.speed : 0;
+            const isOdoVerified = (live.odometer !== undefined && live.odometer >= 0);
+            const odoVal = isOdoVerified ? live.odometer.toFixed(1) : '--';
+            const ignText = (live.ignition === 1 || live.ignition === true || live.acc === 1) ? 'ON' : 'OFF';
+            const ignColor = ignText === 'ON' ? 'var(--success)' : 'var(--text-secondary)';
             const statusText = live.status || 'halt';
+            
             let statusColor = 'var(--text-secondary)';
             if (live.timestamp) {
                 const isStale = (Date.now() - new Date(live.timestamp)) > 60000;
@@ -848,24 +847,157 @@ function renderDeviceList() {
                     else if (statusText === 'halt') statusColor = 'var(--danger)';
                 }
             }
+            
+            const addressVal = live.address || 'Fetching location...';
+            const powerVal = live.power !== undefined ? `${live.power}v` : '--';
+            const batteryVal = live.battery !== undefined ? `${live.battery}v` : '--';
+            const acVal = (live.ac === 1 || live.ac === 'ON') ? 'ON' : 'OFF';
 
             return `
-                <div class="mobile-device-row ${activeClass}" onclick="handleMobileDeviceClick('${d.imei}')" style="display: flex; flex-direction: column; padding: 16px; border-bottom: 1px solid var(--border-light); cursor: pointer; transition: all 0.25s ease; background: transparent;">
+                <div class="mobile-device-row ${activeClass}" onclick="focusDevice('${d.imei}')" style="display: flex; flex-direction: column; padding: 16px; border-bottom: 1px solid var(--border-light); cursor: pointer; transition: all 0.25s ease; background: ${isActive ? 'rgba(255, 255, 255, 0.03)' : 'transparent'}; border-left: 3px solid ${isActive ? 'var(--primary)' : 'transparent'}; margin-bottom: ${isActive ? '8px' : '0'}; border-radius: ${isActive ? '8px' : '0'}; box-shadow: ${isActive ? '0 4px 15px rgba(0,0,0,0.1)' : 'none'};">
+                    <!-- Row Header (Always Visible) -->
                     <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
                         <div style="display: flex; align-items: center; gap: 12px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; flex: 1; min-width: 0;">
                             <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: ${statusColor}; flex-shrink: 0;" title="Status Indicator"></span>
-                            <span style="font-weight: 700; color: var(--text-primary); font-size: 0.95rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${d.name || d.imei}</span>
+                            <span style="font-weight: 700; color: var(--text-primary); font-size: 0.92rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${d.name || d.imei}</span>
+                            <i class="fa-solid fa-chart-line" style="color: #3b82f6; font-size: 0.9rem; flex-shrink: 0; cursor: pointer; padding: 4px;" title="View Travel Replay" onclick="event.stopPropagation(); focusDevice('${d.imei}'); switchMapTab('replay');"></i>
                         </div>
                         <div style="color: var(--text-secondary); font-size: 0.82rem; font-family: monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; flex-shrink: 0; padding-left: 10px; display: flex; align-items: center; gap: 8px;">
-                            <span>${statusText.toUpperCase()}</span>
-                            <i class="fa-solid fa-chevron-right" style="font-size: 0.8rem; color: var(--text-secondary);"></i>
+                            <span>${d.imei}</span>
+                            <i class="fa-solid ${isActive ? 'fa-chevron-up' : 'fa-chevron-down'}" style="font-size: 0.8rem; color: var(--text-secondary);"></i>
                         </div>
                     </div>
+                    
+                    <!-- Expanded Content (Visible only when active) -->
+                    ${isActive ? `
+                    <div class="device-row-expanded-content" style="padding-top: 16px; width: 100%; display: flex; flex-direction: column;">
+                        <!-- Inline Mini Map with Expand Option Overlay -->
+                        <div style="position: relative; width: 100%; height: 180px; margin-bottom: 12px; border-radius: 12px; border: 1px solid var(--border); overflow: hidden; z-index: 10;">
+                            <div id="mini-map-${d.imei}" class="mini-map-container" style="height: 100%; width: 100%;"></div>
+                            <button onclick="event.stopPropagation(); openMobileMapModal('${d.imei}')" style="position: absolute; top: 8px; right: 8px; width: 32px; height: 32px; border-radius: 6px; background: rgba(255,255,255,0.9); border: 1px solid var(--border); color: var(--text-primary); display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 1000; box-shadow: 0 2px 6px rgba(0,0,0,0.15);" title="Expand Map">
+                                <i class="fa-solid fa-expand" style="font-size: 0.85rem;"></i>
+                            </button>
+                        </div>
+                        
+                        <!-- Telemetry Grid -->
+                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-bottom: 10px; width: 100%;">
+                            <div style="background: rgba(255,255,255,0.02); padding: 8px 12px; border-radius: var(--radius-md); border: 1px solid var(--border-light);">
+                                <div style="font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase;">Speed</div>
+                                <div id="telemetry-speed-${d.imei}" style="font-size: 0.88rem; font-weight: 800; color: var(--text-primary); margin-top: 2px;">${speedVal} km/h</div>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.02); padding: 8px 12px; border-radius: var(--radius-md); border: 1px solid var(--border-light);">
+                                <div style="font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase;">Odometer</div>
+                                <div id="telemetry-odo-${d.imei}" style="font-size: 0.88rem; font-weight: 800; color: var(--text-primary); margin-top: 2px;">${odoVal} km</div>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.02); padding: 8px 12px; border-radius: var(--radius-md); border: 1px solid var(--border-light);">
+                                <div style="font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase;">Ignition</div>
+                                <div id="telemetry-ignition-${d.imei}" style="font-size: 0.88rem; font-weight: 800; color: ${ignColor}; margin-top: 2px;">${ignText}</div>
+                            </div>
+                            <div style="background: rgba(255,255,255,0.02); padding: 8px 12px; border-radius: var(--radius-md); border: 1px solid var(--border-light);">
+                                <div style="font-size: 0.7rem; color: var(--text-secondary); text-transform: uppercase;">Status</div>
+                                <div id="telemetry-status-${d.imei}" style="font-size: 0.88rem; font-weight: 800; color: ${statusColor}; margin-top: 2px; text-transform: uppercase;">${statusText}</div>
+                            </div>
+                        </div>
+                        
+                        <!-- Address -->
+                        <div style="font-size: 0.8rem; color: var(--text-secondary); background: rgba(255,255,255,0.01); padding: 8px 12px; border-radius: var(--radius-md); border: 1px solid var(--border-light); margin-bottom: 12px; display: flex; align-items: flex-start; gap: 8px; white-space: normal; line-height: 1.3;">
+                            <i class="fa-solid fa-location-dot" style="color: var(--primary); margin-top: 2px; flex-shrink: 0;"></i>
+                            <span id="telemetry-address-${d.imei}">${addressVal}</span>
+                        </div>
+                        
+                        <!-- Extra Telemetry Grid -->
+                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 12px; width: 100%;">
+                            <div style="text-align: center; background: rgba(255,255,255,0.01); padding: 6px; border-radius: 8px; border: 1px solid var(--border-light); font-size: 0.68rem; color: var(--text-secondary);">
+                                Power<br><strong style="color: var(--text-primary); font-size: 0.72rem;">${powerVal}</strong>
+                            </div>
+                            <div style="text-align: center; background: rgba(255,255,255,0.01); padding: 6px; border-radius: 8px; border: 1px solid var(--border-light); font-size: 0.68rem; color: var(--text-secondary);">
+                                Battery<br><strong style="color: var(--text-primary); font-size: 0.72rem;">${batteryVal}</strong>
+                            </div>
+                            <div style="text-align: center; background: rgba(255,255,255,0.01); padding: 6px; border-radius: 8px; border: 1px solid var(--border-light); font-size: 0.68rem; color: var(--text-secondary);">
+                                AC<br><strong style="color: var(--text-primary); font-size: 0.72rem;">${acVal}</strong>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div style="display: flex; gap: 8px; width: 100%;">
+                            <button style="flex: 1; padding: 10px; font-size: 0.8rem; font-weight: 700; border: 1px solid var(--border); background: transparent; border-radius: 8px; color: var(--text-primary); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; font-family: 'Outfit';" onclick="event.stopPropagation(); focusDevice('${d.imei}'); switchMapTab('replay');">
+                                <i class="fa-solid fa-clock-rotate-left"></i> History
+                            </button>
+                            <button class="btn-primary" style="flex: 1; padding: 10px; font-size: 0.8rem; font-weight: 700; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; border: none; font-family: 'Outfit';" onclick="event.stopPropagation(); shareLocation('${d.imei}')">
+                                <i class="fa-solid fa-share-nodes"></i> Share
+                            </button>
+                        </div>
+                    </div>
+                    ` : ''}
                 </div>
             `;
         }).join('');
         
         container.innerHTML = rowsHTML;
+
+        // Cleanup old mini maps
+        if (window.miniMaps) {
+            Object.keys(window.miniMaps).forEach(imei => {
+                if (window.miniMaps[imei]) {
+                    try { window.miniMaps[imei].remove(); } catch(e){}
+                }
+            });
+        }
+        window.miniMaps = {};
+        window.miniMapMarkers = {};
+        
+        if (activeImei && myDevices.some(d => d.imei === activeImei)) {
+            setTimeout(() => {
+                const mapId = `mini-map-${activeImei}`;
+                const mapEl = document.getElementById(mapId);
+                if (mapEl) {
+                    const live = latestData[activeImei] || {};
+                    const lat = live.lat || 20.5937;
+                    const lng = live.lng || 78.9629;
+                    
+                    try {
+                        const miniMap = L.map(mapId, {
+                            zoomControl: false,
+                            attributionControl: false
+                        }).setView([lat, lng], 15);
+                        
+                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(miniMap);
+                        
+                        const statusClass = live.status || 'halt';
+                        const angle = live.heading || live.angle || 0;
+                        
+                        let color = '#FF3D00'; // Halt (Red)
+                        if (statusClass === 'running') {
+                            color = '#00E676'; // Moving (Green)
+                        } else if (statusClass === 'idle') {
+                            color = '#FFab00'; // Idle (Amber)
+                        } else if (statusClass === 'offline') {
+                            color = '#94a3b8'; // Offline (Gray)
+                        }
+                        
+                        const customIcon = L.divIcon({
+                            className: 'custom-vehicle-marker-svg',
+                            html: `
+                                <div class="vehicle-beacon" style="background: ${color}; color: ${color}; border: 1.5px solid rgba(255, 255, 255, 0.4); box-shadow: 0 0 8px ${color}; width: 28px; height: 28px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
+                                    <div class="heading-arrow" style="transform: rotate(${angle || 0}deg); color: #ffffff; transition: transform 0.4s ease-out; width: 100%; height: 100%; display: flex; align-items: center; justify-content: center;">
+                                        <i class="fa-solid fa-location-arrow" style="transform: rotate(-45deg); display: inline-block; font-size: 14px;"></i>
+                                    </div>
+                                </div>
+                            `,
+                            iconSize: [28, 28],
+                            iconAnchor: [14, 14]
+                        });
+                        
+                        const marker = L.marker([lat, lng], { icon: customIcon }).addTo(miniMap);
+                        
+                        window.miniMaps[activeImei] = miniMap;
+                        window.miniMapMarkers[activeImei] = marker;
+                    } catch (err) {
+                        console.error('Failed to initialize inline mini map:', err);
+                    }
+                }
+            }, 100);
+        }
     } else {
         container.innerHTML = filteredDevices.map(d => {
             const odoHidden = !isFeatureEnabled(d.imei, 'odometer') ? 'display:none' : '';
@@ -1036,16 +1168,15 @@ function closeVehiclePanel() {
 function focusDevice(imei) {
     const isMobile = window.innerWidth <= 900;
     if (isMobile) {
-        if (activeImei !== imei) {
+        if (activeImei === imei) {
+            activeImei = null;
+        } else {
             activeImei = imei;
         }
         renderDeviceList();
         
         if (activeImei && markers[activeImei]) {
             map.setView(markers[activeImei].getLatLng(), 16, { animate: true });
-        }
-        if (typeof openMobileBottomSheet === 'function') {
-            openMobileBottomSheet(imei);
         }
         return;
     }
@@ -1650,9 +1781,7 @@ function handleDeviceData(data, isLive = true) {
         
         const powerVal = data.powerSource || '--';
         const batteryVal = data.battery !== undefined ? `${data.battery.toFixed(1)}v` : '--';
-        const latStr = data.lat ? data.lat.toFixed(4) : '0.0000';
-        const lngStr = data.lng ? data.lng.toFixed(4) : '0.0000';
-        const addressVal = data.address || `${latStr}, ${lngStr}`;
+        const addressVal = data.address || 'Fetching location...';
         
         const odoEl = document.getElementById('mobileMapModalOdo');
         if (odoEl) odoEl.innerText = odoVal;
@@ -1676,7 +1805,7 @@ function handleDeviceData(data, isLive = true) {
         
         const batteryEl = document.getElementById('mobileMapModalBattery');
         if (batteryEl) {
-            batteryEl.innerText = `${batteryVal}`;
+            batteryEl.innerText = `${batteryVal} (${powerVal === 'main' ? 'Main' : 'Internal'})`;
         }
         
         const addressEl = document.getElementById('mobileMapModalAddress');
@@ -3646,7 +3775,7 @@ window.openMobileMapModal = function(imei) {
     
     const batteryEl = document.getElementById('mobileMapModalBattery');
     if (batteryEl) {
-        batteryEl.innerText = `${batteryVal}`;
+        batteryEl.innerText = `${batteryVal} (${powerVal === 'main' ? 'Main' : 'Internal'})`;
     }
     
     const addressEl = document.getElementById('mobileMapModalAddress');
@@ -3997,70 +4126,88 @@ window.seekMobileReplay = function(val) {
     updateMobileReplayMarker(idx);
 };
 
-window.handleMobileDeviceClick = function(imei) {
-    focusDevice(imei);
-    switchMapTab('map');
-    openMobileBottomSheet(imei);
-};
+// Bottom Panel Swipe Logic
+let touchStartX = 0;
+let touchEndX = 0;
+let currentMobileModalSlide = 0;
 
-window.openMobileBottomSheet = function(imei) {
-    const sheet = document.getElementById('mobileBottomSheet');
-    if (!sheet) return;
+window.setMobileModalSlide = function(slideIdx) {
+    currentMobileModalSlide = slideIdx;
+    const wrapper = document.getElementById('mobileModalCarouselWrapper');
+    const dot1 = document.getElementById('mobileModalDot1');
+    const dot2 = document.getElementById('mobileModalDot2');
     
-    const d = myDevices.find(dev => dev.imei === imei) || {};
-    const live = latestData[imei] || {};
-    
-    document.getElementById('bs-device-name').innerText = d.name || imei;
-    
-    const statusText = live.status || 'halt';
-    let statusColor = 'var(--text-secondary)';
-    if (live.timestamp && (Date.now() - new Date(live.timestamp)) <= 60000) {
-        if (statusText === 'running') statusColor = 'var(--success)';
-        else if (statusText === 'idle') statusColor = 'var(--warning)';
-        else if (statusText === 'halt') statusColor = 'var(--danger)';
+    if (wrapper) {
+        wrapper.style.transform = `translateX(-${slideIdx * 50}%)`;
+        // Prevent subpixel rendering boundary leakage by hiding the inactive slide
+        const slides = wrapper.children;
+        if (slides.length >= 2) {
+            slides[0].style.opacity = slideIdx === 0 ? '1' : '0';
+            slides[0].style.pointerEvents = slideIdx === 0 ? 'auto' : 'none';
+            slides[0].style.transition = 'opacity 0.25s ease';
+            
+            slides[1].style.opacity = slideIdx === 1 ? '1' : '0';
+            slides[1].style.pointerEvents = slideIdx === 1 ? 'auto' : 'none';
+            slides[1].style.transition = 'opacity 0.25s ease';
+        }
     }
-    document.getElementById('bs-status-indicator').style.background = statusColor;
-    
-    document.getElementById('bs-device-speed').innerText = (live.speed || 0) + ' km/h';
-    document.getElementById('bs-device-odo').innerText = ((live.odometer && live.odometer >= 0) ? live.odometer.toFixed(1) : '--') + ' km';
-    
-    const ignText = (live.ignition === 1 || live.ignition === true || live.acc === 1) ? 'ON' : 'OFF';
-    const ignColor = ignText === 'ON' ? 'var(--success)' : 'var(--text-secondary)';
-    const ignEl = document.getElementById('bs-device-ignition');
-    if (ignEl) {
-        ignEl.innerText = ignText;
-        ignEl.style.color = ignColor;
-    }
-    
-    document.getElementById('bs-device-battery').innerText = (live.battery !== undefined && live.battery !== null) ? live.battery + 'v' : '--';
-    
-    const latStr = live.lat ? live.lat.toFixed(4) : '0.0000';
-    const lngStr = live.lng ? live.lng.toFixed(4) : '0.0000';
-    document.getElementById('bs-device-address').innerText = live.address || `${latStr}, ${lngStr}`;
-    
-    sheet.classList.add('open');
-};
-
-window.closeMobileBottomSheet = function() {
-    const sheet = document.getElementById('mobileBottomSheet');
-    if (sheet) {
-        sheet.classList.remove('open');
+    if (dot1 && dot2) {
+        if (slideIdx === 0) {
+            dot1.style.background = 'var(--primary)';
+            dot1.style.width = '12px';
+            dot1.style.borderRadius = '4px';
+            
+            dot2.style.background = 'var(--border-light)';
+            dot2.style.width = '8px';
+            dot2.style.borderRadius = '50%';
+        } else {
+            dot1.style.background = 'var(--border-light)';
+            dot1.style.width = '8px';
+            dot1.style.borderRadius = '50%';
+            
+            dot2.style.background = 'var(--primary)';
+            dot2.style.width = '12px';
+            dot2.style.borderRadius = '4px';
+        }
     }
 };
 
-window.bsOpenHistory = function() {
-    if (!activeImei) return;
-    closeMobileBottomSheet();
-    switchMapTab('replay');
+function initMobileModalSwipe() {
+    const panel = document.getElementById('mobileMapModalBottomPanel');
+    if (!panel) return;
+    
+    // Clear old listeners by cloning
+    const newPanel = panel.cloneNode(true);
+    panel.parentNode.replaceChild(newPanel, panel);
+    
+    newPanel.addEventListener('touchstart', e => {
+        touchStartX = e.changedTouches[0].screenX;
+    }, { passive: true });
+    
+    newPanel.addEventListener('touchend', e => {
+        touchEndX = e.changedTouches[0].screenX;
+        const diff = touchStartX - touchEndX;
+        if (Math.abs(diff) > 40) { // threshold of 40px
+            if (diff > 0 && currentMobileModalSlide === 0) {
+                setMobileModalSlide(1);
+            } else if (diff < 0 && currentMobileModalSlide === 1) {
+                setMobileModalSlide(0);
+            }
+        }
+    }, { passive: true });
+}
+
+// Download/Export mobile options
+window.exportMobileReplayPDF = function() {
+    exportTodayReportPDF();
 };
 
-window.bsShareLiveLocation = function() {
-    if (!activeImei) return;
-    openShareModal();
+window.exportMobileReplayExcel = function() {
+    exportTodayReportExcel();
 };
 
 window.exportMobileDeviceHistory = function() {
-    if (activeImei) {
-        window.location.href = `/api/export/history/${activeImei}`;
+    if (mobileModalActiveImei) {
+        window.location.href = `/api/export/history/${mobileModalActiveImei}`;
     }
 };

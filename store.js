@@ -135,26 +135,6 @@ function readData() {
         if (!parsed.deviceSettings) parsed.deviceSettings = {};
         if (!parsed.payments) parsed.payments = [];
         if (!parsed.sharedLinks) parsed.sharedLinks = [];
-        
-        // --- LIVE PORTAL CLEANUP ---
-        // If we are NOT running on localhost with LOCAL_SIMULATOR=true, wipe the simulator from memory
-        if (process.env.LOCAL_SIMULATOR !== 'true') {
-            console.log('[Startup Cleanup] Removing simulator from live portal memory...');
-            const simImeis = ['862170070000001', '352914091691580', '866359076347189_SIM'];
-            if (parsed.devices) {
-                parsed.devices = parsed.devices.filter(d => !simImeis.includes(d.imei));
-            }
-            if (parsed.deviceLastSeen) {
-                simImeis.forEach(imei => delete parsed.deviceLastSeen[imei]);
-            }
-            if (parsed.deviceSettings) {
-                simImeis.forEach(imei => delete parsed.deviceSettings[imei]);
-            }
-            if (parsed.users) {
-                parsed.users = parsed.users.filter(u => u.id !== '1781624485663');
-            }
-        }
-
         if (!parsed.systemSettings) parsed.systemSettings = defaultData.systemSettings;
         return parsed;
     } catch (e) {
@@ -351,7 +331,7 @@ if (MONGODB_URI) {
     }).then(() => {
         useMongo = true;
         console.log('[Database] Successfully connected to MongoDB Atlas. Active database: MongoDB.');
-        return bootstrapAdminMongo().then(() => migrateJsonToMongo()).then(() => cleanupLivePortalSimulators());
+        return bootstrapAdminMongo().then(() => migrateJsonToMongo());
     }).catch(err => {
         useMongo = false;
         console.error('[Database] MongoDB Connection failed or timed out:', err.message);
@@ -708,34 +688,6 @@ async function migrateJsonToMongo() {
         console.log('[Migration] Database migration completed successfully!');
     } catch (err) {
         console.error('[Migration] Critical error during migration:', err);
-    }
-}
-
-async function cleanupLivePortalSimulators() {
-    try {
-        console.log('[Cleanup] Removing simulator data from live MongoDB...');
-        const simUserId = '1781624485663';
-        const simDeviceImeis = ['862170070000001', '352914091691580', '866359076347189_SIM'];
-        
-        await User.deleteOne({ id: simUserId });
-        await Subscription.deleteOne({ userId: simUserId });
-        await Device.deleteMany({ imei: { $in: simDeviceImeis } });
-        await DeviceLastSeen.deleteMany({ imei: { $in: simDeviceImeis } });
-        await DeviceHistoryPoint.deleteMany({ imei: { $in: simDeviceImeis } });
-        await DeviceSettings.deleteMany({ imei: { $in: simDeviceImeis } });
-        await UserSettings.deleteOne({ userId: simUserId });
-        
-        // Clean up accidental Bangalore coordinates from real devices
-        console.log('[Cleanup] Purging accidental Bangalore coordinates...');
-        await DeviceHistoryPoint.deleteMany({ latitude: { $gte: 12.9, $lte: 13.0 }, longitude: { $gte: 77.5, $lte: 77.6 } });
-        await DeviceLastSeen.updateMany(
-            { latitude: { $gte: 12.9, $lte: 13.0 }, longitude: { $gte: 77.5, $lte: 77.6 } },
-            { $set: { latitude: 0, longitude: 0 } }
-        );
-        
-        console.log('[Cleanup] Simulator data and Bangalore fallbacks completely purged from MongoDB.');
-    } catch (err) {
-        console.error('[Cleanup] Error removing simulator data:', err);
     }
 }
 
@@ -1443,25 +1395,18 @@ module.exports = {
 
             let finalLat = locationData.latitude;
             let finalLng = locationData.longitude;
-            
-            // If GPS is explicitly invalid OR coordinates are missing/zero, use fallback to last known valid location
-            if (locationData.gpsValid === false || !finalLat || finalLat === 0 || !finalLng || finalLng === 0) {
-                if (prevRecord && prevRecord.latitude && prevRecord.latitude !== 0 && prevRecord.longitude && prevRecord.longitude !== 0) {
+            if (!finalLat || finalLat === 0 || !finalLng || finalLng === 0) {
+                if (prevRecord && prevRecord.latitude && prevRecord.longitude) {
                     finalLat = prevRecord.latitude;
                     finalLng = prevRecord.longitude;
                 } else {
-                    const lastValid = await DeviceHistoryPoint.findOne({ imei, latitude: { $nin: [0, null], $exists: true } }).sort({ timestamp: -1 });
+                    const lastValid = await DeviceHistoryPoint.findOne({ imei, latitude: { $ne: 0, $exists: true, $ne: null } }).sort({ timestamp: -1 });
                     if (lastValid) {
                         finalLat = lastValid.latitude;
                         finalLng = lastValid.longitude;
                     }
                 }
             }
-
-            // Ensure the in-memory object (which gets emitted to clients via sockets) 
-            // is updated with the fallback coordinates so the map doesn't flicker to 0,0
-            locationData.latitude = finalLat;
-            locationData.longitude = finalLng;
 
             const point = {
                 timestamp: now,
@@ -1581,7 +1526,7 @@ module.exports = {
             let finalLat = locationData.latitude;
             let finalLng = locationData.longitude;
             if (!finalLat || finalLat === 0 || !finalLng || finalLng === 0) {
-                if (prevRecord && prevRecord.latitude && prevRecord.latitude !== 0 && prevRecord.longitude && prevRecord.longitude !== 0) {
+                if (prevRecord && prevRecord.latitude && prevRecord.longitude) {
                     finalLat = prevRecord.latitude;
                     finalLng = prevRecord.longitude;
                 } else {
@@ -1600,11 +1545,6 @@ module.exports = {
                     }
                 }
             }
-
-            // Ensure the in-memory object is updated with the fallback coordinates 
-            // so the map doesn't flicker to 0,0
-            locationData.latitude = finalLat;
-            locationData.longitude = finalLng;
 
             const point = {
                 timestamp: locationData.timestamp,
