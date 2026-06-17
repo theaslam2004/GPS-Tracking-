@@ -857,9 +857,7 @@ function renderDeviceList() {
             }
             
             const addressVal = live.address || 'Fetching location...';
-            const powerVal = live.power !== undefined ? `${live.power}v` : '--';
             const batteryVal = live.battery !== undefined ? `${live.battery}v` : '--';
-            const acVal = (live.ac === 1 || live.ac === 'ON') ? 'ON' : 'OFF';
 
             return `
                 <div class="mobile-device-row ${activeClass}" onclick="focusDevice('${d.imei}')" style="display: flex; flex-direction: column; padding: 16px; border-bottom: 1px solid var(--border-light); cursor: pointer; transition: all 0.25s ease; background: ${isActive ? 'rgba(255, 255, 255, 0.03)' : 'transparent'}; border-left: 3px solid ${isActive ? 'var(--primary)' : 'transparent'}; margin-bottom: ${isActive ? '8px' : '0'}; border-radius: ${isActive ? '8px' : '0'}; box-shadow: ${isActive ? '0 4px 15px rgba(0,0,0,0.1)' : 'none'};">
@@ -914,15 +912,9 @@ function renderDeviceList() {
                         </div>
                         
                         <!-- Extra Telemetry Grid -->
-                        <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-bottom: 12px; width: 100%;">
-                            <div style="text-align: center; background: rgba(255,255,255,0.01); padding: 6px; border-radius: 8px; border: 1px solid var(--border-light); font-size: 0.68rem; color: var(--text-secondary);">
-                                Power<br><strong style="color: var(--text-primary); font-size: 0.72rem;">${powerVal}</strong>
-                            </div>
+                        <div style="display: grid; grid-template-columns: repeat(1, 1fr); gap: 6px; margin-bottom: 12px; width: 100%;">
                             <div style="text-align: center; background: rgba(255,255,255,0.01); padding: 6px; border-radius: 8px; border: 1px solid var(--border-light); font-size: 0.68rem; color: var(--text-secondary);">
                                 Battery<br><strong style="color: var(--text-primary); font-size: 0.72rem;">${batteryVal}</strong>
-                            </div>
-                            <div style="text-align: center; background: rgba(255,255,255,0.01); padding: 6px; border-radius: 8px; border: 1px solid var(--border-light); font-size: 0.68rem; color: var(--text-secondary);">
-                                AC<br><strong style="color: var(--text-primary); font-size: 0.72rem;">${acVal}</strong>
                             </div>
                         </div>
 
@@ -1813,7 +1805,7 @@ function handleDeviceData(data, isLive = true) {
         
         const batteryEl = document.getElementById('mobileMapModalBattery');
         if (batteryEl) {
-            batteryEl.innerText = `${batteryVal} (${powerVal === 'main' ? 'Main' : 'Internal'})`;
+            batteryEl.innerText = `${batteryVal}`;
         }
         
         const addressEl = document.getElementById('mobileMapModalAddress');
@@ -3783,7 +3775,7 @@ window.openMobileMapModal = function(imei) {
     
     const batteryEl = document.getElementById('mobileMapModalBattery');
     if (batteryEl) {
-        batteryEl.innerText = `${batteryVal} (${powerVal === 'main' ? 'Main' : 'Internal'})`;
+        batteryEl.innerText = `${batteryVal}`;
     }
     
     const addressEl = document.getElementById('mobileMapModalAddress');
