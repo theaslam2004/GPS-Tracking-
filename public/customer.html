@@ -1999,195 +1999,71 @@
                         <!-- Odo -->
                         <div style="background: var(--bg-main); padding: 8px 4px; border-radius: var(--radius-md); border: 1px solid var(--border-light);">
                             <div style="font-size: 0.62rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Odometer</div>
-                            <div id="mobileMapModalOdo" style="font-size: 0.88rem; font-weight: 800; color: var(--text-primary); margin-top: 2px; white-space: nowrap;">0 km</div>
-                        </div>
-                        <!-- Speed Circular Progress -->
-                        <div style="display: flex; justify-content: center;">
-                            <div style="position: relative; width: 68px; height: 68px;">
-                                <svg style="width: 100%; height: 100%; transform: rotate(-90deg);">
-                                    <circle cx="34" cy="34" r="30" style="fill: var(--bg-main); stroke: var(--border-light); stroke-width: 4;" />
-                                    <circle id="mobileMapModalSpeedCircleFill" cx="34" cy="34" r="30" style="fill: none; stroke: var(--primary); stroke-width: 4; stroke-linecap: round; stroke-dasharray: 188.5; stroke-dashoffset: 188.5; transition: stroke-dashoffset 0.4s ease-out;" />
-                                </svg>
-                                <div style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center;">
-                                    <div id="mobileMapModalSpeedVal" style="font-size: 1.25rem; font-weight: 800; color: var(--text-primary); font-family: 'Outfit', sans-serif; line-height: 1;">0</div>
-                                    <div style="font-size: 0.5rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 800; margin-top: 2px; letter-spacing: 0.2px;">km/h</div>
-                                </div>
-                            </div>
-                        </div>
-                        <!-- Ign -->
-                        <div style="background: var(--bg-main); padding: 8px 4px; border-radius: var(--radius-md); border: 1px solid var(--border-light);">
-                            <div style="font-size: 0.62rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 700; letter-spacing: 0.5px;">Ignition</div>
-                            <div id="mobileMapModalIgn" style="font-size: 0.88rem; font-weight: 800; color: var(--text-secondary); margin-top: 2px;">OFF</div>
-                        </div>
-                    </div>
-
-                    <!-- Row 2: Battery & Location on Left, Signal & Last Update on Right -->
-                    <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 12px; border-top: 1px solid var(--border-light); padding-top: 10px;">
-                        <!-- Left Details -->
-                        <div style="display: flex; flex-direction: column; gap: 8px;">
-                            <div style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: var(--text-primary); font-weight: 600;">
-                                <i class="fa-solid fa-car-battery" style="color: var(--warning); width: 14px; text-align: center;"></i>
-                                <span>Battery: <strong id="mobileMapModalBattery" style="font-weight: 800; color: var(--text-primary);">--</strong></span>
-                            </div>
-                            <div style="display: flex; align-items: flex-start; gap: 8px; font-size: 0.78rem; color: var(--text-secondary); line-height: 1.3;">
-                                <i class="fa-solid fa-location-dot" style="color: var(--primary); margin-top: 2px; flex-shrink: 0; width: 14px; text-align: center;"></i>
-                                <span id="mobileMapModalAddress" style="font-weight: 500; color: var(--text-primary); text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">Fetching location...</span>
-                            </div>
-                        </div>
-                        
-                        <!-- Right Details (Signal & Updated) -->
-                        <div style="display: flex; flex-direction: column; gap: 8px; border-left: 1px solid var(--border-light); padding-left: 12px;">
-                            <div style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: var(--text-primary); font-weight: 600;">
-                                <i class="fa-solid fa-satellite" style="color: var(--success); width: 14px; text-align: center;"></i>
-                                <span>Signal: <strong id="mobileMapModalSignal" style="font-weight: 800; color: var(--text-primary);">Strong</strong></span>
-                            </div>
-                            <div style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: var(--text-secondary); font-weight: 600;">
-                                <i class="fa-solid fa-clock" style="color: var(--primary); width: 14px; text-align: center;"></i>
-                                <span style="font-size: 0.76rem;">Updated: <strong id="mobileMapModalUpdatedTime" style="font-weight: 700; color: var(--text-primary);">Just now</strong></span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Slide 2: Today's Summary & Exports -->
-                <div style="width: 50%; flex-shrink: 0; padding-left: 8px; box-sizing: border-box; display: flex; flex-direction: column; gap: 8px;">
-                    <!-- Today's Summary Header -->
-                    <div style="display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--border-light); padding-bottom: 6px;">
-                        <span style="font-size: 0.85rem; font-weight: 800; color: var(--primary); display: flex; align-items: center; gap: 6px; text-transform: uppercase;">
-                            <i class="fa-solid fa-chart-simple"></i> Today's Summary
-                        </span>
-                        <div style="display: flex; align-items: center; gap: 14px;">
-                            <i class="fa-solid fa-file-pdf" style="font-size: 1.15rem; color: #ef4444; cursor: pointer; transition: transform 0.1s;" onclick="exportMobileReplayPDF()" onmousedown="this.style.transform='scale(0.9)'" onmouseup="this.style.transform='scale(1)'" title="Download PDF Summary"></i>
-                            <i class="fa-solid fa-file-excel" style="font-size: 1.15rem; color: #22c55e; cursor: pointer; transition: transform 0.1s;" onclick="exportMobileReplayExcel()" onmousedown="this.style.transform='scale(0.9)'" onmouseup="this.style.transform='scale(1)'" title="Download Excel Summary"></i>
-                        </div>
-                    </div>
-
-                    <!-- Stats Grid -->
-                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                        <div style="background: var(--bg-main); padding: 8px; border-radius: var(--radius-md); border: 1px solid var(--border-light);">
-                            <div style="font-size: 0.6rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 700;">Distance</div>
-                            <div id="mobileMapModalSummaryDistance" style="font-size: 0.95rem; font-weight: 800; color: var(--text-primary); margin-top: 2px;">0.00 km</div>
-                        </div>
-                        <div style="background: var(--bg-main); padding: 8px; border-radius: var(--radius-md); border: 1px solid var(--border-light);">
-                            <div style="font-size: 0.6rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 700;">Engine Active</div>
-                            <div id="mobileMapModalSummaryEngineActive" style="font-size: 0.95rem; font-weight: 800; color: var(--text-primary); margin-top: 2px;">0h 00m</div>
-                        </div>
-                    </div>
-
-                    <!-- Durations -->
-                    <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; background: var(--bg-main); padding: 8px; border-radius: var(--radius-md); border: 1px solid var(--border-light); text-align: center;">
-                        <div>
-                            <div style="font-size: 0.55rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 700;">Drive</div>
-                            <div id="mobileMapModalSummaryDrive" style="font-size: 0.85rem; font-weight: 800; color: #00E676; margin-top: 2px;">0m</div>
-                        </div>
-                        <div style="border-left: 1px solid var(--border-light); border-right: 1px solid var(--border-light);">
-                            <div style="font-size: 0.55rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 700;">Idle</div>
-                            <div id="mobileMapModalSummaryIdle" style="font-size: 0.85rem; font-weight: 800; color: #FFab00; margin-top: 2px;">0m</div>
-                        </div>
-                        <div>
-                            <div style="font-size: 0.55rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 700;">Halt</div>
-                            <div id="mobileMapModalSummaryHalt" style="font-size: 0.85rem; font-weight: 800; color: #FF3D00; margin-top: 2px;">0m</div>
-                        </div>
-                    </div>
-
-                    <!-- Download CSV -->
-                    <button onclick="exportMobileDeviceHistory()" style="width: 100%; padding: 8px 12px; font-size: 0.8rem; font-weight: 700; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px; color: var(--text-primary); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; font-family: 'Outfit';">
-                        <i class="fa-solid fa-file-csv" style="color: #ec4899; font-size: 1rem;"></i> Download Device History (CSV)
-                    </button>
-                </div>
-
-            </div>
-
-            <!-- Paging Indicators -->
-            <div style="display: flex; justify-content: center; align-items: center; gap: 6px; margin-top: 8px;">
-                <span id="mobileModalDot1" class="carousel-dot active" onclick="setMobileModalSlide(0)" style="width: 12px; height: 8px; border-radius: 4px; background: var(--primary); cursor: pointer; transition: all 0.2s; opacity: 0.8;"></span>
-                <span id="mobileModalDot2" class="carousel-dot" onclick="setMobileModalSlide(1)" style="width: 8px; height: 8px; border-radius: 50%; background: var(--border-light); cursor: pointer; transition: all 0.2s; opacity: 0.8;"></span>
-            </div>
+    <!-- Mobile Bottom Sheet (Single Map Design) -->
+    <div id="mobileBottomSheet" class="mobile-bottom-sheet" style="position: fixed; bottom: 0; left: 0; width: 100%; background: var(--bg-surface); z-index: 10000; border-top-left-radius: 20px; border-top-right-radius: 20px; box-shadow: 0 -4px 20px rgba(0,0,0,0.1); font-family: 'Outfit', sans-serif; transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);">
+        <!-- Drag handle -->
+        <div style="width: 100%; display: flex; justify-content: center; padding: 12px 0; cursor: grab;" id="mobileBottomSheetHandle" onclick="closeMobileBottomSheet()">
+            <div style="width: 40px; height: 5px; background: var(--border); border-radius: 3px;"></div>
         </div>
-
-        <!-- Second Sidebar: History Replay Drawer -->
-        <div id="mobileModalHistorySidebar" style="position: absolute; top: 0; right: 0; width: 280px; height: 100%; z-index: 100005; background: var(--bg-surface); border-left: 1px solid var(--border); box-shadow: -4px 0 24px rgba(0,0,0,0.15); display: flex; flex-direction: column; transform: translateX(100%); transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);">
-            <!-- Sidebar Header -->
-            <div style="height: 56px; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; border-bottom: 1px solid var(--border-light); flex-shrink: 0;">
-                <span style="font-weight: 800; font-size: 0.95rem; color: var(--text-primary); font-family: 'Outfit'; display: flex; align-items: center; gap: 8px;">
-                    <i class="fa-solid fa-clock-rotate-left" style="color: var(--primary);"></i> History Replay
-                </span>
-                <button onclick="toggleMobileModalHistorySidebar()" style="background: none; border: none; color: var(--text-primary); font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 32px; height: 32px; border-radius: 50%;">
+        
+        <div style="padding: 0 20px 20px 20px;">
+            <!-- Header: Name and Status -->
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span id="bs-status-indicator" style="width: 12px; height: 12px; border-radius: 50%; background: var(--success);"></span>
+                    <h3 id="bs-device-name" style="margin: 0; font-size: 1.2rem; font-weight: 700; color: var(--text-primary);">Device Name</h3>
+                </div>
+                <button onclick="closeMobileBottomSheet()" style="background: none; border: none; color: var(--text-secondary); font-size: 1.2rem; cursor: pointer;">
                     <i class="fa-solid fa-xmark"></i>
                 </button>
             </div>
 
-            <!-- Date Selectors -->
-            <div style="padding: 16px; display: flex; flex-direction: column; gap: 12px; flex: 1; overflow-y: auto;">
-                <div>
-                    <label style="font-size: 0.72rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; display: block; margin-bottom: 6px;">Select Preset</label>
-                    <select id="mobileModalHistoryPreset" onchange="handleMobileHistoryPresetChange(this.value)" style="width: 100%; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-main); color: var(--text-primary); font-family: 'Outfit'; font-size: 0.85rem; font-weight: 600; outline: none;">
-                        <option value="24h" selected>Last 24 Hours</option>
-                        <option value="today">Today</option>
-                        <option value="7d">Last 7 Days</option>
-                        <option value="custom">Custom Range</option>
-                    </select>
+            <!-- Address / Last Updated -->
+            <div style="display: flex; gap: 10px; font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 16px; align-items: flex-start;">
+                <i class="fa-solid fa-location-dot" style="margin-top: 3px;"></i>
+                <div id="bs-device-address" style="line-height: 1.4;">Fetching location...</div>
+            </div>
+
+            <!-- Telemetry Grid -->
+            <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin-bottom: 20px;">
+                <div style="background: var(--bg-main); padding: 12px; border-radius: 12px; border: 1px solid var(--border-light);">
+                    <div style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 700; margin-bottom: 4px;">Speed</div>
+                    <div id="bs-device-speed" style="font-size: 1.1rem; font-weight: 800; color: var(--text-primary);">0 km/h</div>
                 </div>
-
-                <!-- Custom Date Inputs -->
-                <div id="mobileModalCustomDates" style="display: none; flex-direction: column; gap: 10px;">
-                    <div>
-                        <label style="font-size: 0.72rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; display: block; margin-bottom: 4px;">Start Date</label>
-                        <input type="datetime-local" id="mobileModalStartDate" style="width: 100%; padding: 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-main); color: var(--text-primary); font-family: 'Outfit'; font-size: 0.8rem;">
-                    </div>
-                    <div>
-                        <label style="font-size: 0.72rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; display: block; margin-bottom: 4px;">End Date</label>
-                        <input type="datetime-local" id="mobileModalEndDate" style="width: 100%; padding: 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-main); color: var(--text-primary); font-family: 'Outfit'; font-size: 0.8rem;">
-                    </div>
+                <div style="background: var(--bg-main); padding: 12px; border-radius: 12px; border: 1px solid var(--border-light);">
+                    <div style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 700; margin-bottom: 4px;">Odometer</div>
+                    <div id="bs-device-odo" style="font-size: 1.1rem; font-weight: 800; color: var(--text-primary);">0 km</div>
                 </div>
-
-                <button onclick="loadMobileHistoryReplay()" style="width: 100%; padding: 12px; border: none; border-radius: 8px; background: var(--primary); color: #fff; font-weight: 700; font-family: 'Outfit'; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 8px; box-shadow: 0 4px 12px rgba(255, 61, 112, 0.2);">
-                    <i class="fa-solid fa-play"></i> Load Replay
-                </button>
-
-                <!-- Active Replay Controls inside Drawer -->
-                <div id="mobileModalReplayControls" style="display: none; flex-direction: column; gap: 12px; margin-top: 16px; border-top: 1px solid var(--border-light); padding-top: 16px;">
-                    <span style="font-size: 0.72rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; display: block; margin-bottom: 4px;">Replay Control</span>
-                    
-                    <div style="display: flex; gap: 8px; align-items: center;">
-                        <button id="mobileModalPlayBtn" onclick="toggleMobileReplayPlayback()" style="flex: 1; padding: 10px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-surface); color: var(--text-primary); font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; font-family: 'Outfit';">
-                            <i class="fa-solid fa-play"></i> Play
-                        </button>
-                        <button onclick="stopMobileReplayPlayback()" style="padding: 10px 14px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-surface); color: var(--text-primary); cursor: pointer;">
-                            <i class="fa-solid fa-stop"></i>
-                        </button>
-                    </div>
-
-                    <div>
-                        <label style="font-size: 0.72rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase; display: block; margin-bottom: 6px;">Playback Speed</label>
-                        <select id="mobileModalReplaySpeed" onchange="setMobileReplaySpeed(this.value)" style="width: 100%; padding: 8px; border-radius: 8px; border: 1px solid var(--border); background: var(--bg-main); color: var(--text-primary); font-family: 'Outfit'; font-size: 0.8rem; font-weight: 600;">
-                            <option value="1">1x Speed</option>
-                            <option value="2">2x Speed</option>
-                            <option value="5">5x Speed</option>
-                            <option value="10">10x Speed</option>
-                            <option value="20">20x Speed</option>
-                        </select>
-                    </div>
-
-                    <!-- Progress slider -->
-                    <div>
-                        <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-secondary); font-weight: 700; margin-bottom: 4px;">
-                            <span>Progress</span>
-                            <span id="mobileModalReplayProgressText">0 / 0</span>
-                        </div>
-                        <input type="range" id="mobileModalReplaySlider" min="0" max="0" value="0" oninput="seekMobileReplay(this.value)" style="width: 100%; accent-color: var(--primary);">
-                    </div>
+                <div style="background: var(--bg-main); padding: 12px; border-radius: 12px; border: 1px solid var(--border-light);">
+                    <div style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 700; margin-bottom: 4px;">Ignition</div>
+                    <div id="bs-device-ignition" style="font-size: 1.1rem; font-weight: 800; color: var(--success);">ON</div>
+                </div>
+                <div style="background: var(--bg-main); padding: 12px; border-radius: 12px; border: 1px solid var(--border-light);">
+                    <div style="font-size: 0.75rem; color: var(--text-secondary); text-transform: uppercase; font-weight: 700; margin-bottom: 4px;">Battery</div>
+                    <div id="bs-device-battery" style="font-size: 1.1rem; font-weight: 800; color: var(--text-primary);">--</div>
                 </div>
             </div>
+
+            <!-- Action Buttons -->
+            <div style="display: flex; gap: 10px;">
+                <button onclick="bsOpenHistory()" style="flex: 1; padding: 12px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg-main); color: var(--text-primary); font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer;">
+                    <i class="fa-solid fa-clock-rotate-left"></i> History
+                </button>
+                <button onclick="bsShareLiveLocation()" style="flex: 1; padding: 12px; border-radius: 10px; border: none; background: var(--primary); color: white; font-weight: 700; display: flex; align-items: center; justify-content: center; gap: 8px; cursor: pointer; box-shadow: 0 4px 12px rgba(255, 61, 112, 0.2);">
+                    <i class="fa-solid fa-share-nodes"></i> Share
+                </button>
+            </div>
         </div>
+    </div>
     
     <style>
-        .mobile-map-modal {
-            animation: mobileMapFadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+        .mobile-bottom-sheet {
+            transform: translateY(120%);
+            pointer-events: none;
         }
-        @keyframes mobileMapFadeIn {
-            from { opacity: 0; transform: scale(0.95); }
-            to { opacity: 1; transform: scale(1); }
+        .mobile-bottom-sheet.open {
+            transform: translateY(0);
+            pointer-events: auto;
         }
     </style>
 
