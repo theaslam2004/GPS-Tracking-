@@ -68,10 +68,20 @@ function parseDeviceData(buffer) {
             if (latDirIndex > 2) {
                 // Look for 15-digit IMEI before the coordinates
                 let imei = "";
+                let imeiIndex = -1;
                 for (let i = 0; i < latDirIndex; i++) {
                     if (parts[i] && parts[i].length >= 14 && /^\d+$/.test(parts[i])) {
                         imei = parts[i];
+                        imeiIndex = i;
                         break;
+                    }
+                }
+                
+                let gpsValid = true;
+                if (imeiIndex > 0) {
+                    // Check the field immediately before IMEI for 'V' (Void)
+                    if (parts[imeiIndex - 1] === 'V') {
+                        gpsValid = false;
                     }
                 }
                 
@@ -192,7 +202,7 @@ function parseDeviceData(buffer) {
                     speed: speed,
                     heading: heading,
                     satellites: satellites,
-                    gpsValid: true,
+                    gpsValid: gpsValid,
                     battery: batteryPercentage,
                     deltaDistance: deltaDistance,
                     ignition: ignition,

@@ -1395,7 +1395,9 @@ module.exports = {
 
             let finalLat = locationData.latitude;
             let finalLng = locationData.longitude;
-            if (!finalLat || finalLat === 0 || !finalLng || finalLng === 0) {
+            
+            // If GPS is explicitly invalid OR coordinates are missing/zero, use fallback to last known valid location
+            if (locationData.gpsValid === false || !finalLat || finalLat === 0 || !finalLng || finalLng === 0) {
                 if (prevRecord && prevRecord.latitude && prevRecord.latitude !== 0 && prevRecord.longitude && prevRecord.longitude !== 0) {
                     finalLat = prevRecord.latitude;
                     finalLng = prevRecord.longitude;
