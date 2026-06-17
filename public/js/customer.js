@@ -856,7 +856,9 @@ function renderDeviceList() {
                 }
             }
             
-            const addressVal = live.address || 'Fetching location...';
+            const latStr = live.lat ? live.lat.toFixed(4) : '0.0000';
+            const lngStr = live.lng ? live.lng.toFixed(4) : '0.0000';
+            const addressVal = live.address || `${latStr}, ${lngStr}`;
             const batteryVal = live.battery !== undefined ? `${live.battery}v` : '--';
 
             return `
@@ -1781,7 +1783,9 @@ function handleDeviceData(data, isLive = true) {
         
         const powerVal = data.powerSource || '--';
         const batteryVal = data.battery !== undefined ? `${data.battery.toFixed(1)}v` : '--';
-        const addressVal = data.address || 'Fetching location...';
+        const latStr = data.lat ? data.lat.toFixed(4) : '0.0000';
+        const lngStr = data.lng ? data.lng.toFixed(4) : '0.0000';
+        const addressVal = data.address || `${latStr}, ${lngStr}`;
         
         const odoEl = document.getElementById('mobileMapModalOdo');
         if (odoEl) odoEl.innerText = odoVal;
