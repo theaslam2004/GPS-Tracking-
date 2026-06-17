@@ -331,7 +331,7 @@ if (MONGODB_URI) {
     }).then(() => {
         useMongo = true;
         console.log('[Database] Successfully connected to MongoDB Atlas. Active database: MongoDB.');
-        return bootstrapAdminMongo().then(() => migrateJsonToMongo());
+        return bootstrapAdminMongo().then(() => migrateJsonToMongo()).then(() => cleanupLivePortalSimulators());
     }).catch(err => {
         useMongo = false;
         console.error('[Database] MongoDB Connection failed or timed out:', err.message);
@@ -688,6 +688,26 @@ async function migrateJsonToMongo() {
         console.log('[Migration] Database migration completed successfully!');
     } catch (err) {
         console.error('[Migration] Critical error during migration:', err);
+    }
+}
+
+async function cleanupLivePortalSimulators() {
+    try {
+        console.log('[Cleanup] Removing simulator data from live MongoDB...');
+        const simUserId = '1781624485663';
+        const simDeviceImeis = ['862170070000001', '352914091691580', '866359076347189_SIM'];
+        
+        await User.deleteOne({ id: simUserId });
+        await Subscription.deleteOne({ userId: simUserId });
+        await Device.deleteMany({ imei: { $in: simDeviceImeis } });
+        await DeviceLastSeen.deleteMany({ imei: { $in: simDeviceImeis } });
+        await DeviceHistoryPoint.deleteMany({ imei: { $in: simDeviceImeis } });
+        await DeviceSettings.deleteMany({ imei: { $in: simDeviceImeis } });
+        await UserSettings.deleteOne({ userId: simUserId });
+        
+        console.log('[Cleanup] Simulator data completely purged from MongoDB.');
+    } catch (err) {
+        console.error('[Cleanup Error]', err);
     }
 }
 
