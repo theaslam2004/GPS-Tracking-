@@ -173,7 +173,7 @@ function parseDeviceData(buffer) {
                     case 13: event = 'Harsh Braking'; parsedPacketType = 'HB'; break;
                     case 14: event = 'Harsh Acceleration'; parsedPacketType = 'HA'; break;
                     case 15: event = 'Rash Turning'; parsedPacketType = 'RT'; break;
-                    case 16: event = null; break; // Ignored to prevent false positive alerts
+                    case 16: event = 'Emergency button Tampered'; parsedPacketType = 'TA'; break;
                     case 51: event = 'Tilt Alert'; break;
                     case 52: event = 'Towing Started'; parsedPacketType = 'TS'; break;
                     case 53: event = 'Towing Stopped'; parsedPacketType = 'TE'; break;
