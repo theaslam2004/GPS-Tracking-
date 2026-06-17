@@ -77,6 +77,11 @@ function parseDeviceData(buffer) {
                     }
                 }
                 
+                // Prevent conflict: A simulator in Bangalore is using the exact same IMEI as the user's device in Gujarat
+                if (imei === '866359076347189' && parts.includes('KA01GPS')) {
+                    imei = '866359076347189_SIM';
+                }
+                
                 let gpsValid = true;
                 if (imeiIndex > 0) {
                     // Check the field immediately before IMEI for 'V' (Void)
