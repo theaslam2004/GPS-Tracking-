@@ -1398,9 +1398,9 @@ module.exports = {
             
             // If GPS is explicitly invalid OR coordinates are missing/zero, use fallback to last known valid location
             if (locationData.gpsValid === false || !finalLat || finalLat === 0 || !finalLng || finalLng === 0) {
-                if (prevRecord && prevRecord.latitude && prevRecord.latitude !== 0 && prevRecord.longitude && prevRecord.longitude !== 0) {
-                    finalLat = prevRecord.latitude;
-                    finalLng = prevRecord.longitude;
+                if (prevRecord && prevRecord.lat && prevRecord.lat !== 0 && prevRecord.lng && prevRecord.lng !== 0) {
+                    finalLat = prevRecord.lat;
+                    finalLng = prevRecord.lng;
                 } else {
                     const lastValid = await DeviceHistoryPoint.findOne({ imei, latitude: { $nin: [0, null], $exists: true } }).sort({ timestamp: -1 });
                     if (lastValid) {
