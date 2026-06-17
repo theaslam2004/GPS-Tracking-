@@ -135,6 +135,26 @@ function readData() {
         if (!parsed.deviceSettings) parsed.deviceSettings = {};
         if (!parsed.payments) parsed.payments = [];
         if (!parsed.sharedLinks) parsed.sharedLinks = [];
+        
+        // --- LIVE PORTAL CLEANUP ---
+        // If we are NOT running on localhost with LOCAL_SIMULATOR=true, wipe the simulator from memory
+        if (process.env.LOCAL_SIMULATOR !== 'true') {
+            console.log('[Startup Cleanup] Removing simulator from live portal memory...');
+            const simImeis = ['862170070000001', '352914091691580', '866359076347189_SIM'];
+            if (parsed.devices) {
+                parsed.devices = parsed.devices.filter(d => !simImeis.includes(d.imei));
+            }
+            if (parsed.deviceLastSeen) {
+                simImeis.forEach(imei => delete parsed.deviceLastSeen[imei]);
+            }
+            if (parsed.deviceSettings) {
+                simImeis.forEach(imei => delete parsed.deviceSettings[imei]);
+            }
+            if (parsed.users) {
+                parsed.users = parsed.users.filter(u => u.id !== '1781624485663');
+            }
+        }
+
         if (!parsed.systemSettings) parsed.systemSettings = defaultData.systemSettings;
         return parsed;
     } catch (e) {
@@ -1548,9 +1568,9 @@ module.exports = {
             let finalLat = locationData.latitude;
             let finalLng = locationData.longitude;
             if (!finalLat || finalLat === 0 || !finalLng || finalLng === 0) {
-                if (prevRecord && prevRecord.latitude && prevRecord.longitude) {
-                    finalLat = prevRecord.latitude;
-                    finalLng = prevRecord.longitude;
+                if (prevRecord && prevRecord.lat && prevRecord.lat !== 0 && prevRecord.lng && prevRecord.lng !== 0) {
+                    finalLat = prevRecord.lat;
+                    finalLng = prevRecord.lng;
                 } else {
                     const historyFile = path.join(__dirname, 'history', `${imei}.json`);
                     if (fs.existsSync(historyFile)) {
