@@ -1516,18 +1516,10 @@
                         <!-- Details Grid -->
                         <div style="margin-bottom: 14px;">
                             <div style="font-size: 0.65rem; color: var(--text-secondary); font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">Details</div>
-                            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
-                                <div style="font-size: 0.75rem; display: flex; align-items: center; gap: 6px; color: var(--text-primary); font-weight: 600; background: var(--bg-main); padding: 8px; border-radius: var(--radius-sm); border: 1px solid var(--border-light);">
-                                    <i class="fa-solid fa-car-battery" style="color: var(--success); font-size: 0.8rem; width: 14px; text-align: center;"></i>
-                                    <span>Power: <span id="mobilePanelPowerVolt">--</span></span>
-                                </div>
-                                <div style="font-size: 0.75rem; display: flex; align-items: center; gap: 6px; color: var(--text-primary); font-weight: 600; background: var(--bg-main); padding: 8px; border-radius: var(--radius-sm); border: 1px solid var(--border-light);">
+                            <div style="display: grid; grid-template-columns: 1fr; gap: 8px;">
+                                <div style="font-size: 0.75rem; display: flex; align-items: center; justify-content: center; gap: 6px; color: var(--text-primary); font-weight: 600; background: var(--bg-main); padding: 8px; border-radius: var(--radius-sm); border: 1px solid var(--border-light);">
                                     <i class="fa-solid fa-battery-three-quarters" style="color: var(--success); font-size: 0.8rem; width: 14px; text-align: center;" id="mobilePanelBatteryIcon"></i>
                                     <span>Battery: <span id="mobilePanelBatteryVolt">--</span></span>
-                                </div>
-                                <div style="font-size: 0.75rem; display: flex; align-items: center; gap: 6px; color: var(--text-primary); font-weight: 600; background: var(--bg-main); padding: 8px; border-radius: var(--radius-sm); border: 1px solid var(--border-light); grid-column: span 2;">
-                                    <i class="fa-solid fa-snowflake" id="mobilePanelAcIcon" style="color: var(--text-secondary); font-size: 0.8rem; width: 14px; text-align: center;"></i>
-                                    <span>Air Conditioning: <span id="mobilePanelAcText">AC Off</span></span>
                                 </div>
                             </div>
                         </div>
@@ -2033,10 +2025,7 @@
                     <div style="display: grid; grid-template-columns: 1.2fr 1fr; gap: 12px; border-top: 1px solid var(--border-light); padding-top: 10px;">
                         <!-- Left Details -->
                         <div style="display: flex; flex-direction: column; gap: 8px;">
-                            <div style="display: flex; align-items: center; gap: 8px; font-size: 0.8rem; color: var(--text-primary); font-weight: 600;">
-                                <i class="fa-solid fa-car-battery" style="color: var(--warning); width: 14px; text-align: center;"></i>
-                                <span>Battery: <strong id="mobileMapModalBattery" style="font-weight: 800; color: var(--text-primary);">--</strong></span>
-                            </div>
+                            <!-- Removed Battery UI element per user request -->
                             <div style="display: flex; align-items: flex-start; gap: 8px; font-size: 0.78rem; color: var(--text-secondary); line-height: 1.3;">
                                 <i class="fa-solid fa-location-dot" style="color: var(--primary); margin-top: 2px; flex-shrink: 0; width: 14px; text-align: center;"></i>
                                 <span id="mobileMapModalAddress" style="font-weight: 500; color: var(--text-primary); text-overflow: ellipsis; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden;">Fetching location...</span>

@@ -118,7 +118,7 @@ function getAddress(imei, lat, lng, callback) {
         .then(geo => {
             let addr = `${lat.toFixed(5)}, ${lng.toFixed(5)}`;
             if (geo && geo.display_name) {
-                addr = geo.display_name.split(',').slice(0, 3).join(', ').trim();
+                addr = geo.display_name;
             }
             addressCache[cacheKey] = addr;
             if (callback) callback(addr);
@@ -885,6 +885,11 @@ function renderDeviceList() {
                         <!-- Inline Mini Map with Expand Option Overlay -->
                         <div style="position: relative; width: 100%; height: 180px; margin-bottom: 12px; border-radius: 12px; border: 1px solid var(--border); overflow: hidden; z-index: 10;">
                             <div id="mini-map-${d.imei}" class="mini-map-container" style="height: 100%; width: 100%;"></div>
+                            <!-- Mini Map Overlay Address -->
+                            <div style="position: absolute; bottom: 0; left: 0; right: 0; background: rgba(0,0,0,0.6); color: white; padding: 6px 10px; font-size: 0.75rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; z-index: 1000; display: flex; align-items: center; gap: 6px;">
+                                <i class="fa-solid fa-location-dot" style="color: var(--primary);"></i>
+                                <span id="minimap-overlay-address-${d.imei}">${addressVal}</span>
+                            </div>
                             <button onclick="event.stopPropagation(); openMobileMapModal('${d.imei}')" style="position: absolute; top: 8px; right: 8px; width: 32px; height: 32px; border-radius: 6px; background: rgba(255,255,255,0.9); border: 1px solid var(--border); color: var(--text-primary); display: flex; align-items: center; justify-content: center; cursor: pointer; z-index: 1000; box-shadow: 0 2px 6px rgba(0,0,0,0.15);" title="Expand Map">
                                 <i class="fa-solid fa-expand" style="font-size: 0.85rem;"></i>
                             </button>
@@ -916,15 +921,7 @@ function renderDeviceList() {
                             <span id="telemetry-address-${d.imei}">${addressVal}</span>
                         </div>
                         
-                        <!-- Extra Telemetry Grid -->
-                        <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 6px; margin-bottom: 12px; width: 100%;">
-                            <div style="text-align: center; background: rgba(255,255,255,0.01); padding: 6px; border-radius: 8px; border: 1px solid var(--border-light); font-size: 0.68rem; color: var(--text-secondary);">
-                                Power<br><strong style="color: var(--text-primary); font-size: 0.72rem;">${powerVal}</strong>
-                            </div>
-                            <div style="text-align: center; background: rgba(255,255,255,0.01); padding: 6px; border-radius: 8px; border: 1px solid var(--border-light); font-size: 0.68rem; color: var(--text-secondary);">
-                                Battery<br><strong style="color: var(--text-primary); font-size: 0.72rem;">${batteryVal}</strong>
-                            </div>
-                        </div>
+                        <!-- Removed Battery Extra Telemetry Grid -->
 
                         <!-- Action Buttons -->
                         <div style="display: flex; gap: 8px; width: 100%;">
@@ -1906,8 +1903,26 @@ function handleDeviceData(data, isLive = true) {
         }
         
         const addressTextEl = document.getElementById(`telemetry-address-${imei}`);
-        if (addressTextEl) {
-            addressTextEl.innerText = data.address || 'Fetching location...';
+        const mobileAddrEl = document.getElementById('mobilePanelAddress');
+        const minimapOverlayAddrEl = document.getElementById(`minimap-overlay-address-${imei}`);
+        
+        if (!data.address) {
+            // Proactively fetch address if it's missing in the live packet
+            getAddress(imei, latitude, longitude, (addr) => {
+                data.address = addr;
+                if (latestData[imei]) latestData[imei].address = addr;
+                if (addressTextEl) addressTextEl.innerText = addr;
+                if (minimapOverlayAddrEl) minimapOverlayAddrEl.innerText = addr;
+                if (mobileAddrEl && document.getElementById('mobilePanelDeviceName') && document.getElementById('mobilePanelDeviceName').innerText.includes(deviceName)) {
+                    mobileAddrEl.innerText = addr;
+                }
+            });
+        } else {
+            if (addressTextEl) addressTextEl.innerText = data.address;
+            if (minimapOverlayAddrEl) minimapOverlayAddrEl.innerText = data.address;
+            if (mobileAddrEl && document.getElementById('mobilePanelDeviceName') && document.getElementById('mobilePanelDeviceName').innerText.includes(deviceName)) {
+                mobileAddrEl.innerText = data.address;
+            }
         }
     }
 

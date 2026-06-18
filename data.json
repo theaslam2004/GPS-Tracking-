@@ -87,8 +87,8 @@
     "deviceLastSeen":  {
                            "862170070000001":  {
                                                    "timestamp":  "2026-06-16T17:04:23Z",
-                                                   "latitude":  12.97814,
-                                                   "longitude":  77.593424,
+                                                   "latitude":  22.566216,
+                                                   "longitude":  71.80719,
                                                    "speed":  38,
                                                    "heading":  180,
                                                    "satellites":  12,
@@ -99,12 +99,12 @@
                                                    "event":  "Location Update",
                                                    "odometer":  15987.266200000036,
                                                    "accumulatedDistance":  15987.266200000036,
-                                                   "rawHex":  "$Header,iTriangle1,010013,NR,1,L,862170070000001,KA01GPS,1,16062026,170423,12.978140,N,77.593424,E,38.0,180.0,12,206.0,1.26,0.68,Airtel,1,1,12.4,4.12,0,C,31,404,10,8ab,975e416,45,ab,de74335,38,8ab,e09c934,43,8ab,951a834,0000,0001,008273,0.0,0.0,1372.37*FF",
+                                                   "rawHex":  "$Header,iTriangle1,010013,NR,1,L,862170070000001,KA01GPS,1,16062026,170423,22.566216,N,71.80719,E,38.0,180.0,12,206.0,1.26,0.68,Airtel,1,1,22.566216,4.12,0,C,31,404,10,8ab,975e416,45,ab,de74335,38,8ab,e09c934,43,8ab,951a834,0000,0001,008273,0.0,0.0,1372.37*FF",
                                                    "status":  "running",
                                                    "ignitionOnTime":  null,
                                                    "ignitionOffTime":  null,
                                                    "powerSource":  "primary",
-                                                   "voltage":  12.4
+                                                   "voltage":  22.566216
                                                },
                            "866359076347189":  {
                                                    "timestamp":  "2026-06-16T15:41:47Z",
@@ -120,17 +120,17 @@
                                                    "event":  "Location Update",
                                                    "odometer":  1140.8156700000006,
                                                    "accumulatedDistance":  1140.8156700000006,
-                                                   "rawHex":  "$Header,iTriangle1,010013,NR,1,L,866359076347189,KA01GPS,1,16062026,154147,12.962439,N,77.593899,E,65.0,180.0,12,206.0,1.26,0.68,Airtel,1,1,12.4,4.12,0,C,31,404,10,8ab,975e416,45,ab,de74335,38,8ab,e09c934,43,8ab,951a834,0000,0001,008273,0.0,0.0,2259.09*FF",
+                                                   "rawHex":  "$Header,iTriangle1,010013,NR,1,L,866359076347189,KA01GPS,1,16062026,154147,22.566216,N,71.80719,E,65.0,180.0,12,206.0,1.26,0.68,Airtel,1,1,22.566216,4.12,0,C,31,404,10,8ab,975e416,45,ab,de74335,38,8ab,e09c934,43,8ab,951a834,0000,0001,008273,0.0,0.0,2259.09*FF",
                                                    "status":  "running",
                                                    "ignitionOnTime":  null,
                                                    "ignitionOffTime":  null,
                                                    "powerSource":  "primary",
-                                                   "voltage":  12.4
+                                                   "voltage":  22.566216
                                                },
                            "352914091691580":  {
                                                    "timestamp":  "2026-06-16T17:04:23Z",
-                                                   "latitude":  12.980751,
-                                                   "longitude":  77.617391,
+                                                   "latitude":  22.566216,
+                                                   "longitude":  71.80719,
                                                    "speed":  72,
                                                    "heading":  180,
                                                    "satellites":  12,
@@ -141,12 +141,12 @@
                                                    "event":  "Location Update",
                                                    "odometer":  9398.37377999999,
                                                    "accumulatedDistance":  9398.37377999999,
-                                                   "rawHex":  "$Header,iTriangle1,010013,NR,1,L,352914091691580,KA01GPS,1,16062026,170423,12.980751,N,77.617391,E,72.0,180.0,12,206.0,1.26,0.68,Airtel,1,1,12.4,4.12,0,C,31,404,10,8ab,975e416,45,ab,de74335,38,8ab,e09c934,43,8ab,951a834,0000,0001,008273,0.0,0.0,893.91*FF",
+                                                   "rawHex":  "$Header,iTriangle1,010013,NR,1,L,352914091691580,KA01GPS,1,16062026,170423,22.566216,N,71.80719,E,72.0,180.0,12,206.0,1.26,0.68,Airtel,1,1,22.566216,4.12,0,C,31,404,10,8ab,975e416,45,ab,de74335,38,8ab,e09c934,43,8ab,951a834,0000,0001,008273,0.0,0.0,893.91*FF",
                                                    "status":  "running",
                                                    "ignitionOnTime":  null,
                                                    "ignitionOffTime":  null,
                                                    "powerSource":  "primary",
-                                                   "voltage":  12.4
+                                                   "voltage":  22.566216
                                                }
                        },
     "deviceHistory":  {
@@ -294,3 +294,4 @@
                                           }
                        }
 }
+

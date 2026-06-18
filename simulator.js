@@ -86,9 +86,9 @@ async function startSimulation() {
     devices.forEach((device, index) => {
         const client = new net.Socket();
         
-        // Starting position near Bangalore
-        let lat = 12.9716 + (index * 0.01);
-        let lng = 77.5946 + (index * 0.01);
+        // Starting position near Gujarat
+        let lat = 22.566216 + (index * 0.01);
+        let lng = 71.8072 + (index * 0.01);
         let prevSpeed = 0;
         let isTowed = false;
         let towingTicks = 0;
