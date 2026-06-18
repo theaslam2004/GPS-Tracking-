@@ -855,8 +855,8 @@ function renderDeviceList() {
             }
             
             const addressVal = live.address || 'Fetching location...';
-            const powerVal = live.power !== undefined ? `${live.power}v` : '--';
-            const batteryVal = live.battery !== undefined ? `${live.battery}v` : '--';
+            const powerVal = live.voltage !== undefined ? `${live.voltage.toFixed(1)}v` : '--';
+            const batteryVal = live.battery !== undefined ? `${live.battery}%` : '--';
             const acVal = (live.ac === 1 || live.ac === 'ON') ? 'ON' : 'OFF';
 
             // Automatically resolve the address if we have coordinates but no address yet
@@ -1787,8 +1787,8 @@ function handleDeviceData(data, isLive = true) {
         const ignText = (data.ignition === 1 || data.ignition === true || data.acc === 1) ? 'ON' : 'OFF';
         const ignColor = ignText === 'ON' ? 'var(--success)' : 'var(--text-secondary)';
         
-        const powerVal = data.powerSource || '--';
-        const batteryVal = data.battery !== undefined ? `${data.battery.toFixed(1)}v` : '--';
+        const powerVal = data.voltage !== undefined ? `${data.voltage.toFixed(1)}v` : '--';
+        const batteryVal = data.battery !== undefined ? `${data.battery}%` : '--';
         const addressVal = data.address || 'Fetching location...';
         
         const odoEl = document.getElementById('mobileMapModalOdo');
@@ -1813,7 +1813,7 @@ function handleDeviceData(data, isLive = true) {
         
         const batteryEl = document.getElementById('mobileMapModalBattery');
         if (batteryEl) {
-            batteryEl.innerText = `${batteryVal} (${powerVal === 'main' ? 'Main' : 'Internal'})`;
+            batteryEl.innerText = `${batteryVal} (${data.mainPower ? 'Main' : 'Internal'})`;
         }
         
         const addressEl = document.getElementById('mobileMapModalAddress');
@@ -3757,8 +3757,8 @@ window.openMobileMapModal = function(imei) {
     const ignText = (live.ignition === 1 || live.ignition === true || live.acc === 1) ? 'ON' : 'OFF';
     const ignColor = ignText === 'ON' ? 'var(--success)' : 'var(--text-secondary)';
     
-    const powerVal = live.powerSource || '--';
-    const batteryVal = live.battery !== undefined ? `${live.battery.toFixed(1)}v` : '--';
+    const powerVal = live.voltage !== undefined ? `${live.voltage.toFixed(1)}v` : '--';
+    const batteryVal = live.battery !== undefined ? `${live.battery}%` : '--';
     const addressVal = live.address || 'Fetching location...';
     
     const odoEl = document.getElementById('mobileMapModalOdo');
@@ -3783,7 +3783,7 @@ window.openMobileMapModal = function(imei) {
     
     const batteryEl = document.getElementById('mobileMapModalBattery');
     if (batteryEl) {
-        batteryEl.innerText = `${batteryVal} (${powerVal === 'main' ? 'Main' : 'Internal'})`;
+        batteryEl.innerText = `${batteryVal} (${live.mainPower ? 'Main' : 'Internal'})`;
     }
     
     const addressEl = document.getElementById('mobileMapModalAddress');
