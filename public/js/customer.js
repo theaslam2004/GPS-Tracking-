@@ -204,7 +204,8 @@ let drawnItems;
 let drawControl;
 
 function initMap() {
-    map = L.map('map').setView([20.5937, 78.9629], 5);
+    // Default to Gujarat instead of central India
+    map = L.map('map').setView([22.5662, 71.8072], 5);
     mapLayers.standard.addTo(map);
     
     // Geofence Drawing Layer
@@ -952,8 +953,8 @@ function renderDeviceList() {
                 const mapEl = document.getElementById(mapId);
                 if (mapEl) {
                     const live = latestData[activeImei] || {};
-                    const lat = live.lat || 20.5937;
-                    const lng = live.lng || 78.9629;
+                    const lat = live.latitude || 22.5662;
+                    const lng = live.longitude || 71.8072;
                     
                     try {
                         const miniMap = L.map(mapId, {
@@ -3700,8 +3701,8 @@ window.openMobileMapModal = function(imei) {
     mobileModalActiveImei = imei;
     const device = myDevices.find(d => d.imei === imei);
     const live = latestData[imei] || {};
-    const lat = live.lat || 12.9716;
-    const lng = live.lng || 77.5946;
+    const lat = live.latitude || 22.5662;
+    const lng = live.longitude || 71.8072;
     
     // Reset bottom panel carousel slide to 0 (real-time stats)
     setMobileModalSlide(0);

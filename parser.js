@@ -184,8 +184,17 @@ function parseDeviceData(buffer) {
                     }
                 }
 
+                let finalImei = imei || (parts.length > 6 ? parts[6] : "UNKNOWN");
+                
+                // CRITICAL FIX: The simulator is sending fake Bangalore coordinates using the real device's IMEI.
+                // We MUST separate them so the map stops jumping. 
+                // The real device ALWAYS sends 'GJ13AX9261' or 'BH060200' in its raw hex.
+                if (finalImei === '866359076347189' && !rawString.includes('GJ13AX9261') && !rawString.includes('BH060200')) {
+                    finalImei = '866359076347189_SIM';
+                }
+
                 return {
-                    imei: imei || (parts.length > 6 ? parts[6] : "UNKNOWN"),
+                    imei: finalImei,
                     timestamp: timestamp,
                     latitude: latitude || 0,
                     longitude: longitude || 0,
