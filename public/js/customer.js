@@ -1749,9 +1749,8 @@ function handleDeviceData(data, isLive = true) {
     }
     
     // Real-time update for fullscreen Mobile Map Modal
-    if (typeof mobileModalActiveImei !== 'undefined' && mobileModalActiveImei === imei && mobileModalMap && mobileModalMarker) {
+    if (typeof mobileModalActiveImei !== 'undefined' && mobileModalActiveImei === imei && mobileModalMap) {
         const latlng = [latitude, longitude];
-        mobileModalMarker.setLatLng(latlng);
         
         const angle = data.heading || 0;
         const statusClass = beaconStatus;
@@ -1760,7 +1759,7 @@ function handleDeviceData(data, isLive = true) {
         else if (statusClass === 'idle') color = '#FFab00';
         else if (statusClass === 'halt') color = '#FF3D00';
         
-        mobileModalMarker.setIcon(L.divIcon({
+        const customIcon = L.divIcon({
             className: 'custom-vehicle-marker-svg',
             html: `
                 <div class="vehicle-beacon" style="background: ${color}; color: ${color}; border: 1.5px solid rgba(255, 255, 255, 0.4); box-shadow: 0 0 8px ${color}; width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center; justify-content: center;">
@@ -1771,7 +1770,14 @@ function handleDeviceData(data, isLive = true) {
             `,
             iconSize: [32, 32],
             iconAnchor: [16, 16]
-        }));
+        });
+
+        if (mobileModalMarker) {
+            mobileModalMarker.setLatLng(latlng);
+            mobileModalMarker.setIcon(customIcon);
+        } else {
+            mobileModalMarker = L.marker(latlng, { icon: customIcon }).addTo(mobileModalMap);
+        }
         
         mobileModalMap.setView(latlng, mobileModalMap.getZoom(), { animate: true });
         
