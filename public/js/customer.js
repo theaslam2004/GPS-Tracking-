@@ -3856,7 +3856,10 @@ window.openMobileMapModal = function(imei) {
                 zoomControl: true,
                 attributionControl: false
             });
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(mobileModalMap);
+            L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+                maxZoom: 20,
+                subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
+            }).addTo(mobileModalMap);
         }
         
         mobileModalMap.setView([lat, lng], 16);
