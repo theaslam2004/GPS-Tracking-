@@ -266,9 +266,7 @@ app.get('/api/geocode', async (req, res) => {
             params: {
                 format: 'json',
                 lat,
-                lon,
-                zoom: 18,
-                addressdetails: 1
+                lon
             },
             headers: {
                 'User-Agent': 'FleetlyGPS/1.0 (aslam.gemini.antigravity)'
