@@ -130,6 +130,9 @@ function getAddress(imei, lat, lng, callback) {
             const cardAddrEl = document.getElementById(`telemetry-address-${imei}`);
             if (cardAddrEl) cardAddrEl.innerText = addr;
             
+            const minimapOverlayAddrEl = document.getElementById(`minimap-overlay-address-${imei}`);
+            if (minimapOverlayAddrEl) minimapOverlayAddrEl.innerText = addr;
+            
             // Also save it to latestData so it persists across renders
             if (latestData[imei]) {
                 latestData[imei].address = addr;
@@ -966,7 +969,10 @@ function renderDeviceList() {
                             attributionControl: false
                         }).setView([lat, lng], 15);
                         
-                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(miniMap);
+                        L.tileLayer('https://{s}.google.com/vt/lyrs=m&x={x}&y={y}&z={z}', {
+                            maxZoom: 20,
+                            subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
+                        }).addTo(miniMap);
                         
                         const statusClass = live.status || 'halt';
                         const angle = live.heading || live.angle || 0;
@@ -1616,7 +1622,7 @@ function handleDeviceData(data, isLive = true) {
     if (!isMine) return;
     
     const { imei, latitude, longitude, speed, timestamp } = data;
-    latestData[imei] = data;
+    latestData[imei] = { ...(latestData[imei] || {}), ...data };
 
     const device = myDevices.find(d => d.imei === imei);
     const deviceName = device ? device.name : imei;
@@ -1845,8 +1851,8 @@ function handleDeviceData(data, isLive = true) {
         }
     }
     
-    // Real-time update for inline Mobile Mini Map
-    if (window.miniMaps && window.miniMaps[imei] && window.innerWidth <= 900) {
+    // Real-time update for inline Mini Map
+    if (window.miniMaps && window.miniMaps[imei]) {
         const miniMap = window.miniMaps[imei];
         const latlng = [latitude, longitude];
         
@@ -1888,6 +1894,15 @@ function handleDeviceData(data, isLive = true) {
         if (odoTextEl) {
             const isOdoVerified = (data.odometer !== undefined && data.odometer >= 0);
             odoTextEl.innerText = `${isOdoVerified ? data.odometer.toFixed(1) : '--'} km`;
+        }
+        
+        // Update sidebar card telemetry
+        const cardSpeedEl = document.getElementById(`card-speed-${imei}`);
+        if (cardSpeedEl) cardSpeedEl.innerText = `${speed !== undefined ? speed : 0}`;
+        const cardOdoEl = document.getElementById(`card-odo-${imei}`);
+        if (cardOdoEl) {
+            const isOdoVerified = (data.odometer !== undefined && data.odometer >= 0);
+            cardOdoEl.innerText = `${isOdoVerified ? data.odometer.toFixed(1) : '--'}`;
         }
         
         const ignTextEl = document.getElementById(`telemetry-ignition-${imei}`);
@@ -1932,13 +1947,8 @@ function handleDeviceData(data, isLive = true) {
         }
     }
 
-    // Update Sidebar card list & status counts (avoid full redraw on mobile to preserve leaflet mini map)
-    const isMobileLayout = window.innerWidth <= 900;
-    if (!isMobileLayout) {
-        renderDeviceList();
-    } else {
-        updateMobileListStatusInPlace(imei, beaconStatus);
-    }
+    // Update Sidebar card list & status counts (avoid full redraw to preserve leaflet mini map)
+    updateMobileListStatusInPlace(imei, beaconStatus);
     
     // Add to today's history points if active device and is today
     if (isLive && activeImei === imei && window.todayHistoryPoints) {

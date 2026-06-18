@@ -262,11 +262,40 @@ app.get('/api/geocode', async (req, res) => {
     }
     
     try {
+        // Try BigDataCloud first for better locality/city level addresses in India
+        const bdcResponse = await axios.get(`https://api.bigdatacloud.net/data/reverse-geocode-client`, {
+            params: {
+                latitude: lat,
+                longitude: lon,
+                localityLanguage: 'en'
+            },
+            timeout: 3000
+        });
+
+        if (bdcResponse.data) {
+            const { locality, city, principalSubdivision, countryName } = bdcResponse.data;
+            const parts = [locality, city, principalSubdivision, countryName].filter(Boolean);
+            // Deduplicate parts (e.g. if locality == city)
+            const uniqueParts = [...new Set(parts)];
+            
+            if (uniqueParts.length > 0) {
+                const displayName = uniqueParts.join(', ');
+                geocodeCache.set(`${lat},${lon}`, displayName);
+                return res.json({ display_name: displayName });
+            }
+        }
+    } catch (e) {
+        console.error('BDC Reverse geocode error:', e.message);
+    }
+    
+    // Fallback to Nominatim
+    try {
         const response = await axios.get(`https://nominatim.openstreetmap.org/reverse`, {
             params: {
                 format: 'json',
                 lat,
-                lon
+                lon,
+                zoom: 16
             },
             headers: {
                 'User-Agent': 'FleetlyGPS/1.0 (aslam.gemini.antigravity)'
@@ -280,7 +309,7 @@ app.get('/api/geocode', async (req, res) => {
             return res.json({ display_name: displayName });
         }
     } catch (e) {
-        console.error('Reverse geocode error:', e.message);
+        console.error('Nominatim Reverse geocode error:', e.message);
     }
     
     return res.json({ display_name: `${lat.toFixed(5)}, ${lon.toFixed(5)}` });
