@@ -157,6 +157,17 @@ function writeData(data) {
 let useMongo = false;
 let mongoConnectionPromise = null;
 const MONGODB_URI = process.env.MONGODB_URI;
+const HISTORY_MONGODB_URI = process.env.HISTORY_MONGODB_URI;
+
+let historyDb = mongoose;
+if (HISTORY_MONGODB_URI) {
+    historyDb = mongoose.createConnection(HISTORY_MONGODB_URI, {
+        serverSelectionTimeoutMS: 5000,
+        connectTimeoutMS: 5000
+    });
+    historyDb.on('connected', () => console.log('[Database] Connected to History MongoDB.'));
+    historyDb.on('error', (err) => console.error('[Database] History DB Error:', err.message));
+}
 
 // Define Schemas
 const UserSchema = new mongoose.Schema({
@@ -312,7 +323,7 @@ const Device = mongoose.model('Device', DeviceSchema);
 const DeviceRequest = mongoose.model('DeviceRequest', DeviceRequestSchema);
 const Subscription = mongoose.model('Subscription', SubscriptionSchema);
 const DeviceLastSeen = mongoose.model('DeviceLastSeen', DeviceLastSeenSchema);
-const DeviceHistoryPoint = mongoose.model('DeviceHistoryPoint', DeviceHistoryPointSchema);
+const DeviceHistoryPoint = historyDb.model('DeviceHistoryPoint', DeviceHistoryPointSchema);
 const Geofence = mongoose.model('Geofence', GeofenceSchema);
 const KycApplication = mongoose.model('KycApplication', KycApplicationSchema);
 const UserSettings = mongoose.model('UserSettings', UserSettingsSchema);
@@ -1437,7 +1448,7 @@ module.exports = {
             );
 
             if (!isExpired && locationData.latitude && locationData.longitude && locationData.latitude !== 0 && locationData.longitude !== 0) {
-                await DeviceHistoryPoint.create({
+                DeviceHistoryPoint.create({
                     imei,
                     timestamp: point.timestamp,
                     latitude: point.latitude,
@@ -1458,7 +1469,7 @@ module.exports = {
                     ignitionOffTime: point.ignitionOffTime,
                     powerSource: point.powerSource,
                     voltage: point.voltage
-                });
+                }).catch(err => console.error('[History DB] Insert Error:', err.message));
             }
             return [];
         } else {
@@ -1577,6 +1588,7 @@ module.exports = {
                     fs.mkdirSync(historyDir, { recursive: true });
                 }
                 const historyFile = path.join(historyDir, `${imei}.json`);
+                const tempHistoryFile = path.join(historyDir, `${imei}.tmp.json`);
                 let deviceHistory = [];
                 if (fs.existsSync(historyFile)) {
                     try {
@@ -1584,6 +1596,10 @@ module.exports = {
                         deviceHistory = JSON.parse(raw);
                     } catch (e) {
                         console.error("[Store] Failed to read history file:", e.message);
+                        try {
+                            fs.renameSync(historyFile, path.join(historyDir, `${imei}_corrupted_${Date.now()}.json`));
+                        } catch (err) {}
+                        deviceHistory = [];
                     }
                 } else {
                     if (data.deviceHistory && data.deviceHistory[imei]) {
@@ -1596,7 +1612,8 @@ module.exports = {
                     deviceHistory.shift();
                 }
                 try {
-                    fs.writeFileSync(historyFile, JSON.stringify(deviceHistory), 'utf8');
+                    fs.writeFileSync(tempHistoryFile, JSON.stringify(deviceHistory), 'utf8');
+                    fs.renameSync(tempHistoryFile, historyFile);
                 } catch (e) {
                     console.error("[Store] Failed to write history file:", e.message);
                 }
@@ -1606,10 +1623,16 @@ module.exports = {
             return [];
         }
     },
-    getHistory: async (imei) => {
+    getHistory: async (imei, startTimestamp, endTimestamp) => {
         await ensureDbConnected();
         if (useMongo) {
-            const list = await DeviceHistoryPoint.find({ imei }).sort({ timestamp: 1 });
+            let query = { imei };
+            if (startTimestamp || endTimestamp) {
+                query.timestamp = {};
+                if (startTimestamp) query.timestamp.$gte = new Date(startTimestamp);
+                if (endTimestamp) query.timestamp.$lte = new Date(endTimestamp);
+            }
+            const list = await DeviceHistoryPoint.find(query).sort({ timestamp: 1 }).limit(20000);
             return list.map(p => ({
                 timestamp: p.timestamp.toISOString(),
                 latitude: p.latitude,
@@ -1634,16 +1657,32 @@ module.exports = {
         } else {
             const historyDir = path.join(__dirname, 'history');
             const historyFile = path.join(historyDir, `${imei}.json`);
+            let historyData = [];
             if (fs.existsSync(historyFile)) {
                 try {
                     const raw = fs.readFileSync(historyFile, 'utf8');
-                    return JSON.parse(raw);
+                    historyData = JSON.parse(raw);
                 } catch (e) {
                     console.error("[Store] Failed to read history file:", e.message);
                 }
+            } else {
+                const data = readData();
+                historyData = data.deviceHistory[imei] || [];
             }
-            const data = readData();
-            return data.deviceHistory[imei] || [];
+            
+            if (startTimestamp || endTimestamp) {
+                const startLimit = startTimestamp ? new Date(startTimestamp).getTime() : 0;
+                const endLimit = endTimestamp ? new Date(endTimestamp).getTime() : Infinity;
+                historyData = historyData.filter(pt => {
+                    const ptTime = new Date(pt.timestamp).getTime();
+                    return ptTime >= startLimit && ptTime <= endLimit;
+                });
+            }
+            
+            if (historyData.length > 20000) {
+                historyData = historyData.slice(-20000);
+            }
+            return historyData;
         }
     },
 

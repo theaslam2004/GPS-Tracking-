@@ -240,8 +240,10 @@ app.get('/api/customer/data', requireLogin, async (req, res) => {
 
 app.get('/api/customer/history', requireLogin, async (req, res) => {
     const imei = req.query.imei;
+    const start = req.query.start;
+    const end = req.query.end;
     res.json({
-        history: await store.getHistory(imei)
+        history: await store.getHistory(imei, start, end)
     });
 });
 

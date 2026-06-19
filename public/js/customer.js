@@ -2210,8 +2210,37 @@ async function loadAndRenderHistory() {
         document.getElementById('playBtn').innerHTML = '<i class="fa-solid fa-play"></i>';
     }
     
+    const preset = document.getElementById('dateRangePreset') ? document.getElementById('dateRangePreset').value : 'all';
+    const now = new Date();
+    
+    let startParam = '';
+    let endParam = '';
+    
+    if (preset === '24h') {
+        const limit = now.getTime() - (24 * 60 * 60 * 1000);
+        startParam = new Date(limit).toISOString();
+    } else if (preset === '7d') {
+        const limit = now.getTime() - (7 * 24 * 60 * 60 * 1000);
+        startParam = new Date(limit).toISOString();
+    } else if (preset === '15d') {
+        const limit = now.getTime() - (15 * 24 * 60 * 60 * 1000);
+        startParam = new Date(limit).toISOString();
+    } else if (preset === '30d') {
+        const limit = now.getTime() - (30 * 24 * 60 * 60 * 1000);
+        startParam = new Date(limit).toISOString();
+    } else if (preset === 'custom') {
+        const startVal = document.getElementById('pbStartDateInput').value;
+        const endVal = document.getElementById('pbEndDateInput').value;
+        if (startVal) startParam = new Date(startVal).toISOString();
+        if (endVal) endParam = new Date(endVal).toISOString();
+    }
+    
+    let queryParams = `imei=${activeImei}`;
+    if (startParam) queryParams += `&start=${encodeURIComponent(startParam)}`;
+    if (endParam) queryParams += `&end=${encodeURIComponent(endParam)}`;
+    
     try {
-        const res = await fetch(`/api/customer/history?imei=${activeImei}`);
+        const res = await fetch(`/api/customer/history?${queryParams}`);
         const data = await res.json();
         rawHistoryData = data.history || [];
         
@@ -3516,9 +3545,9 @@ function exportTodayReportPDF() {
     printWindow.document.close();
 }
 
-function exportTodayReportExcel() {
-    if (!activeImei || !window.todayHistoryPoints || window.todayHistoryPoints.length === 0) {
-        showToast("ℹ️ No Data", "No telemetry data to export for today.", "warning");
+function exportHistoryReportExcel() {
+    if (!activeImei || !historyData || historyData.length === 0) {
+        showToast("ℹ️ No Data", "No telemetry data to export for the selected range.", "warning");
         return;
     }
     const dev = myDevices.find(d => d.imei === activeImei);
@@ -3526,7 +3555,7 @@ function exportTodayReportExcel() {
     
     let csvContent = "data:text/csv;charset=utf-8,";
     csvContent += "Timestamp,Latitude,Longitude,Speed (km/h),Odometer (km),Ignition,Voltage,Power Source\n";
-    window.todayHistoryPoints.forEach(p => {
+    historyData.forEach(p => {
         const row = [
             new Date(p.timestamp).toISOString(),
             p.latitude,
@@ -3543,7 +3572,8 @@ function exportTodayReportExcel() {
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement("a");
     link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `Today_Report_${devName}_${new Date().toISOString().slice(0,10)}.csv`);
+    const preset = document.getElementById('dateRangePreset') ? document.getElementById('dateRangePreset').value : 'custom';
+    link.setAttribute("download", `History_Report_${devName}_${preset}_${new Date().toISOString().slice(0,10)}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
