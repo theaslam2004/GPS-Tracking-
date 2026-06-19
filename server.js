@@ -262,7 +262,32 @@ app.get('/api/geocode', async (req, res) => {
     }
     
     try {
-        // Try BigDataCloud first for better locality/city level addresses in India
+        // Try Nominatim first for detailed street-level addresses
+        const response = await axios.get(`https://nominatim.openstreetmap.org/reverse`, {
+            params: {
+                format: 'json',
+                lat,
+                lon,
+                zoom: 18,
+                addressdetails: 1
+            },
+            headers: {
+                'User-Agent': 'FleetlyGPS/1.0 (aslam.gemini.antigravity)'
+            },
+            timeout: 3000
+        });
+        
+        if (response.data && response.data.display_name) {
+            const displayName = response.data.display_name;
+            geocodeCache.set(`${lat},${lon}`, displayName);
+            return res.json({ display_name: displayName });
+        }
+    } catch (e) {
+        console.error('Nominatim Reverse geocode error:', e.message);
+    }
+
+    try {
+        // Fallback to BigDataCloud for locality/city level addresses in India if Nominatim fails
         const bdcResponse = await axios.get(`https://api.bigdatacloud.net/data/reverse-geocode-client`, {
             params: {
                 latitude: lat,
@@ -286,30 +311,6 @@ app.get('/api/geocode', async (req, res) => {
         }
     } catch (e) {
         console.error('BDC Reverse geocode error:', e.message);
-    }
-    
-    // Fallback to Nominatim
-    try {
-        const response = await axios.get(`https://nominatim.openstreetmap.org/reverse`, {
-            params: {
-                format: 'json',
-                lat,
-                lon,
-                zoom: 16
-            },
-            headers: {
-                'User-Agent': 'FleetlyGPS/1.0 (aslam.gemini.antigravity)'
-            },
-            timeout: 3000
-        });
-        
-        if (response.data && response.data.display_name) {
-            const displayName = response.data.display_name;
-            geocodeCache.set(`${lat},${lon}`, displayName);
-            return res.json({ display_name: displayName });
-        }
-    } catch (e) {
-        console.error('Nominatim Reverse geocode error:', e.message);
     }
     
     return res.json({ display_name: `${lat.toFixed(5)}, ${lon.toFixed(5)}` });

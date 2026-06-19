@@ -159,6 +159,8 @@ function isFeatureEnabled(imei, feature) {
 // ==========================================
 // Toast Notification Logic
 // ==========================================
+let mobileNotifications = [];
+
 function showToast(title, message, type = 'info') {
     const container = document.getElementById('toastContainer');
     if (!container) return;
@@ -180,6 +182,8 @@ function showToast(title, message, type = 'info') {
     `;
 
     container.appendChild(toast);
+    
+    addMobileNotification(title, message, type);
 
     // Auto remove after 5 seconds
     setTimeout(() => {
@@ -190,6 +194,64 @@ function showToast(title, message, type = 'info') {
             }, 400);
         }
     }, 5000);
+}
+
+function addMobileNotification(title, message, type) {
+    const timestamp = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    mobileNotifications.unshift({ title, message, type, timestamp });
+    
+    // Keep max 50
+    if (mobileNotifications.length > 50) mobileNotifications.pop();
+    
+    updateMobileNotificationUI();
+}
+
+function updateMobileNotificationUI() {
+    const list = document.getElementById('mobileNotifList');
+    const badge = document.getElementById('mobileNotifBadge');
+    
+    if (!list) return;
+
+    if (mobileNotifications.length === 0) {
+        list.innerHTML = '<div style="text-align: center; color: var(--text-secondary); padding: 20px;">No new notifications</div>';
+        if (badge) badge.style.display = 'none';
+        return;
+    }
+    
+    if (badge) {
+        badge.textContent = mobileNotifications.length > 9 ? '9+' : mobileNotifications.length;
+        badge.style.display = 'block';
+    }
+    
+    list.innerHTML = mobileNotifications.map(n => {
+        let typeColor = 'var(--primary)';
+        if (n.type === 'danger') typeColor = 'var(--danger)';
+        if (n.type === 'warning') typeColor = 'var(--warning)';
+        if (n.type === 'success') typeColor = 'var(--success)';
+
+        return `
+        <div style="padding: 10px; border-radius: 8px; background: rgba(255,255,255,0.05); border-left: 4px solid ${typeColor};">
+            <div style="font-size: 0.8rem; color: var(--text-secondary); margin-bottom: 5px;">${n.timestamp}</div>
+            ${n.title ? `<div style="font-weight: 500; margin-bottom: 2px; color: var(--text-primary);">${n.title}</div>` : ''}
+            <div style="font-size: 0.9rem; color: var(--text-primary);">${n.message}</div>
+        </div>
+        `;
+    }).join('');
+}
+
+function clearMobileNotifications() {
+    mobileNotifications = [];
+    updateMobileNotificationUI();
+}
+
+function openMobileNotifications() {
+    const modal = document.getElementById('mobileNotifModal');
+    if (modal) modal.classList.add('active');
+}
+
+function closeMobileNotifications() {
+    const modal = document.getElementById('mobileNotifModal');
+    if (modal) modal.classList.remove('active');
 }
 
 // Map Layers
@@ -2731,7 +2793,7 @@ function exportReplayPDF() {
             </style>
         </head>
         <body>
-            <h1>Fleetly Replay Report</h1>
+            <h1>Aleanvition Replay Report</h1>
             <table class="meta-table">
                 <tr><td class="label">Vehicle Name</td><td>${devName}</td></tr>
                 <tr><td class="label">IMEI</td><td>${activeImei}</td></tr>

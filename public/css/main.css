@@ -363,7 +363,7 @@ body {
 .sidebar-content {
     flex: 1;
     overflow-y: auto;
-    padding: 1rem 1.5rem;
+    padding: 1rem 1.5rem 100px 1.5rem;
     /* Custom Scrollbar */
 }
 .sidebar-content::-webkit-scrollbar {
@@ -2431,6 +2431,16 @@ body.in-geofence-mode .vehicle-details-panel {
 }
 .taabi-progress-fill.fuel { background: var(--primary); }
 .taabi-progress-fill.adblue { background: #00d4ff; }
+
+/* sidebar-content padding override */
+.sidebar-content {
+    padding-bottom: 80px;
+}
+
+/* Ensure map bottom controls are clear of bottom filter */
+.leaflet-bottom {
+    bottom: 80px !important;
+}
 
 /* Let's style leaflet popups override for adaptive day/night theme */
 .leaflet-popup-content-wrapper {

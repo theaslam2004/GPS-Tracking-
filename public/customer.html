@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Customer Dashboard - Fleetly GPS</title>
+    <title>Customer Dashboard - Alien Vision</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
     <link rel="stylesheet" href="css/main.css?v=1.0.1">
@@ -900,13 +900,13 @@
             </button>
             <div class="mobile-logo" style="display: flex; align-items: center; gap: 6px;">
                 <i class="fa-solid fa-hand-pointer" style="color: var(--primary); font-size: 1.25rem; transform: rotate(15deg);"></i>
-                <span style="font-weight: 800; font-size: 1.1rem; letter-spacing: 0.5px; color: var(--text-primary);">InTouch</span>
+                <span style="font-weight: 800; font-size: 1.1rem; letter-spacing: 0.5px; color: var(--text-primary);">Alien Vision</span>
             </div>
         </div>
         <div style="display: flex; align-items: center; gap: 14px;">
-            <div class="mobile-notif" style="position: relative; cursor: pointer;">
+            <div class="mobile-notif" style="position: relative; cursor: pointer;" onclick="openMobileNotifications()">
                 <i class="fa-regular fa-bell" style="font-size: 1.2rem; color: var(--text-primary);"></i>
-                <span style="position: absolute; top: -5px; right: -5px; background: #ef4444; color: white; font-size: 0.55rem; font-weight: 800; padding: 2px 5px; border-radius: 50%; line-height: 1;">0</span>
+                <span id="mobileNotifBadge" style="position: absolute; top: -5px; right: -5px; background: #ef4444; color: white; font-size: 0.55rem; font-weight: 800; padding: 2px 5px; border-radius: 50%; line-height: 1; display: none;">0</span>
             </div>
             <div class="mobile-avatar" style="width: 32px; height: 32px; border-radius: 50%; background: var(--border-light); border: 1.5px solid var(--border); display: flex; align-items: center; justify-content: center; overflow: hidden; cursor: pointer;">
                 <i class="fa-solid fa-user" style="font-size: 0.95rem; color: var(--text-secondary);"></i>
@@ -1535,6 +1535,20 @@
             <!-- Telemetry Placeholder -->
             <div id="vehiclePlaceholder" style="display: none;">
             </div>
+        </div>
+    </div>
+
+    <!-- Mobile Notifications Modal -->
+    <div class="modal-overlay" id="mobileNotifModal" onclick="if(event.target===this) closeMobileNotifications()">
+        <div class="modal glass-panel" style="max-width: 400px; padding: 20px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;">
+                <h3 style="margin: 0; font-family: 'Outfit', sans-serif;">Notifications</h3>
+                <button onclick="closeMobileNotifications()" style="background: none; border: none; font-size: 1.2rem; cursor: pointer; color: var(--text-secondary);"><i class="fa-solid fa-xmark"></i></button>
+            </div>
+            <div id="mobileNotifList" style="max-height: 60vh; overflow-y: auto; display: flex; flex-direction: column; gap: 10px;">
+                <div style="text-align: center; color: var(--text-secondary); padding: 20px;">No new notifications</div>
+            </div>
+            <button class="btn btn-outline" style="width: 100%; margin-top: 15px;" onclick="clearMobileNotifications()">Clear All</button>
         </div>
     </div>
 
