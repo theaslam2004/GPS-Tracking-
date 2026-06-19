@@ -1,5 +1,8 @@
 // Global Error Catcher for Debugging
 window.onerror = function(message, source, lineno, colno, error) {
+    if (message === 'Script error.' || (typeof message === 'string' && message.includes('Script error'))) {
+        return false; // Ignore cross-origin silent errors
+    }
     console.error('GLOBAL ERROR:', message, 'at', source, ':', lineno);
     if(typeof showToast === 'function') {
         showToast("🚨 System Error", `${message} (Line: ${lineno})`, "danger");

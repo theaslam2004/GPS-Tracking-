@@ -1891,7 +1891,7 @@
                 setTimeout(() => {
                     map.invalidateSize({ animate: true });
                     if (typeof activeImei !== 'undefined' && activeImei && typeof markers !== 'undefined' && markers[activeImei]) {
-                        map.flyTo(markers[activeImei].getLatLng(), map.getZoom(), { animate: true, duration: 1.5 });
+                        map.setView(markers[activeImei].getLatLng(), map.getZoom(), { animate: true });
                     }
                 }, 300);
             }
