@@ -1249,7 +1249,7 @@ function focusDevice(imei) {
         renderDeviceList();
         
         if (activeImei && markers[activeImei]) {
-            map.setView(markers[activeImei].getLatLng(), 16, { animate: true });
+            map.flyTo(markers[activeImei].getLatLng(), 16, { animate: true, duration: 1.5 });
         }
         return;
     }
