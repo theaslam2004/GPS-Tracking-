@@ -765,10 +765,10 @@ app.get('/api/customer/history/alerts', requireLogin, async (req, res) => {
 });
 
 app.get('/api/customer/history/day-summary', requireLogin, async (req, res) => {
-    const { imei, date } = req.query;
-    if (!date) return res.status(400).json({ success: false, error: 'Date is required (YYYY-MM-DD)' });
+    const { imei, start, end } = req.query;
+    if (!start || !end) return res.status(400).json({ success: false, error: 'Start and End are required' });
     try {
-        const summary = await store.getDaySummary(imei, date);
+        const summary = await store.getDaySummary(imei, start, end);
         res.json({ success: true, summary });
     } catch (e) {
         res.status(500).json({ success: false, error: 'Failed to generate day summary.' });

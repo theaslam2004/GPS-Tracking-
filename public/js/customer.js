@@ -3481,9 +3481,12 @@ window.todayHistoryPoints = [];
 async function loadTodayStats(imei) {
     if (!imei) return;
     try {
-        const todayStr = new Date().toISOString().split('T')[0];
+        const startOfDay = new Date();
+        startOfDay.setHours(0, 0, 0, 0);
+        const endOfDay = new Date();
+        endOfDay.setHours(23, 59, 59, 999);
         
-        const res = await fetch(`/api/customer/history/day-summary?imei=${imei}&date=${todayStr}`);
+        const res = await fetch(`/api/customer/history/day-summary?imei=${imei}&start=${encodeURIComponent(startOfDay.toISOString())}&end=${encodeURIComponent(endOfDay.toISOString())}`);
         const data = await res.json();
         const summary = data.summary || {};
         

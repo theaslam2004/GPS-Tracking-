@@ -1715,10 +1715,11 @@ module.exports = {
             }
         }
     },
-    getDaySummary: async (imei, dateString) => {
-        // dateString format: YYYY-MM-DD
-        const start = new Date(`${dateString}T00:00:00Z`);
-        const end = new Date(`${dateString}T23:59:59.999Z`);
+    getDaySummary: async (imei, startStr, endStr) => {
+        await ensureDbConnected();
+        
+        const start = new Date(startStr);
+        const end = new Date(endStr);
         
         let history = await module.exports.getHistory(imei, start.toISOString(), end.toISOString());
         let alerts = await module.exports.getAlertHistory(imei, start.toISOString(), end.toISOString());
@@ -1758,7 +1759,8 @@ module.exports = {
         }
         
         return {
-            date: dateString,
+            start: startStr,
+            end: endStr,
             distance: parseFloat(distance.toFixed(2)),
             maxSpeed: maxSpeed,
             engineOnTime: engineOnTime, // in seconds
