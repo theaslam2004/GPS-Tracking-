@@ -753,6 +753,28 @@ app.post('/api/admin/update-plan', requireAdmin, async (req, res) => {
     }
 });
 
+// History Summary and Alerts APIs
+app.get('/api/customer/history/alerts', requireLogin, async (req, res) => {
+    const { imei, start, end } = req.query;
+    try {
+        const alerts = await store.getAlertHistory(imei, start, end);
+        res.json({ success: true, alerts });
+    } catch (e) {
+        res.status(500).json({ success: false, error: 'Failed to fetch alerts.' });
+    }
+});
+
+app.get('/api/customer/history/day-summary', requireLogin, async (req, res) => {
+    const { imei, date } = req.query;
+    if (!date) return res.status(400).json({ success: false, error: 'Date is required (YYYY-MM-DD)' });
+    try {
+        const summary = await store.getDaySummary(imei, date);
+        res.json({ success: true, summary });
+    } catch (e) {
+        res.status(500).json({ success: false, error: 'Failed to generate day summary.' });
+    }
+});
+
 
 // Socket.io for Real-time communication with the web frontend
 io.on('connection', (socket) => {
@@ -814,6 +836,16 @@ const tcpServer = net.createServer((socket) => {
             if (alerts && alerts.length > 0) {
                 alerts.forEach(async (alert) => {
                     const geoDeviceName = (device && device.name) ? device.name : parsedData.imei;
+                    
+                    await store.saveAlert(parsedData.imei, parsedData.ownerId, {
+                        type: alert.type === 'geofence_enter' ? 'Geofence Enter' : 'Geofence Exit',
+                        message: `Boundary: ${alert.geofenceName}`,
+                        lat: parsedData.latitude,
+                        lng: parsedData.longitude,
+                        speed: parsedData.speed,
+                        timestamp: parsedData.timestamp
+                    });
+
                     io.emit('geofence_alert', {
                         ownerId: parsedData.ownerId,
                         imei: parsedData.imei,
@@ -850,6 +882,16 @@ const tcpServer = net.createServer((socket) => {
             if (parsedData.packetType === 'EA' || parsedData.event === 'Emergency Alert') {
                 console.log(`[ALARM] PANIC BUTTON PRESSED on device: ${parsedData.imei}`);
                 const deviceName = (device && device.name) ? device.name : parsedData.imei;
+                
+                await store.saveAlert(parsedData.imei, parsedData.ownerId, {
+                    type: 'Panic',
+                    message: 'Emergency button pressed',
+                    lat: parsedData.latitude,
+                    lng: parsedData.longitude,
+                    speed: parsedData.speed,
+                    timestamp: parsedData.timestamp
+                });
+
                 io.emit('panic_alert', {
                     ownerId: parsedData.ownerId,
                     imei: parsedData.imei,
@@ -892,6 +934,16 @@ const tcpServer = net.createServer((socket) => {
                         smsService.sendTamperAlert(drivingContact.phone, drivingDeviceName);
                         break;
                 }
+            }
+            if (['HB', 'HA', 'RT', 'TA'].includes(parsedData.packetType)) {
+                await store.saveAlert(parsedData.imei, parsedData.ownerId, {
+                    type: parsedData.packetType === 'TA' ? 'Tamper' : 'Driving Behavior',
+                    message: `Event Code: ${parsedData.packetType}`,
+                    lat: parsedData.latitude,
+                    lng: parsedData.longitude,
+                    speed: parsedData.speed,
+                    timestamp: parsedData.timestamp
+                });
             }
 
             // Send live log to admin

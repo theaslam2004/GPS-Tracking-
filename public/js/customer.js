@@ -2247,6 +2247,10 @@ async function loadAndRenderHistory() {
         const data = await res.json();
         rawHistoryData = data.history || [];
         
+        const alertsRes = await fetch(`/api/customer/history/alerts?${queryParams}`);
+        const alertsData = await alertsRes.json();
+        window.rawAlertsData = alertsData.alerts || [];
+        
         // Set vehicle title
         const dev = myDevices.find(d => d.imei === activeImei);
         document.getElementById('replayVehicleTitle').innerText = dev ? dev.name : activeImei;
@@ -2306,6 +2310,74 @@ function filterAndProcessHistory() {
     
     historyData = filtered;
     
+    let filteredAlerts = [];
+    if (window.rawAlertsData) {
+        if (preset === 'all') {
+            filteredAlerts = window.rawAlertsData;
+        } else if (preset === 'custom') {
+            const startVal = document.getElementById('pbStartDateInput').value;
+            const endVal = document.getElementById('pbEndDateInput').value;
+            if (startVal && endVal) {
+                const startLimit = new Date(startVal).getTime();
+                const endLimit = new Date(endVal).getTime();
+                filteredAlerts = window.rawAlertsData.filter(a => {
+                    const ptTime = new Date(a.timestamp).getTime();
+                    return ptTime >= startLimit && ptTime <= endLimit;
+                });
+            } else {
+                filteredAlerts = window.rawAlertsData;
+            }
+        } else {
+            let limit;
+            if (preset === '24h') limit = now.getTime() - (24 * 60 * 60 * 1000);
+            else if (preset === '7d') limit = now.getTime() - (7 * 24 * 60 * 60 * 1000);
+            else if (preset === '15d') limit = now.getTime() - (15 * 24 * 60 * 60 * 1000);
+            else if (preset === '30d') limit = now.getTime() - (30 * 24 * 60 * 60 * 1000);
+            if (limit) {
+                filteredAlerts = window.rawAlertsData.filter(a => new Date(a.timestamp).getTime() >= limit);
+            }
+        }
+    }
+    
+    const alertsContainer = document.getElementById('replayAlertsTabContent');
+    if (alertsContainer) {
+        if (filteredAlerts.length > 0) {
+            let html = '<div style="display: flex; flex-direction: column; gap: 8px;">';
+            filteredAlerts.forEach(a => {
+                let icon = 'fa-bell';
+                let color = 'var(--warning)';
+                if (a.type.toLowerCase().includes('panic')) { icon = 'fa-triangle-exclamation'; color = 'var(--danger)'; }
+                else if (a.type.toLowerCase().includes('geofence')) { icon = 'fa-draw-polygon'; color = 'var(--primary)'; }
+                
+                html += `
+                    <div style="background: var(--bg-main); border: 1px solid var(--border-light); border-radius: var(--radius-md); padding: 10px; display: flex; gap: 10px; align-items: flex-start;">
+                        <div style="width: 32px; height: 32px; border-radius: 50%; background: ${color}20; display: flex; align-items: center; justify-content: center; color: ${color}; flex-shrink: 0;">
+                            <i class="fa-solid ${icon}"></i>
+                        </div>
+                        <div>
+                            <div style="font-weight: 800; font-size: 0.8rem; color: var(--text-primary);">${a.type}</div>
+                            <div style="font-size: 0.7rem; color: var(--text-secondary); margin-top: 2px;">${a.message}</div>
+                            <div style="font-size: 0.65rem; color: var(--text-secondary); margin-top: 4px; font-weight: 700;">
+                                <i class="fa-regular fa-clock"></i> ${new Date(a.timestamp).toLocaleString()} 
+                                <span style="margin-left: 8px;"><i class="fa-solid fa-gauge"></i> ${a.speed || 0} km/h</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            alertsContainer.innerHTML = html;
+        } else {
+            alertsContainer.innerHTML = `
+                <div style="text-align: center; color: var(--text-secondary); padding: 2.5rem 1rem;">
+                    <i class="fa-solid fa-bell-slash" style="font-size: 1.8rem; opacity: 0.4; margin-bottom: 8px; color: var(--text-secondary);"></i>
+                    <div style="font-weight: 700; font-size: 0.8rem;">No Alerts Recorded</div>
+                    <div style="font-size: 0.7rem; opacity: 0.8; margin-top: 2px;">No event triggers detected for this vehicle within the selected duration.</div>
+                </div>
+            `;
+        }
+    }
+
     if (historyData.length === 0) {
         showToast("ℹ️ No History Data", "No tracking points found for the selected range.", "warning");
         // Clear map layers
@@ -2800,55 +2872,80 @@ function toggleAccordion(contentId, arrowId) {
 function exportReplayPDF() {
     if (!activeImei || historyData.length === 0) return;
     
+    if (!window.jspdf || !window.jspdf.jsPDF) {
+        alert("PDF Generation library not loaded.");
+        return;
+    }
+    
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF('p', 'pt', 'a4');
+    
     const dev = myDevices.find(d => d.imei === activeImei);
     const devName = dev ? dev.name : activeImei;
     const startT = new Date(historyData[0].timestamp).toLocaleString();
     const endT = new Date(historyData[historyData.length - 1].timestamp).toLocaleString();
     
-    const printWindow = window.open('', '_blank');
-    printWindow.document.write(`
-        <html>
-        <head>
-            <title>Trip History Report - ${devName}</title>
-            <style>
-                body { font-family: 'Outfit', sans-serif; color: #2b354e; padding: 40px; }
-                h1 { color: #ff3b70; border-bottom: 2px solid #ff3b70; padding-bottom: 10px; }
-                .meta-table { width: 100%; margin-bottom: 30px; border-collapse: collapse; }
-                .meta-table td { padding: 8px; border: 1px solid #e2e8f0; }
-                .meta-table td.label { font-weight: bold; background: #f8fafc; width: 30%; }
-                .timeline-list { margin-top: 20px; }
-                .timeline-item { border-left: 2px solid #e2e8f0; padding-left: 20px; position: relative; margin-bottom: 15px; }
-                .timeline-item::before { content: ''; position: absolute; left: -6px; top: 4px; width: 10px; height: 10px; border-radius: 50%; background: #ff3b70; }
-                .time { font-size: 0.8rem; color: #64748b; font-weight: bold; }
-                .state { font-weight: bold; margin-top: 4px; }
-                .loc { font-size: 0.75rem; color: #64748b; margin-top: 2px; }
-            </style>
-        </head>
-        <body>
-            <h1>Aleanvition Replay Report</h1>
-            <table class="meta-table">
-                <tr><td class="label">Vehicle Name</td><td>${devName}</td></tr>
-                <tr><td class="label">IMEI</td><td>${activeImei}</td></tr>
-                <tr><td class="label">Time Range</td><td>${startT} - ${endT}</td></tr>
-                <tr><td class="label">Total Distance</td><td>${document.getElementById('tripTotalDistance').innerText}</td></tr>
-                <tr><td class="label">Engine On Time</td><td>${document.getElementById('tripEngineTime').innerText}</td></tr>
-            </table>
-            
-            <h2>Route Timeline Log</h2>
-            <div class="timeline-list">
-                ${document.getElementById('replayTimelineList').innerHTML}
-            </div>
-            
-            <script>
-                window.onload = function() {
-                    window.print();
-                    setTimeout(function() { window.close(); }, 500);
-                }
-            </script>
-        </body>
-        </html>
-    `);
-    printWindow.document.close();
+    // Header
+    doc.setFontSize(18);
+    doc.setTextColor(255, 59, 112);
+    doc.text('Trip History Report', 40, 40);
+    
+    doc.setFontSize(11);
+    doc.setTextColor(43, 53, 78);
+    
+    doc.text(`Vehicle Name: ${devName}`, 40, 70);
+    doc.text(`IMEI: ${activeImei}`, 40, 85);
+    doc.text(`Time Range: ${startT} - ${endT}`, 40, 100);
+    
+    const totalDist = document.getElementById('tripTotalDistance').innerText;
+    const engineTime = document.getElementById('tripEngineTime').innerText;
+    
+    doc.text(`Total Distance: ${totalDist}`, 40, 115);
+    doc.text(`Engine On Time: ${engineTime}`, 40, 130);
+    
+    doc.setFontSize(14);
+    doc.setTextColor(43, 53, 78);
+    doc.text('Route Log & Alerts summary:', 40, 160);
+    
+    let tableData = [];
+    
+    // Mix history timeline and alerts
+    historyData.forEach((pt, i) => {
+        if (i % 20 === 0 || i === historyData.length - 1) {
+            tableData.push([
+                new Date(pt.timestamp).toLocaleString(),
+                'Log Point',
+                pt.status || 'unknown',
+                `${pt.latitude.toFixed(4)}, ${pt.longitude.toFixed(4)}`
+            ]);
+        }
+    });
+    
+    // Add alerts to table
+    if (window.rawAlertsData) {
+        window.rawAlertsData.forEach(a => {
+            tableData.push([
+                new Date(a.timestamp).toLocaleString(),
+                'ALERT: ' + a.type,
+                a.message,
+                `${(a.latitude||0).toFixed(4)}, ${(a.longitude||0).toFixed(4)}`
+            ]);
+        });
+    }
+    
+    // Sort by timestamp
+    tableData.sort((a, b) => new Date(a[0]) - new Date(b[0]));
+    
+    doc.autoTable({
+        startY: 175,
+        head: [['Time', 'Event/Type', 'Status/Message', 'Location (Lat, Lng)']],
+        body: tableData,
+        theme: 'striped',
+        headStyles: { fillColor: [255, 59, 112] },
+        styles: { fontSize: 8 }
+    });
+    
+    doc.save(`Trip_Report_${devName}_${Date.now()}.pdf`);
 }
 
 function exportReplayExcel() {
@@ -3384,58 +3481,25 @@ window.todayHistoryPoints = [];
 async function loadTodayStats(imei) {
     if (!imei) return;
     try {
-        const res = await fetch(`/api/customer/history?imei=${imei}`);
+        const todayStr = new Date().toISOString().split('T')[0];
+        
+        const res = await fetch(`/api/customer/history/day-summary?imei=${imei}&date=${todayStr}`);
         const data = await res.json();
-        const allPoints = data.history || [];
+        const summary = data.summary || {};
         
-        const startOfDay = new Date();
-        startOfDay.setHours(0, 0, 0, 0);
-        const todayMs = startOfDay.getTime();
-        
-        window.todayHistoryPoints = allPoints.filter(p => new Date(p.timestamp).getTime() >= todayMs);
-        updateTodayStatsUI();
+        updateTodayStatsUI(summary);
     } catch (e) {
         console.error('[Today Report] Failed to load today stats:', e);
     }
 }
 
-function updateTodayStatsUI() {
-    const points = window.todayHistoryPoints || [];
+function updateTodayStatsUI(summary) {
+    const distanceKm = summary.distance || 0;
     
-    let totalDistanceMeters = 0;
-    let engineOnMs = 0;
-    let driveMs = 0;
-    let idleMs = 0;
-    let haltMs = 0;
-    
-    for (let i = 1; i < points.length; i++) {
-        const prev = points[i - 1];
-        const curr = points[i];
-        
-        if (prev.latitude && prev.longitude && curr.latitude && curr.longitude) {
-            totalDistanceMeters += getDistanceInMeters(prev.latitude, prev.longitude, curr.latitude, curr.longitude);
-        }
-        
-        const duration = new Date(curr.timestamp).getTime() - new Date(prev.timestamp).getTime();
-        if (duration > 0 && duration < 600000) { // cap at 10 minutes to avoid giant gaps
-            if (prev.ignition && curr.ignition) {
-                engineOnMs += duration;
-            }
-            
-            let state = 'halt';
-            if (prev.speed > 2) {
-                state = 'running';
-            } else if (prev.ignition) {
-                state = 'idle';
-            }
-            
-            if (state === 'running') driveMs += duration;
-            else if (state === 'idle') idleMs += duration;
-            else haltMs += duration;
-        }
-    }
-    
-    const distanceKm = (totalDistanceMeters / 1000).toFixed(2);
+    const engineOnMs = (summary.engineOnTime || 0) * 1000;
+    const driveMs = summary.driveMs || 0;
+    const idleMs = summary.idleMs || 0;
+    const haltMs = summary.haltMs || 0;
     
     const totalEngineMins = Math.floor(engineOnMs / 60000);
     const engineHrs = Math.floor(totalEngineMins / 60);

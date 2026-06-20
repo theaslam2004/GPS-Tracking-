@@ -254,6 +254,16 @@ const DeviceHistoryPointSchema = new mongoose.Schema({
     voltage: { type: Number, default: 12.0 }
 });
 
+const DeviceAlertHistorySchema = new mongoose.Schema({
+    imei: { type: String, required: true, index: true },
+    timestamp: { type: Date, required: true, index: true },
+    type: { type: String, required: true },
+    message: { type: String, required: true },
+    latitude: { type: Number },
+    longitude: { type: Number },
+    speed: { type: Number }
+});
+
 const GeofenceSchema = new mongoose.Schema({
     id: { type: String, required: true, unique: true, index: true },
     userId: { type: String, required: true, index: true },
@@ -324,6 +334,7 @@ const DeviceRequest = mongoose.model('DeviceRequest', DeviceRequestSchema);
 const Subscription = mongoose.model('Subscription', SubscriptionSchema);
 const DeviceLastSeen = mongoose.model('DeviceLastSeen', DeviceLastSeenSchema);
 const DeviceHistoryPoint = historyDb.model('DeviceHistoryPoint', DeviceHistoryPointSchema);
+const DeviceAlertHistory = historyDb.model('DeviceAlertHistory', DeviceAlertHistorySchema);
 const Geofence = mongoose.model('Geofence', GeofenceSchema);
 const KycApplication = mongoose.model('KycApplication', KycApplicationSchema);
 const UserSettings = mongoose.model('UserSettings', UserSettingsSchema);
@@ -1622,6 +1633,141 @@ module.exports = {
             writeData(data);
             return [];
         }
+    },
+    saveAlert: async (imei, ownerId, alertData) => {
+        await ensureDbConnected();
+        const alertRecord = {
+            imei,
+            timestamp: alertData.timestamp || new Date(),
+            type: alertData.type,
+            message: alertData.message,
+            latitude: alertData.lat || 0,
+            longitude: alertData.lng || 0,
+            speed: alertData.speed || 0
+        };
+
+        if (useMongo) {
+            try {
+                await DeviceAlertHistory.create(alertRecord);
+            } catch (err) {
+                console.error('[History DB] Alert Insert Error:', err.message);
+            }
+        } else {
+            const historyDir = path.join(__dirname, 'history');
+            if (!fs.existsSync(historyDir)) {
+                fs.mkdirSync(historyDir, { recursive: true });
+            }
+            const alertsFile = path.join(historyDir, `${imei}_alerts.json`);
+            let deviceAlerts = [];
+            if (fs.existsSync(alertsFile)) {
+                try {
+                    const raw = fs.readFileSync(alertsFile, 'utf8');
+                    deviceAlerts = JSON.parse(raw);
+                } catch (e) {
+                    deviceAlerts = [];
+                }
+            }
+            deviceAlerts.push(alertRecord);
+            if (deviceAlerts.length > 50000) deviceAlerts.shift();
+            try {
+                fs.writeFileSync(alertsFile, JSON.stringify(deviceAlerts), 'utf8');
+            } catch (e) {
+                console.error("[Store] Failed to write alerts file:", e.message);
+            }
+        }
+        return true;
+    },
+    getAlertHistory: async (imei, startTimestamp, endTimestamp) => {
+        await ensureDbConnected();
+        if (useMongo) {
+            let query = { imei };
+            if (startTimestamp || endTimestamp) {
+                query.timestamp = {};
+                if (startTimestamp) query.timestamp.$gte = new Date(startTimestamp);
+                if (endTimestamp) query.timestamp.$lte = new Date(endTimestamp);
+            }
+            const list = await DeviceAlertHistory.find(query).sort({ timestamp: -1 }).limit(1000);
+            return list.map(a => ({
+                timestamp: a.timestamp.toISOString(),
+                type: a.type,
+                message: a.message,
+                latitude: a.latitude,
+                longitude: a.longitude,
+                speed: a.speed
+            }));
+        } else {
+            const alertsFile = path.join(__dirname, 'history', `${imei}_alerts.json`);
+            if (!fs.existsSync(alertsFile)) return [];
+            try {
+                const raw = fs.readFileSync(alertsFile, 'utf8');
+                const list = JSON.parse(raw);
+                const start = startTimestamp ? new Date(startTimestamp) : new Date(0);
+                const end = endTimestamp ? new Date(endTimestamp) : new Date(8640000000000000);
+                return list
+                    .filter(a => {
+                        const t = new Date(a.timestamp);
+                        return t >= start && t <= end;
+                    })
+                    .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+                    .slice(0, 1000);
+            } catch (e) {
+                return [];
+            }
+        }
+    },
+    getDaySummary: async (imei, dateString) => {
+        // dateString format: YYYY-MM-DD
+        const start = new Date(`${dateString}T00:00:00Z`);
+        const end = new Date(`${dateString}T23:59:59.999Z`);
+        
+        let history = await module.exports.getHistory(imei, start.toISOString(), end.toISOString());
+        let alerts = await module.exports.getAlertHistory(imei, start.toISOString(), end.toISOString());
+        
+        let distance = 0;
+        let maxSpeed = 0;
+        let engineOnTime = 0; // seconds
+        let driveMs = 0;
+        let idleMs = 0;
+        let haltMs = 0;
+        
+        if (history && history.length > 0) {
+            const first = history[0];
+            const last = history[history.length - 1];
+            distance = Math.max(0, (last.odometer || 0) - (first.odometer || 0));
+            
+            for (let i = 1; i < history.length; i++) {
+                const prev = history[i-1];
+                const curr = history[i];
+                if (curr.speed > maxSpeed) maxSpeed = curr.speed;
+                
+                const duration = new Date(curr.timestamp).getTime() - new Date(prev.timestamp).getTime();
+                if (duration > 0 && duration < 600000) {
+                    if (prev.ignition && curr.ignition) {
+                        engineOnTime += (duration / 1000);
+                    }
+                    
+                    let state = 'halt';
+                    if (prev.speed > 2) state = 'running';
+                    else if (prev.ignition) state = 'idle';
+                    
+                    if (state === 'running') driveMs += duration;
+                    else if (state === 'idle') idleMs += duration;
+                    else haltMs += duration;
+                }
+            }
+        }
+        
+        return {
+            date: dateString,
+            distance: parseFloat(distance.toFixed(2)),
+            maxSpeed: maxSpeed,
+            engineOnTime: engineOnTime, // in seconds
+            driveMs: driveMs,
+            idleMs: idleMs,
+            haltMs: haltMs,
+            alertCount: alerts.length,
+            alerts: alerts
+        };
     },
     getHistory: async (imei, startTimestamp, endTimestamp) => {
         await ensureDbConnected();
