@@ -2267,6 +2267,7 @@ async function handleDatePresetChange(preset) {
     if (customContainer) {
         if (preset === 'custom') {
             customContainer.style.display = 'flex';
+            return;
         } else {
             customContainer.style.display = 'none';
         }

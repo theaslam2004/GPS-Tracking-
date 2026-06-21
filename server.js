@@ -285,7 +285,11 @@ app.get('/api/geocode', async (req, res) => {
             return res.json({ display_name: displayName });
         }
     } catch (e) {
-        console.error('Nominatim Reverse geocode error:', e.message);
+        if (e.response && e.response.status === 429) {
+            // Silently fallback on rate limit
+        } else {
+            console.error('Nominatim Reverse geocode error:', e.message);
+        }
     }
 
     try {

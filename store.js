@@ -1455,7 +1455,7 @@ module.exports = {
             await DeviceLastSeen.findOneAndUpdate(
                 { imei },
                 { $set: point },
-                { upsert: true, new: true }
+                { upsert: true, returnDocument: 'after' }
             );
 
             if (!isExpired && locationData.latitude && locationData.longitude && locationData.latitude !== 0 && locationData.longitude !== 0) {
