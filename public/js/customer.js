@@ -939,7 +939,7 @@ function renderDeviceList() {
                         <div style="display: flex; align-items: center; gap: 12px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; flex: 1; min-width: 0;">
                             <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: ${statusColor}; flex-shrink: 0;" title="Status Indicator"></span>
                             <span style="font-weight: 700; color: var(--text-primary); font-size: 0.92rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${d.name || d.imei}</span>
-                            <i class="fa-solid fa-chart-line" style="color: #3b82f6; font-size: 0.9rem; flex-shrink: 0; cursor: pointer; padding: 4px;" title="View Travel Replay" onclick="event.stopPropagation(); focusDevice('${d.imei}'); switchMapTab('replay'); if(window.innerWidth <= 900) { document.querySelector('.sidebar-wrapper').classList.remove('open'); }"></i>
+                            <i class="fa-solid fa-chart-line" style="color: #3b82f6; font-size: 0.9rem; flex-shrink: 0; cursor: pointer; padding: 4px;" title="View Travel Replay" onclick="event.stopPropagation(); window.activeImei = '${d.imei}'; switchMapTab('replay'); if(window.innerWidth <= 900) { document.querySelector('.sidebar-wrapper').classList.remove('open'); }"></i>
                         </div>
                         <div style="color: var(--text-secondary); font-size: 0.82rem; font-family: monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; flex-shrink: 0; padding-left: 10px; display: flex; align-items: center; gap: 8px;">
                             <span>${d.imei}</span>
@@ -993,7 +993,7 @@ function renderDeviceList() {
 
                         <!-- Action Buttons -->
                         <div style="display: flex; gap: 8px; width: 100%;">
-                            <button style="flex: 1; padding: 10px; font-size: 0.8rem; font-weight: 700; border: 1px solid var(--border); background: transparent; border-radius: 8px; color: var(--text-primary); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; font-family: 'Outfit';" onclick="event.stopPropagation(); focusDevice('${d.imei}'); switchMapTab('replay'); if(window.innerWidth <= 900) { document.querySelector('.sidebar-wrapper').classList.remove('open'); }">
+                            <button style="flex: 1; padding: 10px; font-size: 0.8rem; font-weight: 700; border: 1px solid var(--border); background: transparent; border-radius: 8px; color: var(--text-primary); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; font-family: 'Outfit';" onclick="event.stopPropagation(); window.activeImei = '${d.imei}'; switchMapTab('replay'); if(window.innerWidth <= 900) { document.querySelector('.sidebar-wrapper').classList.remove('open'); }">
                                 <i class="fa-solid fa-clock-rotate-left"></i> History
                             </button>
                             <button class="btn-primary" style="flex: 1; padding: 10px; font-size: 0.8rem; font-weight: 700; border-radius: 8px; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 6px; border: none; font-family: 'Outfit';" onclick="event.stopPropagation(); shareLocation('${d.imei}')">
