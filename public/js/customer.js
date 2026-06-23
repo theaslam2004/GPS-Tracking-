@@ -4148,6 +4148,78 @@ window.handleMobileHistoryPresetChange = function(val) {
     }
 };
 
+function computeMobileHistoryStats(points) {
+    if (!points || points.length === 0) return;
+
+    // 1. Total Distance
+    let totalDistanceMeters = 0;
+    for (let i = 1; i < points.length; i++) {
+        const prev = points[i - 1];
+        const curr = points[i];
+        if (prev.latitude && prev.longitude && curr.latitude && curr.longitude) {
+            totalDistanceMeters += getDistanceInMeters(prev.latitude, prev.longitude, curr.latitude, curr.longitude);
+        }
+    }
+    const totalDistanceKm = (totalDistanceMeters / 1000).toFixed(2);
+    document.getElementById('mobileHistorySummaryDistance').innerText = `${totalDistanceKm} km`;
+    
+    // 2. Engine Time (Ignition ON interval accumulation)
+    let engineOnMs = 0;
+    for (let i = 1; i < points.length; i++) {
+        const prev = points[i - 1];
+        const curr = points[i];
+        if (prev.ignition && curr.ignition) {
+            const duration = new Date(curr.timestamp).getTime() - new Date(prev.timestamp).getTime();
+            if (duration > 0 && duration < 600000) { // cap at 10 minutes
+                engineOnMs += duration;
+            }
+        }
+    }
+    const hours = Math.floor(engineOnMs / (1000 * 60 * 60));
+    const mins = Math.floor((engineOnMs % (1000 * 60 * 60)) / (1000 * 60));
+    document.getElementById('mobileHistorySummaryEngineActive').innerText = `${hours}h ${mins}m`;
+    
+    // 3. Segment Clustering for Drive, Idle, Halt
+    let rawSegments = [];
+    let currentSegment = null;
+    
+    points.forEach((pt) => {
+        let state = 'halt';
+        if (pt.speed > 2) {
+            state = 'running';
+        } else if (pt.ignition) {
+            state = 'idle';
+        }
+        
+        if (!currentSegment) {
+            currentSegment = { state: state, startTime: new Date(pt.timestamp), endTime: new Date(pt.timestamp) };
+        } else if (currentSegment.state === state) {
+            currentSegment.endTime = new Date(pt.timestamp);
+        } else {
+            rawSegments.push(currentSegment);
+            currentSegment = { state: state, startTime: new Date(pt.timestamp), endTime: new Date(pt.timestamp) };
+        }
+    });
+    if (currentSegment) {
+        rawSegments.push(currentSegment);
+    }
+    
+    let totalRunMs = 0;
+    let totalIdleMs = 0;
+    let totalHaltMs = 0;
+
+    rawSegments.forEach(seg => {
+        const durationMs = seg.endTime.getTime() - seg.startTime.getTime();
+        if (seg.state === 'running') totalRunMs += durationMs;
+        else if (seg.state === 'idle') totalIdleMs += durationMs;
+        else totalHaltMs += durationMs;
+    });
+
+    document.getElementById('mobileHistorySummaryDrive').innerText = formatDuration(totalRunMs);
+    document.getElementById('mobileHistorySummaryIdle').innerText = formatDuration(totalIdleMs);
+    document.getElementById('mobileHistorySummaryHalt').innerText = formatDuration(totalHaltMs);
+}
+
 window.loadMobileHistoryReplay = async function() {
     if (!mobileModalActiveImei) return;
     
@@ -4218,6 +4290,9 @@ window.loadMobileHistoryReplay = async function() {
         
         mobileModalReplayPoints = points;
         mobileModalReplayIndex = 0;
+        
+        // Compute and display mobile summary stats
+        computeMobileHistoryStats(points);
         
         // Plot path on mobileModalMap
         const latlngs = points.map(p => [p.latitude, p.longitude]);
