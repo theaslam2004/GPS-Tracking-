@@ -1458,7 +1458,7 @@ module.exports = {
                 { upsert: true, returnDocument: 'after' }
             );
 
-            if (!isExpired && locationData.latitude && locationData.longitude && locationData.latitude !== 0 && locationData.longitude !== 0) {
+            if (!isExpired && finalLat && finalLng && finalLat !== 0 && finalLng !== 0) {
                 DeviceHistoryPoint.create({
                     imei,
                     timestamp: point.timestamp,
@@ -1593,7 +1593,7 @@ module.exports = {
             data.deviceLastSeen[imei] = point;
             writeData(data);
 
-            if (!isExpired && locationData.latitude && locationData.longitude && locationData.latitude !== 0 && locationData.longitude !== 0) {
+            if (!isExpired && finalLat && finalLng && finalLat !== 0 && finalLng !== 0) {
                 const historyDir = path.join(__dirname, 'history');
                 if (!fs.existsSync(historyDir)) {
                     fs.mkdirSync(historyDir, { recursive: true });

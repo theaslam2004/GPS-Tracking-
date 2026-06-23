@@ -817,6 +817,8 @@ const tcpServer = net.createServer((socket) => {
             if (lastSeen) {
                 parsedData.status = lastSeen.status;
                 parsedData.odometer = lastSeen.odometer;
+                parsedData.latitude = lastSeen.latitude;
+                parsedData.longitude = lastSeen.longitude;
             }
 
             const devices = dataStore.devices;
