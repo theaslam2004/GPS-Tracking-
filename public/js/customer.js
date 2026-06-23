@@ -2406,8 +2406,12 @@ function filterAndProcessHistory() {
     
     // Draw Polyline (Filtering out invalid 0,0 coordinates)
     const latlngs = historyData
-        .filter(p => p.latitude && p.longitude && p.latitude !== 0 && p.longitude !== 0)
-        .map(p => [p.latitude, p.longitude]);
+        .filter(p => {
+            const lat = Number(p.latitude);
+            const lng = Number(p.longitude);
+            return !isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0;
+        })
+        .map(p => [Number(p.latitude), Number(p.longitude)]);
     if(historyPolyline) map.removeLayer(historyPolyline);
     if (latlngs.length > 0) {
         historyPolyline = L.polyline(latlngs, {color: '#0052cc', weight: 5, opacity: 0.85}).addTo(map);
@@ -4188,7 +4192,11 @@ window.loadMobileHistoryReplay = async function() {
         }
         
         // Filter out invalid coordinates to prevent Leaflet NaN errors
-        points = points.filter(p => p.latitude && p.longitude && p.latitude !== 0 && p.longitude !== 0);
+        points = points.filter(p => {
+            const lat = Number(p.latitude);
+            const lng = Number(p.longitude);
+            return !isNaN(lat) && !isNaN(lng) && lat !== 0 && lng !== 0;
+        });
         
         if (points.length === 0) {
             showToast("ℹ️ No Data", "No valid points found for the selected range.", "warning");
