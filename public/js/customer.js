@@ -4243,38 +4243,38 @@ window.loadMobileHistoryReplay = async function() {
     const preset = document.getElementById('mobileModalHistoryPreset').value;
     let url = `/api/customer/history?imei=${mobileModalActiveImei}`;
     
+    let startParam = '';
+    let endParam = '';
+    const now = new Date();
+    
+    if (preset === '24h') {
+        startParam = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString();
+    } else if (preset === 'today') {
+        const startOfDay = new Date();
+        startOfDay.setHours(0,0,0,0);
+        startParam = startOfDay.toISOString();
+    } else if (preset === '7d') {
+        startParam = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    } else if (preset === 'custom') {
+        const startStr = document.getElementById('mobileModalStartDate').value;
+        const endStr = document.getElementById('mobileModalEndDate').value;
+        if (!startStr || !endStr) {
+            showToast("⚠️ Missing Dates", "Please enter start and end dates.", "warning");
+            return;
+        }
+        startParam = new Date(startStr).toISOString();
+        endParam = new Date(endStr).toISOString();
+    }
+    
+    if (startParam) url += `&start=${startParam}`;
+    if (endParam) url += `&end=${endParam}`;
+    
     try {
         showToast("⏳ Loading", "Fetching vehicle history logs...", "info");
         const res = await fetch(url);
         const data = await res.json();
         let points = data.history || [];
-        
-        // Filter points based on preset
-        const now = Date.now();
-        if (preset === 'today') {
-            const startOfDay = new Date();
-            startOfDay.setHours(0,0,0,0);
-            points = points.filter(p => new Date(p.timestamp).getTime() >= startOfDay.getTime());
-        } else if (preset === '24h') {
-            const last24 = now - 24 * 60 * 60 * 1000;
-            points = points.filter(p => new Date(p.timestamp).getTime() >= last24);
-        } else if (preset === '7d') {
-            const last7 = now - 7 * 24 * 60 * 60 * 1000;
-            points = points.filter(p => new Date(p.timestamp).getTime() >= last7);
-        } else if (preset === 'custom') {
-            const startStr = document.getElementById('mobileModalStartDate').value;
-            const endStr = document.getElementById('mobileModalEndDate').value;
-            if (!startStr || !endStr) {
-                showToast("⚠️ Missing Dates", "Please enter start and end dates.", "warning");
-                return;
-            }
-            const startTime = new Date(startStr).getTime();
-            const endTime = new Date(endStr).getTime();
-            points = points.filter(p => {
-                const t = new Date(p.timestamp).getTime();
-                return t >= startTime && t <= endTime;
-            });
-        }
+
         
         // Filter out invalid coordinates to prevent Leaflet NaN errors
         points = points.filter(p => {
@@ -4304,25 +4304,33 @@ window.loadMobileHistoryReplay = async function() {
             className: 'history-path-glow'
         }).addTo(mobileModalMap);
         
-        // Add start and end markers
+        // Plot start and end markers with fancy animations
         const startPt = points[0];
         const endPt = points[points.length - 1];
         
+        // Update highlight date label
+        const startDateStr = new Date(startPt.timestamp).toLocaleDateString('en-US', {month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'});
+        const endDateStr = new Date(endPt.timestamp).toLocaleDateString('en-US', {month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'});
+        const highlightEl = document.getElementById('mobileHistoryDateHighlight');
+        if (highlightEl) {
+            highlightEl.innerText = `${startDateStr} to ${endDateStr}`;
+        }
+        
         mobileModalStartMarker = L.marker([startPt.latitude, startPt.longitude], {
             icon: L.divIcon({
-                className: 'history-pin-start',
-                html: '<i class="fa-solid fa-flag" style="color:white; font-size:12px;"></i>',
-                iconSize: [24, 24],
-                iconAnchor: [12, 24]
+                className: 'fancy-marker-start',
+                html: '',
+                iconSize: [20, 20],
+                iconAnchor: [10, 10]
             })
         }).addTo(mobileModalMap);
         
         mobileModalEndMarker = L.marker([endPt.latitude, endPt.longitude], {
             icon: L.divIcon({
-                className: 'history-pin-end',
-                html: '<i class="fa-solid fa-flag-checkered" style="color:white; font-size:12px;"></i>',
-                iconSize: [24, 24],
-                iconAnchor: [12, 24]
+                className: 'fancy-marker-end',
+                html: '',
+                iconSize: [20, 20],
+                iconAnchor: [10, 10]
             })
         }).addTo(mobileModalMap);
         

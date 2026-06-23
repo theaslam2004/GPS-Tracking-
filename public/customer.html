@@ -1031,6 +1031,29 @@
             border-color: var(--border) !important;
             transform: translateY(-1px);
         }
+        /* Fancy map markers for Start and End */
+        @keyframes pulseRing {
+            0% { transform: scale(0.8); opacity: 0.8; }
+            100% { transform: scale(3); opacity: 0; }
+        }
+        .fancy-marker-start, .fancy-marker-end {
+            position: relative;
+            border-radius: 50%;
+            border: 3px solid white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.4);
+            z-index: 200;
+        }
+        .fancy-marker-start { background-color: #00E676; } /* Success Green */
+        .fancy-marker-end { background-color: #FF3D00; } /* Danger Red */
+        .fancy-marker-start::after, .fancy-marker-end::after {
+            content: '';
+            position: absolute;
+            top: -3px; left: -3px; right: -3px; bottom: -3px;
+            border-radius: 50%;
+            animation: pulseRing 1.5s infinite cubic-bezier(0.215, 0.61, 0.355, 1);
+        }
+        .fancy-marker-start::after { border: 2px solid #00E676; }
+        .fancy-marker-end::after { border: 2px solid #FF3D00; }
     </style>
 </head>
 <body>
@@ -2141,7 +2164,10 @@
                 <button onclick="exitMobileModalHistoryMode()" style="background: none; border: none; color: var(--text-primary); font-size: 1.25rem; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%;">
                     <i class="fa-solid fa-arrow-left"></i>
                 </button>
-                <span style="font-family: 'Outfit', sans-serif; font-size: 1.1rem; font-weight: 800; color: var(--text-primary);">History</span>
+                <div style="display: flex; flex-direction: column; justify-content: center;">
+                    <span style="font-family: 'Outfit', sans-serif; font-size: 1.1rem; font-weight: 800; color: var(--text-primary); line-height: 1;">History</span>
+                    <span id="mobileHistoryDateHighlight" style="font-size: 0.65rem; font-weight: 700; color: var(--primary); margin-top: 2px;"></span>
+                </div>
             </div>
             <button onclick="openMobileModalDateSelect()" style="background: none; border: none; color: var(--primary); font-size: 1.25rem; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 36px; height: 36px; border-radius: 50%;">
                 <i class="fa-solid fa-calendar-days"></i>
