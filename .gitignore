@@ -6,3 +6,4 @@ data.json
 mongodb/
 mongodb-data/
 .env
+data.json
