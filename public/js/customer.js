@@ -2023,7 +2023,7 @@ function handleDeviceData(data, isLive = true) {
         if (new Date(timestamp).getTime() >= todayMs) {
             window.todayHistoryPoints.push(data);
             window.todayHistoryPoints = window.todayHistoryPoints.filter(p => new Date(p.timestamp).getTime() >= todayMs);
-            updateTodayStatsUI();
+            loadTodayStats(activeImei);
         }
     }
 
@@ -4187,8 +4187,11 @@ window.loadMobileHistoryReplay = async function() {
             });
         }
         
+        // Filter out invalid coordinates to prevent Leaflet NaN errors
+        points = points.filter(p => p.latitude && p.longitude && p.latitude !== 0 && p.longitude !== 0);
+        
         if (points.length === 0) {
-            showToast("ℹ️ No Data", "No points found for the selected range.", "warning");
+            showToast("ℹ️ No Data", "No valid points found for the selected range.", "warning");
             return;
         }
         
