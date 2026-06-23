@@ -4101,6 +4101,8 @@ let mobileModalReplayInterval = null;
 let mobileModalReplaySpeed = 1;
 let mobileModalReplayIsPlaying = false;
 let mobileModalPolyline = null;
+let mobileModalStartMarker = null;
+let mobileModalEndMarker = null;
 
 window.enterMobileModalHistoryMode = function() {
     document.getElementById('mobileMapModalLiveHeader').style.display = 'none';
@@ -4152,10 +4154,18 @@ window.loadMobileHistoryReplay = async function() {
     // Stop any existing playback
     stopMobileReplayPlayback();
     
-    // Clear old polyline
+    // Clear old polyline and markers
     if (mobileModalPolyline && mobileModalMap) {
         mobileModalPolyline.remove();
         mobileModalPolyline = null;
+    }
+    if (mobileModalStartMarker && mobileModalMap) {
+        mobileModalStartMarker.remove();
+        mobileModalStartMarker = null;
+    }
+    if (mobileModalEndMarker && mobileModalMap) {
+        mobileModalEndMarker.remove();
+        mobileModalEndMarker = null;
     }
     
     const preset = document.getElementById('mobileModalHistoryPreset').value;
@@ -4213,9 +4223,32 @@ window.loadMobileHistoryReplay = async function() {
         const latlngs = points.map(p => [p.latitude, p.longitude]);
         mobileModalPolyline = L.polyline(latlngs, {
             color: 'var(--primary)',
-            weight: 4,
-            opacity: 0.85,
-            dashArray: '5, 8'
+            weight: 5,
+            opacity: 0.8,
+            lineJoin: 'round',
+            className: 'history-path-glow'
+        }).addTo(mobileModalMap);
+        
+        // Add start and end markers
+        const startPt = points[0];
+        const endPt = points[points.length - 1];
+        
+        mobileModalStartMarker = L.marker([startPt.latitude, startPt.longitude], {
+            icon: L.divIcon({
+                className: 'history-pin-start',
+                html: '<i class="fa-solid fa-flag" style="color:white; font-size:12px;"></i>',
+                iconSize: [24, 24],
+                iconAnchor: [12, 24]
+            })
+        }).addTo(mobileModalMap);
+        
+        mobileModalEndMarker = L.marker([endPt.latitude, endPt.longitude], {
+            icon: L.divIcon({
+                className: 'history-pin-end',
+                html: '<i class="fa-solid fa-flag-checkered" style="color:white; font-size:12px;"></i>',
+                iconSize: [24, 24],
+                iconAnchor: [12, 24]
+            })
         }).addTo(mobileModalMap);
         
         // Fit bounds
