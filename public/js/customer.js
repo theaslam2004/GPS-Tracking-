@@ -136,6 +136,12 @@ function getAddress(imei, lat, lng, callback) {
             const minimapOverlayAddrEl = document.getElementById(`minimap-overlay-address-${imei}`);
             if (minimapOverlayAddrEl) minimapOverlayAddrEl.innerText = addr;
             
+            // Update mobile modal address if this vehicle is currently selected
+            if (window.mobileModalActiveImei === imei) {
+                const mobileAddrEl = document.getElementById('mobileMapModalAddress');
+                if (mobileAddrEl) mobileAddrEl.innerText = addr;
+            }
+            
             // Also save it to latestData so it persists across renders
             if (latestData[imei]) {
                 latestData[imei].address = addr;
@@ -3977,6 +3983,10 @@ window.openMobileMapModal = function(imei) {
     const powerVal = live.voltage !== undefined ? `${live.voltage.toFixed(1)}v` : '--';
     const batteryVal = live.battery !== undefined ? `${live.battery}%` : '--';
     const addressVal = live.address || 'Fetching location...';
+    
+    if (!live.address && lat !== 0 && lng !== 0) {
+        getAddress(imei, lat, lng);
+    }
     
     const odoEl = document.getElementById('mobileMapModalOdo');
     if (odoEl) odoEl.innerText = odoVal;
