@@ -4079,15 +4079,37 @@ let mobileModalReplaySpeed = 1;
 let mobileModalReplayIsPlaying = false;
 let mobileModalPolyline = null;
 
-window.toggleMobileModalHistorySidebar = function() {
-    const sidebar = document.getElementById('mobileModalHistorySidebar');
-    if (sidebar) {
-        sidebar.classList.toggle('open');
-        if (sidebar.classList.contains('open')) {
-            sidebar.style.transform = 'translateX(0)';
-        } else {
-            sidebar.style.transform = 'translateX(100%)';
-        }
+window.enterMobileModalHistoryMode = function() {
+    document.getElementById('mobileMapModalLiveHeader').style.display = 'none';
+    document.getElementById('mobileMapModalHistoryHeader').style.display = 'flex';
+    document.getElementById('mobileMapModalBottomPanel').style.display = 'none';
+    document.getElementById('mobileMapModalHistoryBottomPanel').style.display = 'block';
+    
+    setMobileHistorySlide(0);
+    initMobileHistorySwipe();
+};
+
+window.exitMobileModalHistoryMode = function() {
+    document.getElementById('mobileMapModalLiveHeader').style.display = 'flex';
+    document.getElementById('mobileMapModalHistoryHeader').style.display = 'none';
+    document.getElementById('mobileMapModalBottomPanel').style.display = 'block';
+    document.getElementById('mobileMapModalHistoryBottomPanel').style.display = 'none';
+    
+    stopMobileReplayPlayback();
+    closeMobileModalDateSelect();
+};
+
+window.openMobileModalDateSelect = function() {
+    const sheet = document.getElementById('mobileModalDateSelectSheet');
+    if (sheet) {
+        sheet.style.transform = 'translateY(0)';
+    }
+};
+
+window.closeMobileModalDateSelect = function() {
+    const sheet = document.getElementById('mobileModalDateSelectSheet');
+    if (sheet) {
+        sheet.style.transform = 'translateY(100%)';
     }
 };
 
@@ -4167,17 +4189,16 @@ window.loadMobileHistoryReplay = async function() {
         mobileModalMap.fitBounds(mobileModalPolyline.getBounds(), { padding: [30, 30] });
         
         // Setup slider
-        const slider = document.getElementById('mobileModalReplaySlider');
+        const slider = document.getElementById('mobileHistoryReplaySlider');
         if (slider) {
             slider.max = points.length - 1;
             slider.value = 0;
         }
         
-        const progText = document.getElementById('mobileModalReplayProgressText');
+        const progText = document.getElementById('mobileHistoryReplayProgressText');
         if (progText) progText.innerText = `1 / ${points.length}`;
         
-        // Show controls
-        document.getElementById('mobileModalReplayControls').style.display = 'flex';
+        closeMobileModalDateSelect();
         showToast("✅ Loaded", `${points.length} history coordinates loaded.`, "success");
         
         // Set initial marker position
@@ -4220,49 +4241,31 @@ function updateMobileReplayMarker(idx) {
     }
     
     // Update slider and progress text
-    const slider = document.getElementById('mobileModalReplaySlider');
+    const slider = document.getElementById('mobileHistoryReplaySlider');
     if (slider) slider.value = idx;
     
-    const progText = document.getElementById('mobileModalReplayProgressText');
+    const progText = document.getElementById('mobileHistoryReplayProgressText');
     if (progText) progText.innerText = `${idx + 1} / ${mobileModalReplayPoints.length}`;
     
     // Update stats inside bottom panel in real-time
-    const odoVal = (pt.odometer !== undefined && pt.odometer >= 0) ? `${pt.odometer.toFixed(1)} km` : '-- km';
-    const speedVal = pt.speed !== undefined ? pt.speed : 0;
+    const speedValNum = pt.speed !== undefined ? pt.speed : 0;
     const ignText = (pt.ignition === 1 || pt.ignition === true || pt.acc === 1) ? 'ON' : 'OFF';
     const ignColor = ignText === 'ON' ? 'var(--success)' : 'var(--text-secondary)';
     
-    const odoEl = document.getElementById('mobileMapModalOdo');
-    if (odoEl) odoEl.innerText = odoVal;
+    const speedEl = document.getElementById('mobileHistorySpeed');
+    if (speedEl) speedEl.innerText = speedValNum + ' km/h';
     
-    const speedEl = document.getElementById('mobileMapModalSpeedVal');
-    if (speedEl) speedEl.innerText = speedVal;
-    
-    // Speedometer animated progress ring
-    const maxSpeed = 120;
-    const circumference = 188.5;
-    const speedLimit = Math.min(speedVal, maxSpeed);
-    const offset = circumference - (speedLimit / maxSpeed) * circumference;
-    const circleFill = document.getElementById('mobileMapModalSpeedCircleFill');
-    if (circleFill) circleFill.style.strokeDashoffset = offset;
-    
-    const ignEl = document.getElementById('mobileMapModalIgn');
+    const ignEl = document.getElementById('mobileHistoryIgn');
     if (ignEl) {
         ignEl.innerText = ignText;
         ignEl.style.color = ignColor;
     }
     
-    if (pt.address) {
-        const addressEl = document.getElementById('mobileMapModalAddress');
-        if (addressEl) addressEl.innerText = pt.address;
+    const batteryEl = document.getElementById('mobileHistoryBattery');
+    if (batteryEl) {
+        batteryEl.innerText = (pt.battery || pt.voltage || '--') + 'V';
     }
     
-    // GPS Signal & Last Update elements during replay
-    const signalEl = document.getElementById('mobileMapModalSignal');
-    if (signalEl) {
-        signalEl.innerText = 'Replay';
-        signalEl.style.color = 'var(--primary)';
-    }
     const updateEl = document.getElementById('mobileMapModalUpdatedTime');
     if (updateEl) {
         updateEl.innerText = pt.timestamp ? new Date(pt.timestamp).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '--';
@@ -4283,7 +4286,7 @@ function startMobileReplayPlayback() {
     if (mobileModalReplayPoints.length === 0) return;
     mobileModalReplayIsPlaying = true;
     
-    const playBtn = document.getElementById('mobileModalPlayBtn');
+    const playBtn = document.getElementById('mobileHistoryPlayBtn');
     if (playBtn) playBtn.innerHTML = '<i class="fa-solid fa-pause"></i> Pause';
     
     const intervalMs = Math.max(50, 1000 / mobileModalReplaySpeed);
@@ -4301,7 +4304,7 @@ function startMobileReplayPlayback() {
 
 function pauseMobileReplayPlayback() {
     mobileModalReplayIsPlaying = false;
-    const playBtn = document.getElementById('mobileModalPlayBtn');
+    const playBtn = document.getElementById('mobileHistoryPlayBtn');
     if (playBtn) playBtn.innerHTML = '<i class="fa-solid fa-play"></i> Play';
     if (mobileModalReplayInterval) {
         clearInterval(mobileModalReplayInterval);
@@ -4411,8 +4414,83 @@ window.exportMobileReplayExcel = function() {
     exportTodayReportExcel();
 };
 
+window.exportMobileHistoryReplayPDF = function() {
+    exportTodayReportPDF(); // Or another specific history export if available
+};
+
+window.exportMobileHistoryReplayExcel = function() {
+    exportTodayReportExcel();
+};
+
 window.exportMobileDeviceHistory = function() {
     if (mobileModalActiveImei) {
         window.location.href = `/api/export/history/${mobileModalActiveImei}`;
     }
 };
+
+// History Bottom Panel Swipe Logic
+let currentMobileHistorySlide = 0;
+let historyTouchStartX = 0;
+let historyTouchEndX = 0;
+
+window.setMobileHistorySlide = function(slideIdx) {
+    currentMobileHistorySlide = slideIdx;
+    const wrapper = document.getElementById('mobileModalHistoryCarouselWrapper');
+    const dot1 = document.getElementById('mobileHistoryDot1');
+    const dot2 = document.getElementById('mobileHistoryDot2');
+    
+    if (wrapper) {
+        wrapper.style.transform = `translateX(-${slideIdx * 50}%)`;
+        const slides = wrapper.children;
+        if (slides.length >= 2) {
+            slides[0].style.opacity = slideIdx === 0 ? '1' : '0';
+            slides[0].style.pointerEvents = slideIdx === 0 ? 'auto' : 'none';
+            slides[0].style.transition = 'opacity 0.25s ease';
+            
+            slides[1].style.opacity = slideIdx === 1 ? '1' : '0';
+            slides[1].style.pointerEvents = slideIdx === 1 ? 'auto' : 'none';
+            slides[1].style.transition = 'opacity 0.25s ease';
+        }
+    }
+    if (dot1 && dot2) {
+        if (slideIdx === 0) {
+            dot1.style.background = 'var(--primary)';
+            dot1.style.width = '12px';
+            dot1.style.borderRadius = '4px';
+            dot2.style.background = 'var(--border-light)';
+            dot2.style.width = '8px';
+            dot2.style.borderRadius = '50%';
+        } else {
+            dot1.style.background = 'var(--border-light)';
+            dot1.style.width = '8px';
+            dot1.style.borderRadius = '50%';
+            dot2.style.background = 'var(--primary)';
+            dot2.style.width = '12px';
+            dot2.style.borderRadius = '4px';
+        }
+    }
+};
+
+function initMobileHistorySwipe() {
+    const panel = document.getElementById('mobileMapModalHistoryBottomPanel');
+    if (!panel) return;
+    
+    const newPanel = panel.cloneNode(true);
+    panel.parentNode.replaceChild(newPanel, panel);
+    
+    newPanel.addEventListener('touchstart', e => {
+        historyTouchStartX = e.changedTouches[0].screenX;
+    }, { passive: true });
+    
+    newPanel.addEventListener('touchend', e => {
+        historyTouchEndX = e.changedTouches[0].screenX;
+        const diff = historyTouchStartX - historyTouchEndX;
+        if (Math.abs(diff) > 40) {
+            if (diff > 0 && currentMobileHistorySlide === 0) {
+                setMobileHistorySlide(1);
+            } else if (diff < 0 && currentMobileHistorySlide === 1) {
+                setMobileHistorySlide(0);
+            }
+        }
+    }, { passive: true });
+}
