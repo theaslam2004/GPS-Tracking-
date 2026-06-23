@@ -3233,7 +3233,27 @@ function clearVehicleSearch() {
 }
 
 // Map tab selector (Live Tracking / Travel Replay)
-function switchMapTab(mode) {
+window.switchMapTab = function(mode) {
+    if (window.innerWidth <= 900 && mode === 'replay') {
+        const imeiToOpen = window.activeImei || (typeof myDevices !== 'undefined' && myDevices.length > 0 ? myDevices[0].imei : null);
+        if (imeiToOpen) {
+            // Close sidebar if open
+            const sidebarWrapper = document.querySelector('.sidebar-wrapper');
+            if (sidebarWrapper) sidebarWrapper.classList.remove('open');
+            
+            if (typeof openMobileMapModal === 'function') {
+                openMobileMapModal(imeiToOpen);
+                if (typeof enterMobileModalHistoryMode === 'function') {
+                    enterMobileModalHistoryMode();
+                }
+                return;
+            }
+        } else {
+            showToast("ℹ️ Select a Vehicle", "Please select a vehicle from the list first to view history.", "warning");
+            return;
+        }
+    }
+
     const tabLive = document.getElementById('tabLive');
     const tabReplay = document.getElementById('tabReplay');
     const layout = document.querySelector('.app-layout');
@@ -3842,9 +3862,8 @@ window.filterMobileVehicleList = function() {
     const q = document.getElementById('mobileSearchInput').value.toLowerCase();
     const rows = document.querySelectorAll('.mobile-device-row');
     rows.forEach(row => {
-        const nameText = row.querySelector('span:nth-child(2)').innerText.toLowerCase();
-        const imeiText = row.querySelector('div:nth-child(3)').innerText.trim().toLowerCase();
-        if (nameText.includes(q) || imeiText.includes(q)) {
+        const text = row.innerText.toLowerCase();
+        if (text.includes(q)) {
             row.style.display = 'flex';
         } else {
             row.style.display = 'none';
