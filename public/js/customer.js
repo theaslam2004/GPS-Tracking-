@@ -4110,6 +4110,9 @@ window.enterMobileModalHistoryMode = function() {
     
     setMobileHistorySlide(0);
     initMobileHistorySwipe();
+    
+    // Automatically load history based on default preset
+    loadMobileHistoryReplay();
 };
 
 window.exitMobileModalHistoryMode = function() {
