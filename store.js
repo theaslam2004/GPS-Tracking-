@@ -375,42 +375,7 @@ async function ensureDbConnected() {
 
 async function migrateJsonToMongo() {
     try {
-        console.log('[Migration] Cleaning up obsolete users and data...');
-        // Clean up all users except admin, 123, and Prakash (case-insensitive)
-        if (useMongo) {
-            const allowedUsernames = ['admin', '123', 'prakash'];
-            const allUsers = await User.find({});
-            const usersToDelete = allUsers.filter(u => !allowedUsernames.includes(u.username.toLowerCase()));
-            
-            if (usersToDelete.length > 0) {
-                const deleteIds = usersToDelete.map(u => u.id);
-                const deleteUsernames = usersToDelete.map(u => u.username);
-                console.log(`[Database Cleanup] Deleting obsolete users:`, deleteUsernames);
-                
-                // Delete users
-                await User.deleteMany({ id: { $in: deleteIds } });
-                
-                // Find and delete devices owned by deleted users
-                const devicesToDelete = await Device.find({ ownerId: { $in: deleteIds } });
-                const deleteImeis = devicesToDelete.map(d => d.imei);
-                
-                if (deleteImeis.length > 0) {
-                    console.log(`[Database Cleanup] Deleting obsolete devices:`, deleteImeis);
-                    await Device.deleteMany({ imei: { $in: deleteImeis } });
-                    await DeviceLastSeen.deleteMany({ imei: { $in: deleteImeis } });
-                    await DeviceHistoryPoint.deleteMany({ imei: { $in: deleteImeis } });
-                    await DeviceSettings.deleteMany({ imei: { $in: deleteImeis } });
-                    await SharedLink.deleteMany({ imei: { $in: deleteImeis } });
-                }
-                
-                // Delete associated user collections
-                await Subscription.deleteMany({ userId: { $in: deleteIds } });
-                await UserSettings.deleteMany({ userId: { $in: deleteIds } });
-                await KycApplication.deleteMany({ userId: { $in: deleteIds } });
-                await Payment.deleteMany({ userId: { $in: deleteIds } });
-            }
-        }
-
+        // The obsolete users cleanup has been removed to prevent accidental data loss.
         console.log('[Migration] Checking for users to migrate from data.json...');
         
         const pathsToMigrate = [];
