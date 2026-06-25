@@ -772,6 +772,7 @@ function toggleGeofenceMode() {
     const panel = document.getElementById('geofenceList');
     
     // Mobile menu styling
+    const menuItems = document.querySelectorAll('.menu-item');
     const mobileMenuGeofence = document.getElementById('menu-item-geofence');
     const mobileMenuDashboard = document.querySelector('.menu-item[title="Dashboard"]');
     
@@ -783,8 +784,8 @@ function toggleGeofenceMode() {
         }
         if (panel) panel.style.display = 'block';
         
+        menuItems.forEach(mi => mi.classList.remove('active'));
         if (mobileMenuGeofence) mobileMenuGeofence.classList.add('active');
-        if (mobileMenuDashboard) mobileMenuDashboard.classList.remove('active');
     } else {
         if (btn) {
             btn.classList.remove('active');
@@ -793,7 +794,7 @@ function toggleGeofenceMode() {
         }
         if (panel) panel.style.display = 'none';
         
-        if (mobileMenuGeofence) mobileMenuGeofence.classList.remove('active');
+        menuItems.forEach(mi => mi.classList.remove('active'));
         if (mobileMenuDashboard) mobileMenuDashboard.classList.add('active');
         
         exitGeofenceMode();
@@ -3318,9 +3319,17 @@ window.switchMapTab = function(mode) {
     const tabLive = document.getElementById('tabLive');
     const tabReplay = document.getElementById('tabReplay');
     const layout = document.querySelector('.app-layout');
+    
+    // Update menu items
+    const menuItems = document.querySelectorAll('.menu-item');
+    menuItems.forEach(mi => mi.classList.remove('active'));
+    
     if (!tabLive || !tabReplay) return;
     
     if (mode === 'live') {
+        const dashboardBtn = document.querySelector('.menu-item[title="Dashboard"]');
+        if (dashboardBtn) dashboardBtn.classList.add('active');
+        
         tabLive.classList.add('active');
         tabReplay.classList.remove('active');
         if (layout) {
@@ -3329,6 +3338,9 @@ window.switchMapTab = function(mode) {
         }
         exitHistoryMode();
     } else {
+        const replayBtn = document.querySelector('.menu-item[title="Travel Replay"]');
+        if (replayBtn) replayBtn.classList.add('active');
+        
         tabLive.classList.remove('active');
         tabReplay.classList.add('active');
         if (layout) {

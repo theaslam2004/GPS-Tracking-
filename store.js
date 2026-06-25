@@ -1624,11 +1624,12 @@ module.exports = {
         };
 
         if (ownerId) {
+            const notifType = alertData.type ? (alertData.type.toLowerCase().includes('panic') ? 'panic' : 'info') : 'info';
             await module.exports.addNotification(
                 ownerId, 
-                alertData.type, 
-                alertData.message, 
-                alertData.type.toLowerCase().includes('panic') ? 'panic' : 'info'
+                alertData.type || 'Alert', 
+                alertData.message || '', 
+                notifType
             );
         }
 
