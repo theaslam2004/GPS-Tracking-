@@ -446,6 +446,28 @@ app.get('/api/customer/settings', requireLogin, async (req, res) => {
     res.json(settingsMap);
 });
 
+app.get('/api/customer/notifications', requireLogin, async (req, res) => {
+    try {
+        const userId = req.session.user.id;
+        const notifications = await store.getUserNotifications(userId);
+        res.json({ success: true, notifications });
+    } catch (e) {
+        console.error('[HTTP] Notifications Fetch Error:', e);
+        res.status(500).json({ success: false, error: 'Internal server error' });
+    }
+});
+
+app.post('/api/customer/notifications/clear', requireLogin, async (req, res) => {
+    try {
+        const userId = req.session.user.id;
+        await store.clearUserNotifications(userId);
+        res.json({ success: true });
+    } catch (e) {
+        console.error('[HTTP] Notifications Clear Error:', e);
+        res.status(500).json({ success: false, error: 'Internal server error' });
+    }
+});
+
 app.get('/api/tracker-config', (req, res) => {
     res.json({
         ip: 'acela.proxy.rlwy.net',

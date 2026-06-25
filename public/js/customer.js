@@ -209,11 +209,35 @@ function addMobileNotification(title, message, type) {
     const timestamp = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
     mobileNotifications.unshift({ title, message, type, timestamp });
     
-    // Keep max 50
-    if (mobileNotifications.length > 50) mobileNotifications.pop();
+    // Keep max 100
+    if (mobileNotifications.length > 100) mobileNotifications.pop();
     
     updateMobileNotificationUI();
 }
+
+async function loadNotifications() {
+    try {
+        const res = await fetch('/api/customer/notifications');
+        const data = await res.json();
+        if (data.success && data.notifications) {
+            mobileNotifications = data.notifications.map(n => {
+                const t = new Date(n.timestamp);
+                return {
+                    title: n.title,
+                    message: n.message,
+                    type: n.type,
+                    timestamp: t.toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})
+                };
+            });
+            updateMobileNotificationUI();
+        }
+    } catch(e) {
+        console.error('Failed to load notifications', e);
+    }
+}
+// Load on script run
+loadNotifications();
+
 
 function updateMobileNotificationUI() {
     const list = document.getElementById('mobileNotifList');
@@ -248,9 +272,14 @@ function updateMobileNotificationUI() {
     }).join('');
 }
 
-function clearMobileNotifications() {
-    mobileNotifications = [];
-    updateMobileNotificationUI();
+async function clearMobileNotifications() {
+    try {
+        await fetch('/api/customer/notifications/clear', { method: 'POST' });
+        mobileNotifications = [];
+        updateMobileNotificationUI();
+    } catch(e) {
+        console.error('Failed to clear notifications', e);
+    }
 }
 
 function openMobileNotifications() {
@@ -742,16 +771,31 @@ function toggleGeofenceMode() {
     const btn = document.getElementById('geofenceToggleBtn');
     const panel = document.getElementById('geofenceList');
     
+    // Mobile menu styling
+    const mobileMenuGeofence = document.getElementById('menu-item-geofence');
+    const mobileMenuDashboard = document.querySelector('.menu-item[title="Dashboard"]');
+    
     if (geofenceMode) {
-        btn.classList.add('active');
-        btn.style.background = 'var(--primary)';
-        btn.style.color = '#fff';
-        panel.style.display = 'block';
+        if (btn) {
+            btn.classList.add('active');
+            btn.style.background = 'var(--primary)';
+            btn.style.color = '#fff';
+        }
+        if (panel) panel.style.display = 'block';
+        
+        if (mobileMenuGeofence) mobileMenuGeofence.classList.add('active');
+        if (mobileMenuDashboard) mobileMenuDashboard.classList.remove('active');
     } else {
-        btn.classList.remove('active');
-        btn.style.background = 'transparent';
-        btn.style.color = 'var(--text-primary)';
-        panel.style.display = 'none';
+        if (btn) {
+            btn.classList.remove('active');
+            btn.style.background = 'transparent';
+            btn.style.color = 'var(--text-primary)';
+        }
+        if (panel) panel.style.display = 'none';
+        
+        if (mobileMenuGeofence) mobileMenuGeofence.classList.remove('active');
+        if (mobileMenuDashboard) mobileMenuDashboard.classList.add('active');
+        
         exitGeofenceMode();
     }
 }

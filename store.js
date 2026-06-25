@@ -87,6 +87,7 @@ const defaultData = {
     deviceSettings: {},
     payments: [],
     sharedLinks: [],
+    notifications: [],
     systemSettings: {
         'Trial': { name: 'Trial', price: 0, deviceLimit: 100, validityDays: 10 },
         'Basic': { name: 'Basic', price: 99, deviceLimit: 2, validityDays: 30 },
@@ -135,6 +136,7 @@ function readData() {
         if (!parsed.deviceSettings) parsed.deviceSettings = {};
         if (!parsed.payments) parsed.payments = [];
         if (!parsed.sharedLinks) parsed.sharedLinks = [];
+        if (!parsed.notifications) parsed.notifications = [];
         if (!parsed.systemSettings) parsed.systemSettings = defaultData.systemSettings;
         return parsed;
     } catch (e) {
@@ -327,6 +329,15 @@ const SharedLinkSchema = new mongoose.Schema({
     expiresAt: { type: Date, required: true }
 });
 
+const NotificationSchema = new mongoose.Schema({
+    id: { type: String, required: true, unique: true, index: true },
+    userId: { type: String, required: true, index: true },
+    title: { type: String, required: true },
+    message: { type: String, required: true },
+    type: { type: String, required: true },
+    timestamp: { type: Date, default: Date.now }
+});
+
 // Compile Models
 const User = mongoose.model('User', UserSchema);
 const Device = mongoose.model('Device', DeviceSchema);
@@ -342,6 +353,7 @@ const DeviceSettings = mongoose.model('DeviceSettings', DeviceSettingsSchema);
 const SystemSettings = mongoose.model('SystemSettings', SystemSettingsSchema);
 const Payment = mongoose.model('Payment', PaymentSchema);
 const SharedLink = mongoose.model('SharedLink', SharedLinkSchema);
+const NotificationModel = mongoose.model('Notification', NotificationSchema);
 
 // Connection logic
 if (MONGODB_URI) {
@@ -1611,6 +1623,15 @@ module.exports = {
             speed: alertData.speed || 0
         };
 
+        if (ownerId) {
+            await module.exports.addNotification(
+                ownerId, 
+                alertData.type, 
+                alertData.message, 
+                alertData.type.toLowerCase().includes('panic') ? 'panic' : 'info'
+            );
+        }
+
         if (useMongo) {
             try {
                 await DeviceAlertHistory.create(alertRecord);
@@ -2650,6 +2671,59 @@ module.exports = {
             } else {
                 device.assignedTo = device.assignedTo.filter(id => id !== subUserId);
             }
+            writeData(data);
+            return true;
+        }
+    },
+    
+    // Notifications
+    addNotification: async (userId, title, message, type) => {
+        await ensureDbConnected();
+        const notif = {
+            id: crypto.randomUUID(),
+            userId,
+            title,
+            message,
+            type,
+            timestamp: new Date()
+        };
+        if (useMongo) {
+            await NotificationModel.create(notif);
+        } else {
+            const data = readData();
+            data.notifications.push(notif);
+            // keep last 100 max per user
+            const userNotifs = data.notifications.filter(n => n.userId === userId);
+            if (userNotifs.length > 100) {
+                const toRemove = userNotifs.sort((a,b) => new Date(a.timestamp) - new Date(b.timestamp)).slice(0, userNotifs.length - 100);
+                const removeIds = toRemove.map(r => r.id);
+                data.notifications = data.notifications.filter(n => !removeIds.includes(n.id));
+            }
+            writeData(data);
+        }
+        return notif;
+    },
+    getUserNotifications: async (userId) => {
+        await ensureDbConnected();
+        if (useMongo) {
+            const list = await NotificationModel.find({ userId }).sort({ timestamp: -1 }).limit(100).lean();
+            return list;
+        } else {
+            const data = readData();
+            return data.notifications
+                .filter(n => n.userId === userId)
+                .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
+                .slice(0, 100);
+        }
+    },
+    clearUserNotifications: async (userId) => {
+        await ensureDbConnected();
+        if (useMongo) {
+            await NotificationModel.deleteMany({ userId });
+            return true;
+        } else {
+            const data = readData();
+            data.notifications = data.notifications.filter(n => n.userId !== userId);
             writeData(data);
             return true;
         }
