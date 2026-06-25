@@ -3071,6 +3071,13 @@ async function assignDriverPrompt(imei, currentDriver) {
 
 // ── CUSTOM FUNCTIONS FOR LINK SHARING ──
 
+function shareLocation(imei) {
+    if (imei) {
+        activeImei = imei;
+    }
+    openShareModal();
+}
+
 function openShareModal() {
     if (!activeImei) return;
     document.getElementById('shareLinkResultContainer').style.display = 'none';
