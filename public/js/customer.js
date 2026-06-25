@@ -330,25 +330,7 @@ function initMap() {
     // Geofence Drawing Layer
     drawnItems = new L.FeatureGroup();
     map.addLayer(drawnItems);
-}
 
-window.globalGeofences = [];
-
-function drawGeofencesOnMap(targetMap) {
-    if (!window.globalGeofences || !targetMap) return;
-    window.globalGeofences.forEach(gf => {
-        let layer;
-        if (gf.type === 'circle') {
-            layer = L.circle(gf.points[0], { radius: gf.radius, color: 'var(--primary)', weight: 2, fillOpacity: 0.1 });
-        } else if (gf.type === 'polygon') {
-            layer = L.polygon(gf.points, { color: 'var(--primary)', weight: 2, fillOpacity: 0.1 });
-        }
-        if (layer) {
-            layer.addTo(targetMap);
-        }
-    });
-};
-    
     // Dynamic address resolver and HTML refresher on popup open
     map.on('popupopen', function(e) {
         const popup = e.popup;
@@ -426,6 +408,23 @@ function drawGeofencesOnMap(targetMap) {
         if (window.innerWidth <= 900) {
             const sidebar = document.querySelector('.sidebar-wrapper');
             if (sidebar) sidebar.classList.remove('open');
+        }
+    });
+}
+
+window.globalGeofences = [];
+
+function drawGeofencesOnMap(targetMap) {
+    if (!window.globalGeofences || !targetMap) return;
+    window.globalGeofences.forEach(gf => {
+        let layer;
+        if (gf.type === 'circle') {
+            layer = L.circle(gf.points[0], { radius: gf.radius, color: 'var(--primary)', weight: 2, fillOpacity: 0.1 });
+        } else if (gf.type === 'polygon') {
+            layer = L.polygon(gf.points, { color: 'var(--primary)', weight: 2, fillOpacity: 0.1 });
+        }
+        if (layer) {
+            layer.addTo(targetMap);
         }
     });
 }
