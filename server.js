@@ -457,6 +457,18 @@ app.get('/api/customer/notifications', requireLogin, async (req, res) => {
     }
 });
 
+app.post('/api/customer/notifications', requireLogin, async (req, res) => {
+    try {
+        const userId = req.session.user.id;
+        const { title, message, type } = req.body;
+        const notif = await store.addNotification(userId, title || 'Alert', message || '', type || 'info');
+        res.json({ success: true, notif });
+    } catch (e) {
+        console.error('[HTTP] Notifications Save Error:', e);
+        res.status(500).json({ success: false, error: 'Internal server error' });
+    }
+});
+
 app.post('/api/customer/notifications/clear', requireLogin, async (req, res) => {
     try {
         const userId = req.session.user.id;

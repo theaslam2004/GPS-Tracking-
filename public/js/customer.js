@@ -170,7 +170,7 @@ function isFeatureEnabled(imei, feature) {
 // ==========================================
 let mobileNotifications = [];
 
-function showToast(title, message, type = 'info') {
+function showToast(title, message, type = 'info', skipSave = false) {
     const container = document.getElementById('toastContainer');
     if (!container) return;
 
@@ -192,7 +192,7 @@ function showToast(title, message, type = 'info') {
 
     container.appendChild(toast);
     
-    addMobileNotification(title, message, type);
+    addMobileNotification(title, message, type, skipSave);
 
     // Auto remove after 5 seconds
     setTimeout(() => {
@@ -205,14 +205,25 @@ function showToast(title, message, type = 'info') {
     }, 5000);
 }
 
-function addMobileNotification(title, message, type) {
+function addMobileNotification(title, message, type, skipSave = false) {
     const timestamp = new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+    
     mobileNotifications.unshift({ title, message, type, timestamp });
     
     // Keep max 100
     if (mobileNotifications.length > 100) mobileNotifications.pop();
     
     updateMobileNotificationUI();
+
+    if (!skipSave) {
+        fetch('/api/customer/notifications', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ title, message, type })
+        }).catch(err => console.error('Failed to save notification', err));
+    }
 }
 
 async function loadNotifications() {
@@ -319,6 +330,24 @@ function initMap() {
     // Geofence Drawing Layer
     drawnItems = new L.FeatureGroup();
     map.addLayer(drawnItems);
+}
+
+window.globalGeofences = [];
+
+function drawGeofencesOnMap(targetMap) {
+    if (!window.globalGeofences || !targetMap) return;
+    window.globalGeofences.forEach(gf => {
+        let layer;
+        if (gf.type === 'circle') {
+            layer = L.circle(gf.points[0], { radius: gf.radius, color: 'var(--primary)', weight: 2, fillOpacity: 0.1 });
+        } else if (gf.type === 'polygon') {
+            layer = L.polygon(gf.points, { color: 'var(--primary)', weight: 2, fillOpacity: 0.1 });
+        }
+        if (layer) {
+            layer.addTo(targetMap);
+        }
+    });
+};
     
     // Dynamic address resolver and HTML refresher on popup open
     map.on('popupopen', function(e) {
@@ -527,7 +556,7 @@ function showPanicAlert(data) {
     }
 
     // Trigger danger-styled toast next to the panic modal
-    showToast(`🚨 Emergency Alert: ${devName}`, `Emergency button has been pressed!`, 'danger');
+    showToast(`🚨 Emergency Alert: ${devName}`, `Emergency button has been pressed!`, 'danger', true);
 
     trackBtn.onclick = () => {
         map.flyTo([data.lat, data.lng], 18, { animate: true, duration: 2 });
@@ -666,6 +695,8 @@ async function loadGeofences() {
     if(!list) return;
     list.innerHTML = '';
     drawnItems.clearLayers();
+    
+    window.globalGeofences = geofences;
     
     geofences.forEach(gf => {
         // Draw on map
@@ -1089,6 +1120,8 @@ function renderDeviceList() {
                             maxZoom: 20,
                             subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
                         }).addTo(miniMap);
+                        
+                        drawGeofencesOnMap(miniMap);
                         
                         const statusClass = live.status || 'halt';
                         const angle = live.heading || live.angle || 0;
@@ -2173,7 +2206,7 @@ socket.on('geofence_alert', (data) => {
     const lastEventTime = window[`last_${eventKey}`] || 0;
     const now = Date.now();
     if (now - lastEventTime > 30000) {
-        showToast(title, msg, alertType);
+        showToast(title, msg, alertType, true);
         window[`last_${eventKey}`] = now;
     }
 });
@@ -4119,6 +4152,7 @@ window.openMobileMapModal = function(imei) {
                 maxZoom: 20,
                 subdomains: ['mt0', 'mt1', 'mt2', 'mt3']
             }).addTo(mobileModalMap);
+            drawGeofencesOnMap(mobileModalMap);
         }
         
         mobileModalMap.setView([lat, lng], 16);
