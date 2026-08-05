@@ -62,7 +62,7 @@ function timeSince(date) {
 function buildTelemetryHTML(telemetry, name) {
     const { latitude, longitude, speed, heading, odometer, timestamp } = telemetry;
     const timeObj = new Date(timestamp);
-    const isStale = (Date.now() - new Date(timestamp)) > 60000;
+    const isStale = (Date.now() - new Date(timestamp)) > 120000;
     
     let status = 'offline';
     let statusText = 'Offline';
@@ -215,7 +215,7 @@ function updateVehicleOnMap(telemetry, name) {
     const latlng = [latitude, longitude];
     
     // Update marker
-    const isStale = (Date.now() - new Date(timestamp)) > 60000;
+    const isStale = (Date.now() - new Date(timestamp)) > 120000;
     const status = isStale ? 'offline' : (telemetry.status || 'halt');
     const markerIcon = getVehicleIcon(heading, status, telemetry.voltage);
 
@@ -337,7 +337,7 @@ function getVehicleIcon(heading, status, voltage) {
 
 // Periodic cleanup of trail points older than 1 minute
 setInterval(() => {
-    const oneMinuteAgo = Date.now() - 60000;
+    const oneMinuteAgo = Date.now() - 120000;
     if (targetImei && liveTrails[targetImei]) {
         const imei = targetImei;
         liveTrails[imei] = liveTrails[imei].filter(pt => pt.timestamp >= oneMinuteAgo);
@@ -357,7 +357,7 @@ function updateTrail(imei, currentLatLng) {
         liveTrails[imei] = [];
     }
     
-    const oneMinuteAgo = Date.now() - 60000;
+    const oneMinuteAgo = Date.now() - 120000;
     liveTrails[imei] = liveTrails[imei].filter(pt => pt.timestamp >= oneMinuteAgo);
     
     const latlngs = liveTrails[imei].map(pt => [pt.lat, pt.lng]);

@@ -190,7 +190,8 @@ const DeviceSchema = new mongoose.Schema({
     driverName: { type: String, default: 'Unassigned' },
     vehicleProfile: { type: String, default: 'standard' },
     initialOdometer: { type: Number, default: 0 },
-    assignedTo: { type: [String], default: [] }
+    assignedTo: { type: [String], default: [] },
+    expirationDate: { type: Date, default: () => new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) }
 });
 
 const DeviceRequestSchema = new mongoose.Schema({
@@ -1240,10 +1241,18 @@ module.exports = {
             
             if (user.parentId) {
                 const list = await Device.find({ assignedTo: userId });
-                return list.map(d => d.toObject());
+                return list.map(d => {
+                    const obj = d.toObject();
+                    obj.isExpired = obj.expirationDate && new Date() > new Date(obj.expirationDate);
+                    return obj;
+                });
             } else {
                 const list = await Device.find({ ownerId: userId });
-                return list.map(d => d.toObject());
+                return list.map(d => {
+                    const obj = d.toObject();
+                    obj.isExpired = obj.expirationDate && new Date() > new Date(obj.expirationDate);
+                    return obj;
+                });
             }
         } else {
             const data = readData();
@@ -1252,15 +1261,19 @@ module.exports = {
             
             const subUserId = user.parentId || user.id;
             const sub = data.subscriptions && data.subscriptions.find(s => s.userId === subUserId);
-            if (sub && new Date() > new Date(sub.expirationDate)) {
-                return []; // Subscription expired
-            }
+            // We no longer completely hide based on global subscription, but we could mark all as expired if global is expired.
+            const globalExpired = sub && new Date() > new Date(sub.expirationDate);
             
+            let list = [];
             if (user.parentId) {
-                return data.devices.filter(d => d.assignedTo && d.assignedTo.includes(userId));
+                list = data.devices.filter(d => d.assignedTo && d.assignedTo.includes(userId));
             } else {
-                return data.devices.filter(d => d.ownerId === userId);
+                list = data.devices.filter(d => d.ownerId === userId);
             }
+            return list.map(d => ({
+                ...d,
+                isExpired: globalExpired || (d.expirationDate && new Date() > new Date(d.expirationDate))
+            }));
         }
     },
     togglePinDevice: async (userId, imei) => {
@@ -2342,6 +2355,32 @@ module.exports = {
             return true;
         }
     },
+    adminDeleteDevice: async (imei) => {
+        await ensureDbConnected();
+        if (useMongo) {
+            const dev = await Device.findOne({ imei });
+            if (!dev) return false;
+            await Device.deleteOne({ imei });
+            await DeviceLastSeen.deleteOne({ imei });
+            await DeviceHistoryPoint.deleteMany({ imei });
+            await DeviceSettings.deleteOne({ imei });
+            await SharedLink.deleteMany({ imei });
+            await DeviceRequest.deleteMany({ imei });
+            return true;
+        } else {
+            const data = readData();
+            const devIndex = data.devices.findIndex(d => d.imei === imei);
+            if (devIndex === -1) return false;
+            data.devices.splice(devIndex, 1);
+            if (data.deviceLastSeen[imei]) delete data.deviceLastSeen[imei];
+            if (data.deviceHistory[imei]) delete data.deviceHistory[imei];
+            if (data.deviceSettings[imei]) delete data.deviceSettings[imei];
+            data.sharedLinks = data.sharedLinks.filter(l => l.imei !== imei);
+            data.deviceRequests = data.deviceRequests.filter(r => r.imei !== imei);
+            writeData(data);
+            return true;
+        }
+    },
     updateDriver: async (imei, userId, driverName) => {
         await ensureDbConnected();
         if (useMongo) {
@@ -2545,6 +2584,35 @@ module.exports = {
                 writeData(data);
                 return newSub;
             }
+        }
+    },
+
+    updateDeviceValidityAdmin: async (imei, extraDays) => {
+        await ensureDbConnected();
+        const days = parseInt(extraDays) || 30;
+        if (useMongo) {
+            let device = await Device.findOne({ imei });
+            if (device) {
+                const now = new Date();
+                const baseDate = (device.expirationDate && device.expirationDate > now) ? new Date(device.expirationDate) : now;
+                baseDate.setDate(baseDate.getDate() + days);
+                device.expirationDate = baseDate;
+                await device.save();
+                return device.toObject();
+            }
+            return null;
+        } else {
+            const data = readData();
+            let device = data.devices.find(d => d.imei === imei);
+            if (device) {
+                const now = new Date();
+                const baseDate = (device.expirationDate && new Date(device.expirationDate) > now) ? new Date(device.expirationDate) : now;
+                baseDate.setDate(baseDate.getDate() + days);
+                device.expirationDate = baseDate.toISOString();
+                writeData(data);
+                return device;
+            }
+            return null;
         }
     },
 

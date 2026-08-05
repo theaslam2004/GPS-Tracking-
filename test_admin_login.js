@@ -19,7 +19,7 @@ const path = require('path');
   });
 
   console.log('Navigating to login page...');
-  await page.goto('http://localhost:3000/index.html');
+  await page.goto('http://localhost:3000/login.html');
 
   console.log('Logging in as Admin...');
   await page.fill('#username', 'admin');

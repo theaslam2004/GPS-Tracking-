@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Customer Dashboard - Alien Vision</title>
+    <title>Customer Dashboard - Alienware</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
     <link rel="stylesheet" href="css/main.css?v=1.0.1">
@@ -1064,8 +1064,8 @@
                 <i class="fa-solid fa-bars"></i>
             </button>
             <div class="mobile-logo" style="display: flex; align-items: center; gap: 6px;">
-                <i class="fa-solid fa-hand-pointer" style="color: var(--primary); font-size: 1.25rem; transform: rotate(15deg);"></i>
-                <span style="font-weight: 800; font-size: 1.1rem; letter-spacing: 0.5px; color: var(--text-primary);">Alien Vision</span>
+                <img src="/img/alienware.svg" alt="Alienware Logo" style="width: 24px; height: 24px;">
+                <span style="font-weight: 800; font-size: 1.1rem; letter-spacing: 0.5px; color: var(--text-primary);">Alienware</span>
             </div>
         </div>
         <div style="display: flex; align-items: center; gap: 14px;">
@@ -1083,7 +1083,7 @@
         <!-- Narrow Icon Menu -->
         <div class="menu-sidebar">
             <div class="menu-logo" onclick="window.location.reload()">
-                <i class="fa-solid fa-truck-fast"></i>
+                <img src="/img/alienware.svg" alt="Logo" style="width: 24px; height: 24px;">
             </div>
             <div class="menu-items">
                 <a class="menu-item active" href="#" title="Dashboard" onclick="switchMapTab('live'); if(window.innerWidth <= 900) { toggleMobileMenu(); document.querySelector('.sidebar-wrapper').classList.add('open'); }">
@@ -1184,7 +1184,7 @@
                             <div class="mobile-category-pill" onclick="setFilter('offline')">
                                 <span style="width: 8px; height: 8px; border-radius: 50%; background: #94a3b8; display: inline-block;"></span>
                                 <span id="mobileCountOffline" style="font-weight: 800; color: var(--text-primary);">0</span> 
-                                <span style="font-size: 0.72rem; letter-spacing: 0.3px;">OFFLINE</span>
+                                <span style="font-size: 0.72rem; letter-spacing: 0.3px;">OFFLINE (&gt;2m)</span>
                             </div>
                         </div>
                     </div>
@@ -1427,7 +1427,7 @@
                 </div>
                 <div class="filter-pill filter-offline" onclick="setFilter('offline')">
                     <span class="count" id="countOffline" style="font-family: 'Outfit', monospace; color: #94a3b8;">0</span>
-                    <span class="label">OFFLINE</span>
+                    <span class="label">OFFLINE (&gt;2m)</span>
                 </div>
             </div>
             
@@ -1498,7 +1498,10 @@
                         <i class="fa-solid fa-power-off"></i>
                     </div>
                     <div>
-                        <h2 id="panelDeviceName" style="font-weight: 800; font-size: 1.15rem; margin: 0; color: var(--text-primary); letter-spacing: 0.5px;">VEHICLE</h2>
+                        <div style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                            <h2 id="panelDeviceName" style="font-weight: 800; font-size: 1.15rem; margin: 0; color: var(--text-primary); letter-spacing: 0.5px;">VEHICLE</h2>
+                            <div id="panelValidityBadge" style="display: none;"></div>
+                        </div>
                         <!-- Driver & Profile Subtitle -->
                         <div style="font-size: 0.72rem; color: var(--text-secondary); margin-top: 2px; display: flex; align-items: center; gap: 4px; flex-wrap: wrap;">
                             <span>Driver: <b id="panelDriverName" style="color: var(--text-primary);">Unassigned</b></span>
@@ -1863,6 +1866,15 @@
                     </div>
                     <a href="#" id="exportBtn" style="background: var(--bg-surface); border: 1px solid var(--border); color: var(--text-primary); text-decoration: none; cursor: pointer; padding: 6px 12px; border-radius: var(--radius-sm); font-size: 0.8rem; font-weight: 700; display: flex; align-items: center; gap: 4px;">
                         <i class="fa-solid fa-download"></i> CSV
+                    </a>
+                </div>
+
+                <div style="display: flex; justify-content: space-between; align-items: center; padding: 1rem; background: var(--bg-main); border-radius: var(--radius-md); border: 1px solid var(--border);">
+                    <div style="font-weight: 600; font-size: 0.9rem; color: var(--text-primary);">
+                        <i class="fa-brands fa-android" style="margin-right: 8px; color: #3DDC84;"></i> Android App
+                    </div>
+                    <a href="app.apk" download style="background: var(--bg-surface); border: 1px solid var(--border); color: var(--text-primary); text-decoration: none; cursor: pointer; padding: 6px 12px; border-radius: var(--radius-sm); font-size: 0.8rem; font-weight: 700; display: flex; align-items: center; gap: 4px;">
+                        <i class="fa-solid fa-download"></i> APK
                     </a>
                 </div>
             </div>

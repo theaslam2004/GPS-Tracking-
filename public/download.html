@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Download Fleetly GPS App</title>
+    <meta name="description" content="Download the Fleetly GPS Tracker Android app. Real-time vehicle tracking, geofencing, driver management and more.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --primary: #6C63FF;
+            --primary-dark: #4B44CC;
+            --cyan: #3ECFCF;
+            --bg: #0b0b18;
+            --bg2: #0f0f1a;
+            --bg3: #141428;
+            --card: #16162a;
+            --border: rgba(108,99,255,0.18);
+            --text: #ffffff;
+            --muted: #888aaa;
+            --success: #22c55e;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            background: var(--bg);
+            color: var(--text);
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+            min-height: 100vh;
+        }
+
+        /* ── Background ── */
+        .bg-orbs {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 0;
+            overflow: hidden;
+        }
+        .bg-orbs::before {
+            content: '';
+            position: absolute;
+            width: 600px; height: 600px;
+            background: radial-gradient(circle, rgba(108,99,255,0.15) 0%, transparent 70%);
+            top: -200px; left: -200px;
+            animation: float1 12s ease-in-out infinite;
+        }
+        .bg-orbs::after {
+            content: '';
+            position: absolute;
+            width: 500px; height: 500px;
+            background: radial-gradient(circle, rgba(62,207,207,0.10) 0%, transparent 70%);
+            bottom: -100px; right: -100px;
+            animation: float2 15s ease-in-out infinite;
+        }
+        @keyframes float1 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(40px,40px)} }
+        @keyframes float2 { 0%,100%{transform:translate(0,0)} 50%{transform:translate(-30px,-30px)} }
+
+        /* ── Nav ── */
+        nav {
+            position: fixed;
+            top: 0; left: 0; right: 0;
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 32px;
+            background: rgba(11,11,24,0.8);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+        }
+        .nav-logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            text-decoration: none;
+        }
+        .nav-logo-icon {
+            width: 36px; height: 36px;
+            background: linear-gradient(135deg, var(--primary), var(--cyan));
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+        .nav-logo-text {
+            font-size: 18px;
+            font-weight: 700;
+            background: linear-gradient(90deg, var(--primary), var(--cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .nav-cta {
+            background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+            color: white;
+            border: none;
+            padding: 10px 22px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            text-decoration: none;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 0 20px rgba(108,99,255,0.3);
+        }
+        .nav-cta:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 0 30px rgba(108,99,255,0.5);
+        }
+
+        /* ── Hero ── */
+        .hero {
+            position: relative;
+            z-index: 1;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            text-align: center;
+            padding: 120px 24px 60px;
+        }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: rgba(108,99,255,0.12);
+            border: 1px solid rgba(108,99,255,0.3);
+            border-radius: 100px;
+            padding: 6px 16px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--primary);
+            margin-bottom: 28px;
+            animation: fadeDown 0.6s ease;
+        }
+        .badge-dot {
+            width: 7px; height: 7px;
+            background: var(--success);
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+        h1 {
+            font-size: clamp(36px, 6vw, 72px);
+            font-weight: 900;
+            line-height: 1.1;
+            letter-spacing: -2px;
+            max-width: 800px;
+            margin-bottom: 24px;
+            animation: fadeUp 0.7s 0.1s both ease;
+        }
+        h1 span {
+            background: linear-gradient(135deg, var(--primary), var(--cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero-sub {
+            font-size: clamp(16px, 2vw, 20px);
+            color: var(--muted);
+            max-width: 560px;
+            line-height: 1.7;
+            margin-bottom: 40px;
+            animation: fadeUp 0.7s 0.2s both ease;
+        }
+
+        /* ── Download Button ── */
+        .download-group {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 16px;
+            animation: fadeUp 0.7s 0.3s both ease;
+        }
+
+        .btn-download {
+            display: inline-flex;
+            align-items: center;
+            gap: 14px;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--cyan) 100%);
+            color: white;
+            text-decoration: none;
+            padding: 18px 36px;
+            border-radius: 16px;
+            font-size: 18px;
+            font-weight: 700;
+            transition: transform 0.2s, box-shadow 0.2s;
+            box-shadow: 0 8px 40px rgba(108,99,255,0.4);
+            position: relative;
+            overflow: hidden;
+        }
+        .btn-download::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent);
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        .btn-download:hover::before { opacity: 1; }
+        .btn-download:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 16px 60px rgba(108,99,255,0.5);
+        }
+        .btn-download:active { transform: translateY(0); }
+
+        .btn-download .icon {
+            font-size: 28px;
+            line-height: 1;
+        }
+        .btn-download .label { text-align: left; }
+        .btn-download .label small { display: block; font-size: 11px; font-weight: 400; opacity: 0.8; }
+        .btn-download .label strong { display: block; font-size: 16px; }
+
+        .download-meta {
+            font-size: 13px;
+            color: var(--muted);
+        }
+        .download-meta span { color: var(--success); }
+
+        /* ── Phone mockup ── */
+        .phone-mockup {
+            position: relative;
+            margin: 60px auto 0;
+            width: 280px;
+            animation: fadeUp 0.7s 0.4s both ease;
+        }
+        .phone-frame {
+            background: var(--bg3);
+            border-radius: 40px;
+            border: 2px solid rgba(108,99,255,0.3);
+            padding: 16px 12px;
+            box-shadow: 0 40px 100px rgba(0,0,0,0.6), 0 0 60px rgba(108,99,255,0.2);
+            position: relative;
+        }
+        .phone-notch {
+            width: 80px; height: 20px;
+            background: var(--bg);
+            border-radius: 0 0 14px 14px;
+            margin: 0 auto 12px;
+        }
+        .phone-screen {
+            background: linear-gradient(160deg, #0f0f1a 0%, #1a1a3a 100%);
+            border-radius: 24px;
+            height: 420px;
+            overflow: hidden;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+        }
+        .phone-topbar {
+            background: linear-gradient(135deg, #6c63ff22, #3ecfcf11);
+            border-bottom: 1px solid var(--border);
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .phone-brand {
+            font-size: 12px;
+            font-weight: 700;
+            background: linear-gradient(90deg, var(--primary), var(--cyan));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .phone-status { font-size: 10px; color: var(--success); }
+        .phone-map {
+            flex: 1;
+            background: #0a1628;
+            position: relative;
+            overflow: hidden;
+        }
+        /* Animated map lines */
+        .phone-map::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background:
+                repeating-linear-gradient(0deg, transparent, transparent 28px, rgba(108,99,255,0.05) 28px, rgba(108,99,255,0.05) 29px),
+                repeating-linear-gradient(90deg, transparent, transparent 28px, rgba(108,99,255,0.05) 28px, rgba(108,99,255,0.05) 29px);
+        }
+        .map-dot {
+            position: absolute;
+            width: 12px; height: 12px;
+            background: var(--primary);
+            border-radius: 50%;
+            box-shadow: 0 0 16px var(--primary);
+            animation: mapPulse 2s infinite;
+        }
+        .map-dot::after {
+            content: '';
+            position: absolute;
+            width: 28px; height: 28px;
+            border: 2px solid var(--primary);
+            border-radius: 50%;
+            top: -8px; left: -8px;
+            animation: mapRipple 2s infinite;
+            opacity: 0;
+        }
+        @keyframes mapPulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.2)} }
+        @keyframes mapRipple { 0%{transform:scale(0.5);opacity:0.8} 100%{transform:scale(2);opacity:0} }
+        .map-dot:nth-child(1) { top: 40%; left: 45%; }
+        .map-dot:nth-child(2) { top: 25%; left: 65%; background: var(--cyan); box-shadow: 0 0 16px var(--cyan); animation-delay: 0.5s; }
+        .map-dot:nth-child(3) { top: 60%; left: 30%; animation-delay: 1s; }
+        .map-route {
+            position: absolute;
+            top: 30px; left: 30px;
+            right: 30px; bottom: 30px;
+            border: 2px dashed rgba(108,99,255,0.25);
+            border-radius: 50%;
+        }
+        .phone-stats {
+            padding: 12px 16px;
+            display: flex;
+            gap: 10px;
+        }
+        .pstat {
+            flex: 1;
+            background: rgba(108,99,255,0.08);
+            border: 1px solid var(--border);
+            border-radius: 10px;
+            padding: 8px 10px;
+            text-align: center;
+        }
+        .pstat-val { font-size: 15px; font-weight: 700; color: var(--cyan); }
+        .pstat-label { font-size: 9px; color: var(--muted); margin-top: 2px; }
+        .phone-bottom {
+            padding: 8px 16px 12px;
+            display: flex;
+            justify-content: space-around;
+        }
+        .phone-btn {
+            width: 6px; height: 6px; background: var(--border);
+            border-radius: 50%;
+        }
+        .phone-btn.active { background: var(--primary); }
+
+        /* ── Features Section ── */
+        .section {
+            position: relative;
+            z-index: 1;
+            padding: 80px 24px;
+            max-width: 1100px;
+            margin: 0 auto;
+        }
+        .section-label {
+            text-align: center;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 3px;
+            text-transform: uppercase;
+            color: var(--primary);
+            margin-bottom: 12px;
+        }
+        .section-title {
+            text-align: center;
+            font-size: clamp(28px, 4vw, 44px);
+            font-weight: 800;
+            margin-bottom: 16px;
+            letter-spacing: -1px;
+        }
+        .section-sub {
+            text-align: center;
+            color: var(--muted);
+            max-width: 500px;
+            margin: 0 auto 56px;
+            font-size: 16px;
+            line-height: 1.7;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 20px;
+        }
+
+        .feature-card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            padding: 28px;
+            transition: transform 0.3s, border-color 0.3s, box-shadow 0.3s;
+            position: relative;
+            overflow: hidden;
+        }
+        .feature-card::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        .feature-card:hover {
+            transform: translateY(-6px);
+            border-color: rgba(108,99,255,0.4);
+            box-shadow: 0 20px 60px rgba(108,99,255,0.12);
+        }
+        .feature-card:hover::before { opacity: 1; }
+
+        .feature-icon {
+            width: 52px; height: 52px;
+            border-radius: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin-bottom: 18px;
+            background: rgba(108,99,255,0.12);
+            border: 1px solid rgba(108,99,255,0.2);
+        }
+        .feature-card:nth-child(2) .feature-icon { background: rgba(62,207,207,0.10); border-color: rgba(62,207,207,0.2); }
+        .feature-card:nth-child(3) .feature-icon { background: rgba(245,158,11,0.10); border-color: rgba(245,158,11,0.2); }
+        .feature-card:nth-child(4) .feature-icon { background: rgba(34,197,94,0.10); border-color: rgba(34,197,94,0.2); }
+        .feature-card:nth-child(5) .feature-icon { background: rgba(239,68,68,0.10); border-color: rgba(239,68,68,0.2); }
+        .feature-card:nth-child(6) .feature-icon { background: rgba(168,85,247,0.10); border-color: rgba(168,85,247,0.2); }
+
+        .feature-title {
+            font-size: 17px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .feature-desc {
+            font-size: 14px;
+            color: var(--muted);
+            line-height: 1.6;
+        }
+
+        /* ── QR Section ── */
+        .qr-section {
+            position: relative;
+            z-index: 1;
+            padding: 60px 24px 80px;
+        }
+        .qr-card {
+            max-width: 700px;
+            margin: 0 auto;
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 28px;
+            padding: 48px;
+            display: flex;
+            align-items: center;
+            gap: 48px;
+            position: relative;
+            overflow: hidden;
+        }
+        .qr-card::before {
+            content: '';
+            position: absolute;
+            top: -60px; right: -60px;
+            width: 200px; height: 200px;
+            background: radial-gradient(circle, rgba(108,99,255,0.15), transparent);
+        }
+        .qr-box {
+            width: 140px;
+            height: 140px;
+            background: white;
+            border-radius: 14px;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 10px;
+            position: relative;
+        }
+        .qr-inner {
+            width: 100%;
+            height: 100%;
+            /* QR code pattern using CSS */
+            background:
+                repeating-linear-gradient(0deg, transparent, transparent 9px, #000 9px, #000 10px),
+                repeating-linear-gradient(90deg, transparent, transparent 9px, #000 9px, #000 10px);
+            opacity: 0.1;
+            position: absolute;
+        }
+        .qr-label {
+            position: absolute;
+            bottom: -24px;
+            font-size: 11px;
+            color: var(--muted);
+            white-space: nowrap;
+        }
+        .qr-content { flex: 1; }
+        .qr-content h3 { font-size: 24px; font-weight: 800; margin-bottom: 10px; }
+        .qr-content p { color: var(--muted); font-size: 15px; line-height: 1.6; margin-bottom: 20px; }
+        .qr-steps { list-style: none; }
+        .qr-steps li {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            font-size: 14px;
+            color: var(--muted);
+            margin-bottom: 10px;
+        }
+        .qr-step-num {
+            width: 22px; height: 22px;
+            background: rgba(108,99,255,0.15);
+            border: 1px solid rgba(108,99,255,0.3);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--primary);
+            flex-shrink: 0;
+        }
+
+        /* ── Spec Pills ── */
+        .spec-row {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            justify-content: center;
+            margin: 40px 0;
+            position: relative;
+            z-index: 1;
+        }
+        .spec-pill {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 100px;
+            padding: 8px 18px;
+            font-size: 13px;
+            color: var(--muted);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .spec-pill span { color: var(--primary); font-size: 16px; }
+
+        /* ── Footer ── */
+        footer {
+            position: relative;
+            z-index: 1;
+            text-align: center;
+            padding: 32px;
+            border-top: 1px solid var(--border);
+            color: var(--muted);
+            font-size: 13px;
+        }
+        footer a { color: var(--primary); text-decoration: none; }
+
+        /* ── Animations ── */
+        @keyframes fadeUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes fadeDown {
+            from { opacity: 0; transform: translateY(-10px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        /* ── Responsive ── */
+        @media (max-width: 600px) {
+            nav { padding: 12px 20px; }
+            .qr-card { flex-direction: column; padding: 32px 24px; align-items: flex-start; }
+            .qr-box { width: 120px; height: 120px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="bg-orbs"></div>
+
+    <!-- Navigation -->
+    <nav>
+        <a href="/" class="nav-logo">
+            <div class="nav-logo-icon">📡</div>
+            <span class="nav-logo-text">Fleetly GPS</span>
+        </a>
+        <a href="#download" class="nav-cta" id="nav-download-btn">Download App</a>
+    </nav>
+
+    <!-- Hero -->
+    <section class="hero">
+        <div class="badge">
+            <span class="badge-dot"></span>
+            New Release — Version 1.0
+        </div>
+
+        <h1>Your Fleet. <span>Always in View.</span></h1>
+        <p class="hero-sub">
+            The Fleetly GPS Tracker Android app gives you real-time vehicle tracking, instant alerts, and complete fleet visibility — right in your pocket.
+        </p>
+
+        <div class="download-group" id="download">
+            <a href="/app.apk" class="btn-download" id="apk-download-btn" download="FleetlyGPS.apk">
+                <span class="icon">⬇</span>
+                <span class="label">
+                    <small>Download for Android</small>
+                    <strong>Get Fleetly GPS — Free</strong>
+                </span>
+            </a>
+            <p class="download-meta">
+                <span>✓ Free to install</span> &nbsp;•&nbsp; Android 5.1+ &nbsp;•&nbsp; 12 MB
+            </p>
+        </div>
+
+        <!-- Phone Mockup -->
+        <div class="phone-mockup">
+            <div class="phone-frame">
+                <div class="phone-notch"></div>
+                <div class="phone-screen">
+                    <div class="phone-topbar">
+                        <span class="phone-brand">⚡ Fleetly GPS</span>
+                        <span class="phone-status">● 3 Active</span>
+                    </div>
+                    <div class="phone-map">
+                        <div class="map-route"></div>
+                        <div class="map-dot"></div>
+                        <div class="map-dot"></div>
+                        <div class="map-dot"></div>
+                    </div>
+                    <div class="phone-stats">
+                        <div class="pstat">
+                            <div class="pstat-val">3</div>
+                            <div class="pstat-label">Vehicles</div>
+                        </div>
+                        <div class="pstat">
+                            <div class="pstat-val">62<small style="font-size:9px">km/h</small></div>
+                            <div class="pstat-label">Avg Speed</div>
+                        </div>
+                        <div class="pstat">
+                            <div class="pstat-val">ON</div>
+                            <div class="pstat-label">Ignition</div>
+                        </div>
+                    </div>
+                    <div class="phone-bottom">
+                        <div class="phone-btn active"></div>
+                        <div class="phone-btn"></div>
+                        <div class="phone-btn"></div>
+                        <div class="phone-btn"></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Spec Pills -->
+    <div class="spec-row">
+        <div class="spec-pill"><span>🤖</span> Android 5.1+</div>
+        <div class="spec-pill"><span>📦</span> ~12 MB APK</div>
+        <div class="spec-pill"><span>🔒</span> Secure Login</div>
+        <div class="spec-pill"><span>🗺️</span> Live Map Tracking</div>
+        <div class="spec-pill"><span>🔔</span> Push Alerts</div>
+        <div class="spec-pill"><span>🌙</span> Dark Mode</div>
+    </div>
+
+    <!-- Features -->
+    <div class="section">
+        <p class="section-label">Features</p>
+        <h2 class="section-title">Everything you need in one app</h2>
+        <p class="section-sub">Manage your entire fleet from your phone with professional-grade tools.</p>
+
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon">🗺️</div>
+                <h3 class="feature-title">Real-Time Map Tracking</h3>
+                <p class="feature-desc">Watch your vehicles move live on an interactive map. See speed, direction and location updated every few seconds.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📜</div>
+                <h3 class="feature-title">Trip History & Playback</h3>
+                <p class="feature-desc">Review complete journey history with route playback. Export CSV reports for compliance and analysis.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🔔</div>
+                <h3 class="feature-title">Instant Alerts</h3>
+                <p class="feature-desc">Get notified instantly when a vehicle exceeds speed limits, enters/exits a geofence, or goes offline.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">📍</div>
+                <h3 class="feature-title">Geofencing</h3>
+                <p class="feature-desc">Draw virtual boundaries on the map. Get alerts when vehicles enter or exit your designated zones.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">🔗</div>
+                <h3 class="feature-title">Live Share Links</h3>
+                <p class="feature-desc">Share a live tracking link with customers or family. Links expire automatically for security.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon">👤</div>
+                <h3 class="feature-title">Driver & Vehicle Profiles</h3>
+                <p class="feature-desc">Assign drivers to vehicles, track odometer, and manage your entire fleet with full vehicle profiles.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- QR & Install Instructions -->
+    <div class="qr-section">
+        <div class="qr-card">
+            <div class="qr-box">
+                <!-- Placeholder QR pattern -->
+                <div class="qr-inner"></div>
+                <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg" width="100%" height="100%">
+                    <rect x="10" y="10" width="30" height="30" rx="3" fill="none" stroke="#6c63ff" stroke-width="5"/>
+                    <rect x="17" y="17" width="16" height="16" rx="1" fill="#6c63ff"/>
+                    <rect x="60" y="10" width="30" height="30" rx="3" fill="none" stroke="#6c63ff" stroke-width="5"/>
+                    <rect x="67" y="17" width="16" height="16" rx="1" fill="#6c63ff"/>
+                    <rect x="10" y="60" width="30" height="30" rx="3" fill="none" stroke="#6c63ff" stroke-width="5"/>
+                    <rect x="17" y="67" width="16" height="16" rx="1" fill="#6c63ff"/>
+                    <rect x="60" y="60" width="8" height="8" rx="1" fill="#3ecfcf"/>
+                    <rect x="72" y="60" width="8" height="8" rx="1" fill="#3ecfcf"/>
+                    <rect x="60" y="72" width="8" height="8" rx="1" fill="#3ecfcf"/>
+                    <rect x="72" y="72" width="8" height="8" rx="1" fill="#3ecfcf"/>
+                    <rect x="84" y="60" width="8" height="20" rx="1" fill="#6c63ff"/>
+                    <rect x="60" y="84" width="20" height="8" rx="1" fill="#6c63ff"/>
+                    <rect x="45" y="10" width="8" height="8" rx="1" fill="#3ecfcf"/>
+                    <rect x="45" y="22" width="8" height="8" rx="1" fill="#3ecfcf"/>
+                    <rect x="45" y="34" width="8" height="8" rx="1" fill="#3ecfcf"/>
+                    <rect x="10" y="45" width="8" height="8" rx="1" fill="#3ecfcf"/>
+                    <rect x="22" y="45" width="8" height="8" rx="1" fill="#3ecfcf"/>
+                    <rect x="34" y="45" width="8" height="8" rx="1" fill="#3ecfcf"/>
+                    <rect x="45" y="45" width="8" height="8" rx="1" fill="#6c63ff"/>
+                </svg>
+                <span class="qr-label">Scan to download</span>
+            </div>
+
+            <div class="qr-content">
+                <h3>Install on your phone</h3>
+                <p>Scan the QR code with your camera app, or follow these steps to sideload the APK:</p>
+                <ol class="qr-steps">
+                    <li>
+                        <span class="qr-step-num">1</span>
+                        <span>Tap the <strong>Download</strong> button above on your Android phone</span>
+                    </li>
+                    <li>
+                        <span class="qr-step-num">2</span>
+                        <span>Go to <strong>Settings → Security</strong> and enable <em>"Install unknown apps"</em></span>
+                    </li>
+                    <li>
+                        <span class="qr-step-num">3</span>
+                        <span>Open the downloaded <strong>FleetlyGPS.apk</strong> file and tap Install</span>
+                    </li>
+                    <li>
+                        <span class="qr-step-num">4</span>
+                        <span>Launch the app, log in and start tracking your fleet!</span>
+                    </li>
+                </ol>
+            </div>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer>
+        <p>© 2026 Fleetly GPS · <a href="/">Admin Dashboard</a> · <a href="/customer.html">Customer Portal</a></p>
+        <p style="margin-top:8px">Built with ❤️ for fleet managers across India</p>
+    </footer>
+
+    <script>
+        // Track download clicks
+        document.getElementById('apk-download-btn').addEventListener('click', () => {
+            fetch('/api/app-download-count', { method: 'POST' }).catch(() => {});
+        });
+
+        // Smooth scroll for nav button
+        document.getElementById('nav-download-btn').addEventListener('click', (e) => {
+            e.preventDefault();
+            document.getElementById('download').scrollIntoView({ behavior: 'smooth' });
+        });
+    </script>
+</body>
+</html>

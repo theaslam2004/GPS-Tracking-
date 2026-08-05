@@ -1,0 +1,22 @@
+{
+  "appId": "com.fleetly.gpstracker",
+  "appName": "Fleetly GPS",
+  "webDir": "www",
+  "server": {
+    "url": "http://192.168.1.120:3000",
+    "cleartext": true
+  },
+  "android": {
+    "allowMixedContent": true,
+    "captureInput": true,
+    "webContentsDebuggingEnabled": false
+  },
+  "plugins": {
+    "SplashScreen": {
+      "launchShowDuration": 2000,
+      "backgroundColor": "#0f0f1a",
+      "androidSplashResourceName": "splash",
+      "showSpinner": false
+    }
+  }
+}

@@ -28,7 +28,7 @@ const path = require('path');
 
   // Step 1: Admin Login
   console.log('Step 1: Navigating to login page...');
-  await page.goto('http://localhost:3000/index.html');
+  await page.goto('http://localhost:3000/login.html');
 
   console.log('Logging in as Admin...');
   await page.fill('#username', 'admin');
@@ -79,7 +79,7 @@ const path = require('path');
   // Logout from Admin
   console.log('Logging out from admin...');
   await page.click('.btn-logout');
-  await page.waitForURL('**/index.html', { timeout: 5000 });
+  await page.waitForURL('**/login.html', { timeout: 5000 });
 
   // Step 3: Login as the new customer
   console.log('Step 3: Logging in as the new customer...');
@@ -125,7 +125,7 @@ const path = require('path');
   // Logout from Customer
   console.log('Logging out from customer...');
   await page.click('.menu-logout-btn');
-  await page.waitForURL('**/index.html', { timeout: 5000 });
+  await page.waitForURL('**/login.html', { timeout: 5000 });
 
   // Step 5: Admin Login and Verify Metrics
   console.log('Step 5: Logging back into Admin to verify metrics...');

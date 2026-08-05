@@ -53,15 +53,44 @@ let telemetryHistory = [12, 19, 15, 8, 14, 20, 24, 18, 22, 28]; // Start with ba
 let currentMinutePackets = 0;
 setInterval(() => {
     telemetryHistory.push(currentMinutePackets);
-    telemetryHistory.shift();
     currentMinutePackets = 0;
-}, 60000);
+}, 120000);
 
 app.use(express.static(path.join(__dirname, 'public')));
 app.use(express.json());
 
 app.get('/api/version', (req, res) => {
     res.json({ version: '1.0.5-debug-added', timestamp: new Date().toISOString() });
+});
+
+// APK Download page redirect
+app.get('/download', (req, res) => {
+    res.redirect('/download.html');
+});
+
+// Mobile app version info
+app.get('/api/app-version', (req, res) => {
+    res.json({
+        version: '1.0.0',
+        versionCode: 1,
+        minAndroid: '5.1',
+        downloadUrl: '/app.apk',
+        downloadPage: '/download.html',
+        changelog: 'Initial release - Real-time GPS tracking, geofencing, trip history',
+        timestamp: new Date().toISOString()
+    });
+});
+
+// APK Download counter
+let apkDownloadCount = 0;
+app.post('/api/app-download-count', (req, res) => {
+    apkDownloadCount++;
+    console.log(`[APK] Download #${apkDownloadCount}`);
+    res.json({ success: true, count: apkDownloadCount });
+});
+
+app.get('/api/app-download-count', (req, res) => {
+    res.json({ count: apkDownloadCount });
 });
 
 app.get('/api/debug-db', async (req, res) => {
@@ -193,6 +222,25 @@ app.post('/api/logout', (req, res) => {
         res.clearCookie('connect.sid');
         res.json({ success: true });
     });
+});
+
+
+// API: Request Demo
+app.post('/api/request-demo', async (req, res) => {
+    const { email } = req.body;
+    const suffix = Math.floor(1000 + Math.random() * 9000);
+    const username = `demo_${suffix}`;
+    const password = `pass${suffix}`;
+    try {
+        const result = await store.createUser(username, password, '', email);
+        if (result === null) {
+            return res.status(400).json({ success: false, error: 'Username taken, please try again' });
+        }
+        res.json({ success: true, username, password });
+    } catch (e) {
+        console.error('[HTTP] Request Demo Error:', e);
+        res.status(500).json({ success: false, error: 'Internal server error' });
+    }
 });
 
 // ── CUSTOMER API ENDPOINTS ──
@@ -639,6 +687,15 @@ app.delete('/api/admin/delete-customer/:userId', requireAdmin, async (req, res) 
     res.json({ success });
 });
 
+app.delete('/api/admin/delete-device/:imei', requireAdmin, async (req, res) => {
+    const success = await store.adminDeleteDevice(req.params.imei);
+    if (success) {
+        io.emit('admin_update');
+        io.emit('customer_update'); // Force refresh for any customer looking at it
+    }
+    res.json({ success });
+});
+
 app.post('/api/admin/update-contact', requireAdmin, async (req, res) => {
     const { userId, phone, email } = req.body;
     const success = await store.updateContact(userId, phone, email);
@@ -790,6 +847,23 @@ app.post('/api/admin/update-plan', requireAdmin, async (req, res) => {
         res.status(500).json({ success: false, error: 'Server error' });
     }
 });
+
+// Admin Update Device Validity
+app.post('/api/admin/update-device-validity', requireAdmin, async (req, res) => {
+    const { imei, extraDays } = req.body;
+    try {
+        const result = await store.updateDeviceValidityAdmin(imei, extraDays);
+        if (result) {
+            io.emit('admin_update');
+            res.json({ success: true, device: result });
+        } else {
+            res.json({ success: false, error: 'Could not update device validity.' });
+        }
+    } catch (e) {
+        res.status(500).json({ success: false, error: 'Server error' });
+    }
+});
+
 
 // History Summary and Alerts APIs
 app.get('/api/customer/history/alerts', requireLogin, async (req, res) => {

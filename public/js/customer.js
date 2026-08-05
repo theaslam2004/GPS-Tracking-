@@ -36,14 +36,14 @@ let user = null;
         if (response.status === 401) {
             console.warn('[Auth Check] Unauthorized: Redirecting to login...');
             localStorage.removeItem('user');
-            window.location.href = 'index.html';
+            window.location.href = 'login.html';
             return;
         }
         const data = await response.json();
         if (!data.success || !data.user || data.user.role !== 'customer') {
             console.warn('[Auth Check] Access Denied or Session Stale. Redirecting to login...');
             localStorage.removeItem('user');
-            window.location.href = 'index.html';
+            window.location.href = 'login.html';
             return;
         }
         
@@ -92,7 +92,7 @@ let user = null;
     } catch (e) {
         console.error('[Auth Check] Error validating session:', e);
         localStorage.removeItem('user');
-        window.location.href = 'index.html';
+        window.location.href = 'login.html';
     }
 })();
 
@@ -439,7 +439,7 @@ function toggleMapStyle() {
 
 function logout() {
     localStorage.removeItem('user');
-    window.location.href = 'index.html';
+    window.location.href = 'login.html';
 }
 
 async function loadTrackerConfig() {
@@ -954,7 +954,7 @@ function renderDeviceList() {
     const filteredDevices = sortedDevices.filter(d => {
         if (currentFilter === 'all') return true;
         const live = latestData[d.imei] || {};
-        const isStale = live.timestamp ? (Date.now() - new Date(live.timestamp)) > 60000 : true;
+        const isStale = live.timestamp ? (Date.now() - new Date(live.timestamp)) > 120000 : true;
         let statusText = 'offline';
         if (live.timestamp && !isStale) {
             statusText = live.status || 'halt';
@@ -981,6 +981,21 @@ function renderDeviceList() {
         if (mobileAllEl) mobileAllEl.innerText = myDevices.length;
 
         const rowsHTML = filteredDevices.map(d => {
+            if (d.isExpired) {
+                return `
+                <div class="mobile-device-row" onclick="showToast('⚠️ Subscription Expired', 'Please contact your administrator or recharge to access this vehicle.', 'danger')" style="display: flex; flex-direction: column; padding: 16px; border-bottom: 1px solid var(--border-light); cursor: pointer; background: rgba(255,0,0,0.02); opacity: 0.8;">
+                    <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
+                        <div style="display: flex; align-items: center; gap: 12px;">
+                            <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: var(--danger); flex-shrink: 0;"></span>
+                            <span style="font-weight: 700; color: var(--text-secondary); text-decoration: line-through;">${d.name || d.imei}</span>
+                        </div>
+                        <div style="color: var(--danger); font-size: 0.8rem; font-weight: bold;">
+                            EXPIRED
+                        </div>
+                    </div>
+                </div>
+                `;
+            }
             const isActive = (d.imei === activeImei);
             const activeClass = isActive ? 'active' : '';
             const live = latestData[d.imei] || {};
@@ -995,7 +1010,7 @@ function renderDeviceList() {
             
             let statusColor = 'var(--text-secondary)';
             if (live.timestamp) {
-                const isStale = (Date.now() - new Date(live.timestamp)) > 60000;
+                const isStale = (Date.now() - new Date(live.timestamp)) > 120000;
                 if (!isStale) {
                     if (statusText === 'running') statusColor = 'var(--success)';
                     else if (statusText === 'idle') statusColor = 'var(--warning)';
@@ -1017,12 +1032,12 @@ function renderDeviceList() {
                 <div class="mobile-device-row ${activeClass}" onclick="focusDevice('${d.imei}')" style="display: flex; flex-direction: column; padding: 16px; border-bottom: 1px solid var(--border-light); cursor: pointer; transition: all 0.25s ease; background: ${isActive ? 'rgba(255, 255, 255, 0.03)' : 'transparent'}; border-left: 3px solid ${isActive ? 'var(--primary)' : 'transparent'}; margin-bottom: ${isActive ? '8px' : '0'}; border-radius: ${isActive ? '8px' : '0'}; box-shadow: ${isActive ? '0 4px 15px rgba(0,0,0,0.1)' : 'none'};">
                     <!-- Row Header (Always Visible) -->
                     <div style="display: flex; align-items: center; justify-content: space-between; width: 100%;">
-                        <div style="display: flex; align-items: center; gap: 12px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; flex: 1; min-width: 0;">
+                        <div style="display: flex; align-items: center; gap: 10px; flex: 1; min-width: 0; padding-right: 8px;">
                             <span style="display: inline-block; width: 10px; height: 10px; border-radius: 50%; background: ${statusColor}; flex-shrink: 0;" title="Status Indicator"></span>
-                            <span style="font-weight: 700; color: var(--text-primary); font-size: 0.92rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">${d.name || d.imei}</span>
+                            <span style="font-weight: 700; color: var(--text-primary); font-size: 0.92rem; white-space: normal; word-break: break-word;">${d.name || d.imei}</span>
                             <i class="fa-solid fa-chart-line" style="color: #3b82f6; font-size: 0.9rem; flex-shrink: 0; cursor: pointer; padding: 4px;" title="View Travel Replay" onclick="event.stopPropagation(); window.activeImei = '${d.imei}'; switchMapTab('replay'); if(window.innerWidth <= 900) { document.querySelector('.sidebar-wrapper').classList.remove('open'); }"></i>
                         </div>
-                        <div style="color: var(--text-secondary); font-size: 0.82rem; font-family: monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; flex-shrink: 0; padding-left: 10px; display: flex; align-items: center; gap: 8px;">
+                        <div style="color: var(--text-secondary); font-size: 0.82rem; font-family: monospace; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; text-align: right; flex-shrink: 0; padding-left: 8px; display: flex; align-items: center; gap: 8px;">
                             <span>${d.imei}</span>
                             <i class="fa-solid ${isActive ? 'fa-chevron-up' : 'fa-chevron-down'}" style="font-size: 0.8rem; color: var(--text-secondary);"></i>
                         </div>
@@ -1159,6 +1174,23 @@ function renderDeviceList() {
         }
     } else {
         container.innerHTML = filteredDevices.map(d => {
+            if (d.isExpired) {
+                return `
+                <div class="device-card offline" style="opacity: 0.7; cursor: pointer; border-left: 3px solid var(--danger);" onclick="showToast('⚠️ Subscription Expired', 'Please contact your administrator or recharge to access this vehicle.', 'danger')">
+                    <div class="device-header" style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 8px;">
+                        <div class="device-title" style="display: flex; align-items: center; gap: 6px; font-size: 0.88rem; font-weight: 700;">
+                            <i class="fa-solid fa-truck" style="color: var(--text-secondary);"></i>
+                            <span style="text-decoration: line-through; color: var(--text-secondary);">${d.name || d.imei}</span>
+                        </div>
+                        <span class="taabi-status-capsule offline" style="transform: scale(0.9); background: rgba(255,0,0,0.1); color: var(--danger); border-color: var(--danger);">EXPIRED</span>
+                    </div>
+                    <div class="device-stats" style="display: flex; justify-content: center; padding: 1rem 0 0.5rem; color: var(--danger); font-size: 0.85rem; font-weight: 600; text-align: center;">
+                        <i class="fa-solid fa-lock" style="margin-right: 5px;"></i> Access Locked
+                    </div>
+                </div>
+                `;
+            }
+            
             const odoHidden = !isFeatureEnabled(d.imei, 'odometer') ? 'display:none' : '';
             const speedHidden = !isFeatureEnabled(d.imei, 'speedAlert') ? 'display:none' : '';
             
@@ -1173,7 +1205,7 @@ function renderDeviceList() {
             let statusClass = 'offline';
             let statusText = 'Offline';
             if (live.timestamp) {
-                const isStale = (Date.now() - new Date(live.timestamp)) > 60000;
+                const isStale = (Date.now() - new Date(live.timestamp)) > 120000;
                 if (!isStale) {
                     statusClass = live.status || 'halt';
                     statusText = statusClass.charAt(0).toUpperCase() + statusClass.slice(1);
@@ -1189,15 +1221,15 @@ function renderDeviceList() {
                 <div class="device-card ${statusClass} ${activeClass}" id="card-${d.imei}" onclick="focusDevice('${d.imei}')">
                     <!-- Card Header -->
                     <div class="device-header" style="display: flex; justify-content: space-between; align-items: center; width: 100%; margin-bottom: 8px;">
-                        <div class="device-title" style="display: flex; align-items: center; gap: 6px; font-size: 0.88rem; font-weight: 700; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; max-width: 65%;">
-                            <i class="fa-solid fa-star" style="color: ${d.pinned ? 'var(--warning)' : 'var(--text-secondary)'}; opacity: ${d.pinned ? '1' : '0.5'}; cursor: pointer; transition: all 0.2s;" onclick="togglePin('${d.imei}', event)" title="${d.pinned ? 'Unpin' : 'Pin to top'}"></i>
+                        <div class="device-title" style="display: flex; align-items: center; gap: 6px; flex: 1; min-width: 0; padding-right: 8px; flex-wrap: wrap;">
+                            <i class="fa-solid fa-star" style="color: ${d.pinned ? 'var(--warning)' : 'var(--text-secondary)'}; opacity: ${d.pinned ? '1' : '0.5'}; cursor: pointer; transition: all 0.2s; flex-shrink: 0;" onclick="togglePin('${d.imei}', event)" title="${d.pinned ? 'Unpin' : 'Pin to top'}"></i>
                             <i class="fa-solid fa-truck" style="font-size: 0.85rem; flex-shrink: 0; color: var(--text-secondary);"></i>
-                            <span style="overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 800; color: var(--text-primary);" title="${d.name || d.imei}">${d.name || d.imei}</span>
-                            ${batAlert}
+                            <span style="font-weight: 800; color: var(--text-primary); font-size: 0.88rem; white-space: normal; word-break: break-word;" title="${d.name || d.imei}">${d.name || d.imei}</span>
+                            ${batAlert ? batAlert.replace('<i ', '<i style="flex-shrink:0; ') : ''}
                         </div>
                         <div style="display: flex; align-items: center; gap: 6px; flex-shrink: 0;">
                             <i class="fa-solid fa-pen-to-square rename-btn" style="cursor: pointer; opacity: 0.5; font-size: 0.75rem; flex-shrink: 0; color: var(--text-secondary);" onclick="renameDevicePrompt('${d.imei}', '${d.name || ''}', event)" title="Rename vehicle"></i>
-                            <span class="taabi-status-capsule ${statusClass}" style="transform: scale(0.9); transform-origin: right center;">
+                            <span class="taabi-status-capsule ${statusClass}" style="transform: scale(0.9); transform-origin: right center; flex-shrink: 0;">
                                 ${statusText}
                             </span>
                         </div>
@@ -1247,7 +1279,7 @@ function updateFleetCounts() {
         const data = latestData[device.imei];
         if (data) {
             // Check if data is "Fresh" (within last 60 seconds)
-            const isStale = (Date.now() - new Date(data.timestamp)) > 60000;
+            const isStale = (Date.now() - new Date(data.timestamp)) > 120000;
             
             if (isStale) {
                 offline++;
@@ -1370,7 +1402,7 @@ function focusDevice(imei) {
 function updatePanelData(data, deviceName) {
     const { imei, latitude, longitude, speed, timestamp, odometer, battery, gpsValid, satellites } = data;
     const isReplayMode = (document.getElementById('playbackControls') && document.getElementById('playbackControls').style.display === 'flex');
-    const isStale = isReplayMode ? false : ((Date.now() - new Date(timestamp)) > 60000);
+    const isStale = isReplayMode ? false : ((Date.now() - new Date(timestamp)) > 120000);
     
     const device = myDevices.find(d => d.imei === imei);
     
@@ -1380,6 +1412,30 @@ function updatePanelData(data, deviceName) {
     }
     
     document.getElementById('panelDeviceName').innerText = deviceName || imei;
+    
+    const panelValidityBadge = document.getElementById('panelValidityBadge');
+    if (panelValidityBadge) {
+        if (device && device.expirationDate && !device.isExpired) {
+            const days = Math.ceil((new Date(device.expirationDate) - new Date()) / (1000 * 60 * 60 * 24));
+            let bColor = '#3b82f6';
+            let bBg = 'rgba(59, 130, 246, 0.1)';
+            if (days <= 7) {
+                bColor = 'var(--danger)';
+                bBg = 'rgba(255, 61, 0, 0.1)';
+            } else if (days <= 30) {
+                bColor = 'var(--warning)';
+                bBg = 'rgba(255, 171, 0, 0.1)';
+            }
+            panelValidityBadge.innerHTML = `<span style="font-size: 0.72rem; color: ${bColor}; background: ${bBg}; padding: 3px 8px; border-radius: 6px; border: 1px solid ${bColor}; white-space: nowrap; font-weight: 700;">${days} days left</span>`;
+            panelValidityBadge.style.display = 'block';
+        } else if (device && device.isExpired) {
+            panelValidityBadge.innerHTML = `<span style="font-size: 0.72rem; color: var(--danger); background: rgba(255,0,0,0.1); padding: 3px 8px; border-radius: 6px; border: 1px solid var(--danger); white-space: nowrap; font-weight: 700;">EXPIRED</span>`;
+            panelValidityBadge.style.display = 'block';
+        } else {
+            panelValidityBadge.style.display = 'none';
+        }
+    }
+    
     document.getElementById('panelSpeed').innerText = speed;
     
     const profile = device ? device.vehicleProfile || 'standard' : 'standard';
@@ -1680,7 +1736,7 @@ function timeSince(date) {
 function buildTelemetryHTML(data, deviceName) {
     const { imei, latitude, longitude, speed, timestamp, odometer, battery, gpsValid, satellites, voltage, powerSource } = data;
     const timeObj = new Date(timestamp);
-    const isStale = (Date.now() - new Date(timestamp)) > 60000;
+    const isStale = (Date.now() - new Date(timestamp)) > 120000;
     
     let status = 'offline';
     let statusText = 'Offline';
@@ -1766,14 +1822,22 @@ socket.on('customer_update', (data) => {
 
 // Dynamic Device Data and Map Rendering Handler
 function handleDeviceData(data, isLive = true) {
-    const isMine = myDevices.some(d => d.imei === data.imei);
-    if (!isMine) return;
+    const device = myDevices.find(d => d.imei === data.imei);
+    if (!device) return;
+    
+    // Do not process or show details for expired devices
+    if (device.isExpired) {
+        if (markers[data.imei]) {
+            map.removeLayer(markers[data.imei]);
+            delete markers[data.imei];
+        }
+        return;
+    }
     
     const { imei, latitude, longitude, speed, timestamp } = data;
     latestData[imei] = { ...(latestData[imei] || {}), ...data };
 
-    const device = myDevices.find(d => d.imei === imei);
-    const deviceName = device ? device.name : imei;
+    const deviceName = device.name || imei;
     const popupHTML = buildTelemetryHTML(data, deviceName);
     
     // Check for Harsh Driving Events (only if live packet)
@@ -1806,7 +1870,7 @@ function handleDeviceData(data, isLive = true) {
     }
     
     // Update Map with Premium Custom Beacon Icon
-    const isStale = (Date.now() - new Date(timestamp)) > 60000;
+    const isStale = (Date.now() - new Date(timestamp)) > 120000;
     const beaconStatus = isStale ? 'offline' : (data.status || 'halt');
     const isPinned = device && device.pinned;
 
@@ -2579,7 +2643,7 @@ function getDistanceInMeters(lat1, lon1, lat2, lon2) {
 }
 
 function formatDuration(ms) {
-    const totalMins = Math.floor(ms / 60000);
+    const totalMins = Math.floor(ms / 120000);
     if (totalMins < 1) return '30s';
     if (totalMins < 60) return `${totalMins}m`;
     const hrs = Math.floor(totalMins / 60);
@@ -2621,7 +2685,7 @@ function optimizeSegments(rawSegments) {
             }
         }
         
-        if (current.state === 'running' && duration < 60000) {
+        if (current.state === 'running' && duration < 120000) {
             let segDist = 0;
             for (let j = 1; j < current.points.length; j++) {
                 segDist += getDistanceInMeters(current.points[j-1].latitude, current.points[j-1].longitude, current.points[j].latitude, current.points[j].longitude);
@@ -3393,7 +3457,7 @@ function closeSettingsModal() {
 
 // Periodic cleanup of trail points older than 1 minute
 setInterval(() => {
-    const oneMinuteAgo = Date.now() - 60000;
+    const oneMinuteAgo = Date.now() - 120000;
     Object.keys(liveTrails).forEach(imei => {
         if (liveTrails[imei]) {
             liveTrails[imei] = liveTrails[imei].filter(pt => pt.timestamp >= oneMinuteAgo);
@@ -3418,7 +3482,7 @@ function updateTrail(imei, currentLatLng) {
         liveTrails[imei] = [];
     }
     
-    const oneMinuteAgo = Date.now() - 60000;
+    const oneMinuteAgo = Date.now() - 120000;
     liveTrails[imei] = liveTrails[imei].filter(pt => pt.timestamp >= oneMinuteAgo);
     
     const latlngs = liveTrails[imei].map(pt => [pt.lat, pt.lng]);
@@ -3630,13 +3694,13 @@ function updateTodayStatsUI(summary) {
     const idleMs = summary.idleMs || 0;
     const haltMs = summary.haltMs || 0;
     
-    const totalEngineMins = Math.floor(engineOnMs / 60000);
+    const totalEngineMins = Math.floor(engineOnMs / 120000);
     const engineHrs = Math.floor(totalEngineMins / 60);
     const engineMins = totalEngineMins % 60;
     const engineTimeStr = `${engineHrs}h ${engineMins}m`;
     
     function formatToMins(ms) {
-        const m = Math.floor(ms / 60000);
+        const m = Math.floor(ms / 120000);
         if (m < 60) return `${m}m`;
         return `${Math.floor(m / 60)}h ${m % 60}m`;
     }
@@ -4059,7 +4123,7 @@ window.openMobileMapModal = function(imei) {
         const statusClass = live.status || 'halt';
         let color = '#94a3b8'; // offline
         if (live.timestamp) {
-            const isStale = (Date.now() - new Date(live.timestamp)) > 60000;
+            const isStale = (Date.now() - new Date(live.timestamp)) > 120000;
             if (!isStale) {
                 if (statusClass === 'running') color = '#00E676';
                 else if (statusClass === 'idle') color = '#FFab00';

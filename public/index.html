@@ -3,256 +3,684 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Alien Vision - Premium Tracker</title>
-    <link rel="stylesheet" href="css/main.css">
-    <!-- FontAwesome -->
+    <title>Alien Vision - Customer Portal</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         :root {
             --primary: #ff3b70;
-            --accent: #E91E63;
-            --bg-main: #f4f5f8;
+            --primary-glow: rgba(255, 59, 112, 0.3);
+            --accent: #00f2fe;
+            --accent-glow: rgba(0, 242, 254, 0.3);
+            --bg-main: #f8fafc; /* Light background */
             --bg-surface: #ffffff;
-            --border: rgba(0, 0, 0, 0.06);
-            --border-light: rgba(0, 0, 0, 0.08);
-            --text-primary: #2b354e;
-            --text-secondary: #64748b;
-            --radius-md: 8px;
-            --radius-lg: 12px;
-            --radius-full: 9999px;
+            --text-primary: #0f172a; /* Dark text for light mode */
+            --text-secondary: #475569;
+            --glass-bg: rgba(255, 255, 255, 0.7);
+            --glass-border: rgba(0, 0, 0, 0.05);
             --font-main: 'Outfit', 'Inter', sans-serif;
+            --border-radius: 12px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
         }
 
         body {
-            background-color: var(--bg-main) !important;
-            color: var(--text-primary) !important;
-            font-family: var(--font-main) !important;
+            background-color: var(--bg-main);
+            color: var(--text-primary);
+            font-family: var(--font-main);
             min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            margin: 0;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(255, 59, 112, 0.05), transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(0, 242, 254, 0.05), transparent 25%);
         }
 
-        .auth-wrapper {
-            background-color: #f4f5f8 !important;
-            background-image: radial-gradient(rgba(255, 59, 112, 0.05) 1px, transparent 1px), radial-gradient(rgba(255, 59, 112, 0.05) 1px, #f4f5f8 1px) !important;
-            background-size: 24px 24px !important;
-            background-position: 0 0, 12px 12px !important;
-            min-height: 100vh;
-            width: 100vw;
+        /* Navigation */
+        nav {
+            padding: 1.5rem 5%;
             display: flex;
+            justify-content: space-between;
             align-items: center;
-            justify-content: center;
-            position: relative;
-            overflow: hidden;
-        }
-
-        /* Subtle background shapes in pink/blue gradients */
-        .auth-bg-shapes {
-            position: absolute;
-            width: 100%;
-            height: 100%;
+            border-bottom: 1px solid var(--glass-border);
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            position: sticky;
             top: 0;
-            left: 0;
-            z-index: 0;
-            pointer-events: none;
-        }
-        .auth-bg-shapes::before {
-            content: '';
-            position: absolute;
-            top: -150px;
-            right: -150px;
-            width: 500px;
-            height: 500px;
-            border-radius: 50%;
-            background: radial-gradient(circle, rgba(255, 59, 112, 0.08) 0%, transparent 70%);
-        }
-        .auth-bg-shapes::after {
-            content: '';
-            position: absolute;
-            bottom: -150px;
-            left: -150px;
-            width: 500px;
-            height: 500px;
-            border-radius: 50%;
-            background: radial-gradient(circle, rgba(0, 180, 255, 0.06) 0%, transparent 70%);
+            z-index: 100;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.02);
         }
 
-        .auth-container {
-            z-index: 10;
-            width: 100%;
-            max-width: 420px;
-            padding: 20px;
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            color: var(--text-primary);
         }
 
-        .auth-card {
-            background: var(--bg-surface) !important;
-            border: 1px solid var(--border) !important;
-            border-radius: var(--radius-lg) !important;
-            box-shadow: 0 10px 35px rgba(255, 59, 112, 0.04) !important;
-            padding: 2.5rem 2rem !important;
-            text-align: center;
+        .logo i {
+            color: var(--primary);
+            font-size: 1.8rem;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-weight: 500;
+            transition: color 0.3s;
+        }
+
+        .nav-links a:hover {
+            color: var(--primary);
+        }
+
+        .btn-login {
+            background: var(--bg-surface);
+            color: var(--text-primary);
+            border: 1px solid var(--glass-border);
+            padding: 0.5rem 1.5rem;
+            border-radius: 9999px;
+            text-decoration: none;
+            font-weight: 600;
+            transition: all 0.3s;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.02);
+        }
+
+        .btn-login:hover {
+            border-color: var(--primary);
+            box-shadow: 0 0 15px var(--primary-glow);
+            color: var(--primary);
+        }
+
+        /* Hero Section */
+        .hero {
+            padding: 6rem 5% 4rem;
             display: flex;
             flex-direction: column;
             align-items: center;
-        }
-
-        .auth-icon {
-            width: 64px !important;
-            height: 64px !important;
-            border-radius: 50% !important;
-            background: rgba(255, 59, 112, 0.08) !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-            font-size: 1.6rem !important;
-            margin-bottom: 1.5rem !important;
-            box-shadow: 0 4px 12px rgba(255, 59, 112, 0.1) !important;
-        }
-        .auth-icon i {
-            background: linear-gradient(135deg, var(--primary), var(--accent)) !important;
-            -webkit-background-clip: text !important;
-            -webkit-text-fill-color: transparent !important;
-            display: inline-block !important;
-        }
-
-        .auth-card h1 {
-            font-size: 1.8rem;
-            font-weight: 800;
-            color: var(--text-primary) !important;
-            margin: 0 0 0.5rem 0;
-            letter-spacing: -0.5px;
-            font-family: 'Outfit', sans-serif;
-        }
-
-        .auth-card p {
-            font-size: 0.9rem;
-            color: var(--text-secondary) !important;
-            margin: 0 0 2rem 0;
-        }
-
-        .form-group {
-            width: 100%;
-            margin-bottom: 1.5rem;
+            text-align: center;
             position: relative;
-            text-align: left;
         }
 
-        .form-control {
-            width: 100% !important;
-            padding: 0.75rem 1rem !important;
-            border-radius: var(--radius-md) !important;
-            border: 1px solid var(--border-light) !important;
-            background: var(--bg-main) !important;
-            color: var(--text-primary) !important;
-            font-size: 0.9rem !important;
-            font-weight: 500 !important;
-            transition: all 0.2s !important;
-            outline: none !important;
-            height: auto !important;
+        .hero h1 {
+            font-size: 4.5rem;
+            font-weight: 900;
+            line-height: 1.1;
+            margin-bottom: 1.5rem;
+            background: linear-gradient(135deg, var(--text-primary) 0%, #334155 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            max-width: 900px;
         }
 
-        .form-control:focus {
-            border-color: var(--primary) !important;
-            background: var(--bg-surface) !important;
-            box-shadow: 0 0 0 3px rgba(255, 59, 112, 0.12) !important;
-        }
-
-        .form-group label {
-            font-family: var(--font-main);
-            font-weight: 600;
+        .hero p {
+            font-size: 1.25rem;
             color: var(--text-secondary);
+            margin-bottom: 2.5rem;
+            max-width: 600px;
+        }
+        
+        .demo-form {
+            display: flex;
+            gap: 10px;
+            background: var(--bg-surface);
+            padding: 8px;
+            border-radius: 9999px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+            border: 1px solid var(--glass-border);
+            max-width: 650px;
+            width: 100%;
+        }
+
+        .demo-form input {
+            flex: 1;
+            border: none;
+            background: transparent;
+            padding: 10px 20px;
+            font-size: 1rem;
+            color: var(--text-primary);
+            outline: none;
+            font-family: var(--font-main);
         }
 
         .btn-primary {
-            background: var(--primary) !important;
-            color: #ffffff !important;
-            border: none !important;
-            border-radius: var(--radius-md) !important;
-            padding: 0.8rem 1.5rem !important;
-            font-weight: 700 !important;
-            font-size: 0.95rem !important;
-            cursor: pointer !important;
-            display: flex;
+            background: linear-gradient(135deg, var(--primary), #ff6b96);
+            color: white;
+            padding: 0.8rem 2rem;
+            border-radius: 9999px;
+            text-decoration: none;
+            font-weight: 700;
+            font-size: 1rem;
+            display: inline-flex;
             align-items: center;
-            justify-content: center;
             gap: 10px;
-            box-shadow: 0 4px 12px rgba(255, 59, 112, 0.15) !important;
-            transition: all 0.2s !important;
+            box-shadow: 0 8px 20px var(--primary-glow);
+            transition: transform 0.3s, box-shadow 0.3s;
+            border: none;
+            cursor: pointer;
         }
 
         .btn-primary:hover {
-            background: var(--accent) !important;
-            box-shadow: 0 6px 16px rgba(255, 59, 112, 0.25) !important;
+            transform: translateY(-2px);
+            box-shadow: 0 12px 25px var(--primary-glow);
         }
 
-        #errorMsg {
-            color: var(--danger) !important;
-            font-size: 0.85rem !important;
-            margin-top: 1rem !important;
-            font-weight: 600 !important;
+        /* Mockup Display */
+        .mockup-container {
+            margin-top: 4rem;
+            width: 100%;
+            max-width: 1200px;
+            position: relative;
+            perspective: 1000px;
+        }
+
+        .mockup-frame {
+            background: rgba(255, 255, 255, 0.9);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 10px;
+            backdrop-filter: blur(20px);
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.1), 
+                        0 0 40px var(--accent-glow);
+            transform: rotateX(5deg) scale(0.95);
+            transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .mockup-container:hover .mockup-frame {
+            transform: rotateX(0deg) scale(1);
+        }
+
+        .mockup-header {
+            display: flex;
+            gap: 8px;
+            padding: 10px;
+            border-bottom: 1px solid var(--glass-border);
+            margin-bottom: 10px;
+        }
+
+        .mockup-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .dot-red { background: #ff5f56; }
+        .dot-yellow { background: #ffbd2e; }
+        .dot-green { background: #27c93f; }
+
+        .mockup-image {
+            width: 100%;
+            height: auto;
+            display: block;
+            flex: 0 0 100%;
+        }
+
+        /* Slideshow */
+        .slideshow-wrapper {
+            position: relative;
+            width: 100%;
+            overflow: hidden;
+            border-radius: 8px;
+        }
+        
+        .slideshow-inner {
+            display: flex;
+            transition: transform 0.6s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+        
+        .slideshow-btn {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            background: rgba(255, 255, 255, 0.8);
+            border: none;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.2rem;
+            color: var(--primary);
+            transition: all 0.3s ease;
+            z-index: 10;
+        }
+        
+        .slideshow-btn:hover {
+            background: #fff;
+            transform: translateY(-50%) scale(1.1);
+            color: var(--text-primary);
+        }
+        
+        .slideshow-btn.prev { left: 10px; }
+        .slideshow-btn.next { right: 10px; }
+        
+        .slideshow-dots {
+            position: absolute;
+            bottom: 15px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 8px;
+            z-index: 10;
+        }
+        
+        .slideshow-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: rgba(0,0,0,0.3);
+            border: 2px solid rgba(255,255,255,0.8);
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .slideshow-dot.active {
+            background: var(--primary);
+            border-color: var(--primary);
+            transform: scale(1.2);
+        }
+
+        /* Features Section */
+        .features {
+            padding: 6rem 5%;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        .feature-card {
+            background: var(--bg-surface);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            padding: 2.5rem;
+            transition: transform 0.3s, box-shadow 0.3s;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.02);
+        }
+
+        .feature-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 40px rgba(0,0,0,0.08);
+            border-color: rgba(255, 59, 112, 0.2);
+        }
+
+        .feature-icon {
+            width: 60px;
+            height: 60px;
+            border-radius: 12px;
+            background: rgba(255, 59, 112, 0.1);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.8rem;
+            color: var(--primary);
+            margin-bottom: 1.5rem;
+        }
+        
+        .feature-card:nth-child(even) .feature-icon {
+            color: var(--accent);
+            background: rgba(0, 242, 254, 0.1);
+        }
+
+        .feature-card h3 {
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .feature-card p {
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        /* Modal Styles */
+        .modal-overlay {
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            z-index: 1000;
+        }
+
+        .modal-content {
+            background: var(--bg-surface);
+            border-radius: var(--border-radius);
+            padding: 3rem 2rem;
+            max-width: 450px;
+            width: 90%;
+            text-align: center;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+            position: relative;
+        }
+        
+        .modal-icon {
+            width: 70px;
+            height: 70px;
+            background: rgba(39, 201, 63, 0.1);
+            color: #27c93f;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            margin: 0 auto 1.5rem;
+        }
+
+        .modal-content h2 {
+            margin-bottom: 1rem;
+            color: var(--text-primary);
+        }
+        
+        .modal-content p {
+            color: var(--text-secondary);
+            margin-bottom: 1.5rem;
+        }
+
+        .credentials-box {
+            background: var(--bg-main);
+            border: 1px dashed var(--glass-border);
+            padding: 1.5rem;
+            border-radius: 8px;
+            margin-bottom: 2rem;
+            text-align: left;
+        }
+
+        .cred-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-family: monospace;
+            font-size: 1.1rem;
+        }
+        .cred-row:last-child { margin-bottom: 0; }
+        .cred-label { color: var(--text-secondary); font-family: var(--font-main); font-size: 0.9rem;}
+        .cred-val { font-weight: bold; color: var(--text-primary); }
+        
+        .close-modal {
+            position: absolute;
+            top: 15px;
+            right: 15px;
+            background: transparent;
+            border: none;
+            font-size: 1.5rem;
+            cursor: pointer;
+            color: var(--text-secondary);
+        }
+
+        /* Footer */
+        footer {
+            padding: 3rem 5%;
+            border-top: 1px solid var(--glass-border);
+            text-align: center;
+            color: var(--text-secondary);
+            margin-top: 2rem;
+        }
+
+        @media (max-width: 768px) {
+            nav { padding: 1rem 5%; flex-wrap: nowrap; justify-content: space-between; gap: 0; }
+            .logo { font-size: 1.2rem; gap: 6px; }
+            .logo i { font-size: 1.4rem; }
+            .nav-links { display: none; }
+            .btn-login { width: auto; padding: 0.4rem 1rem; font-size: 0.85rem; }
+            
+            .hero { padding: 3rem 5% 2rem; }
+            .hero h1 { font-size: 2.5rem; }
+            .hero p { font-size: 1.1rem; }
+            
+            .demo-form { flex-direction: column; background: transparent; box-shadow: none; border: none; padding: 0; gap: 12px; }
+            .demo-form input { background: var(--bg-surface); border: 1px solid var(--glass-border); border-radius: 9999px; }
+            .btn-primary { width: 100%; justify-content: center; }
+            
+            .mockup-container { margin-top: 2rem; }
+            .mockup-frame { padding: 6px; border-radius: 10px; }
+            .slideshow-btn { width: 32px; height: 32px; font-size: 0.9rem; }
+            .slideshow-btn.prev { left: 5px; }
+            .slideshow-btn.next { right: 5px; }
+            .slideshow-dots { bottom: 8px; gap: 5px; }
+            .slideshow-dot { width: 8px; height: 8px; }
+            
+            .features { padding: 3rem 5%; grid-template-columns: 1fr; gap: 1.5rem; }
+            .feature-card { padding: 1.5rem; }
+            
+            .modal-content { padding: 2rem 1.5rem; }
+        }
+        
+        @media (max-width: 480px) {
+            .hero h1 { font-size: 2rem; }
+            .logo { font-size: 1.2rem; }
+            .hero p { font-size: 1rem; }
         }
     </style>
 </head>
 <body>
-    <div class="auth-wrapper">
-        <div class="auth-bg-shapes"></div>
+
+    <nav>
+        <div class="logo">
+            <img src="/img/alienware.svg" alt="Alienware Logo" style="height: 1.2em; width: auto; vertical-align: middle; margin-right: 8px;">
+            Alienware
+        </div>
+        <div class="nav-links">
+            <a href="#features">Features</a>
+            <a href="#how-it-works">How it Works</a>
+            <a href="app.apk" download><i class="fa-brands fa-android"></i> Download App</a>
+            <a href="#">Contact</a>
+        </div>
+        <a href="login.html" class="btn-login">Login to Dashboard</a>
+    </nav>
+
+    <section class="hero">
+        <h1>Take Control of Your Fleet</h1>
+        <p>Experience unparalleled precision, real-time analytics, and advanced telemetry for your vehicles in our powerful Customer Portal.</p>
         
-        <div class="auth-container">
-            <div class="auth-card glass-panel">
-                <div class="auth-icon">
-                    <i class="fa-solid fa-satellite-dish"></i>
+        <form class="demo-form" id="demoForm">
+            <input type="email" id="demoEmail" placeholder="Enter your email address" required>
+            <button type="submit" class="btn-primary" id="demoSubmitBtn">
+                <span>Request Demo</span> <i class="fa-solid fa-bolt"></i>
+            </button>
+            <a href="app.apk" download class="btn-primary" style="background: #3DDC84; color: #111; border-color: #3DDC84;">
+                <i class="fa-brands fa-android"></i> <span>Download APK</span>
+            </a>
+        </form>
+
+        <div class="mockup-container">
+            <div class="mockup-frame">
+                <div class="mockup-header">
+                    <div class="mockup-dot dot-red"></div>
+                    <div class="mockup-dot dot-yellow"></div>
+                    <div class="mockup-dot dot-green"></div>
                 </div>
-                <h1>Alien Vision</h1>
-                <p>Welcome back! Secure access to your fleet.</p>
-                
-                <div class="form-group">
-                    <input type="text" id="username" class="form-control" placeholder=" " required>
-                    <label for="username" style="position: absolute; top: 12px; left: 20px; pointer-events: none; opacity: 0; transition: all 0.2s;">Username</label>
+                <!-- Embedded Application Screenshot Slideshow -->
+                <div class="slideshow-wrapper" id="mockupSlideshow">
+                    <div class="slideshow-inner" id="slideshowInner">
+                        <img src="images/mockup_1.png" alt="Live Tracking Dashboard" class="mockup-image">
+                        <img src="images/mockup_2.png" alt="Travel Replay" class="mockup-image">
+                        <img src="images/mockup_3.png" alt="Device Settings" class="mockup-image">
+                        <img src="images/mockup_4.png" alt="New Asset Live Tracking" class="mockup-image">
+                    </div>
+                    <button class="slideshow-btn prev" onclick="changeSlide(-1)"><i class="fa-solid fa-chevron-left"></i></button>
+                    <button class="slideshow-btn next" onclick="changeSlide(1)"><i class="fa-solid fa-chevron-right"></i></button>
+                    <div class="slideshow-dots" id="slideshowDots">
+                        <div class="slideshow-dot active" onclick="goToSlide(0)"></div>
+                        <div class="slideshow-dot" onclick="goToSlide(1)"></div>
+                        <div class="slideshow-dot" onclick="goToSlide(2)"></div>
+                        <div class="slideshow-dot" onclick="goToSlide(3)"></div>
+                    </div>
                 </div>
-                
-                <div class="form-group">
-                    <input type="password" id="password" class="form-control" placeholder=" " required>
-                    <label for="password" style="position: absolute; top: 12px; left: 20px; pointer-events: none; opacity: 0; transition: all 0.2s;">Password</label>
-                </div>
-                
-                <button id="loginBtn" class="btn btn-primary" style="margin-top: 1.5rem; width: 100%;">
-                    <span>Access Dashboard</span>
-                    <i class="fa-solid fa-arrow-right"></i>
-                </button>
-                
-                <div id="errorMsg" style="color: var(--danger); margin-top: 1rem; font-size: 0.875rem; min-height: 20px; font-weight: 500;"></div>
             </div>
+        </div>
+    </section>
+
+    <section id="features" class="features">
+        <div class="feature-card">
+            <div class="feature-icon">
+                <i class="fa-solid fa-map-location-dot"></i>
+            </div>
+            <h3>Real-Time Tracking</h3>
+            <p>Track your assets with sub-second latency and pinpoint accuracy across the globe using our advanced satellite network.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">
+                <i class="fa-solid fa-bell"></i>
+            </div>
+            <h3>Instant Alerts</h3>
+            <p>Get instant SMS and Email notifications for over-speeding, engine start/stop, and geofence breaches.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">
+                <i class="fa-solid fa-draw-polygon"></i>
+            </div>
+            <h3>Smart Geofencing</h3>
+            <p>Draw custom boundaries on the map and receive alerts whenever your vehicles enter or exit designated zones.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">
+                <i class="fa-solid fa-chart-pie"></i>
+            </div>
+            <h3>Comprehensive Reports</h3>
+            <p>Generate detailed daily summaries, trip histories, and playback routes with deep, actionable analytics.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">
+                <i class="fa-solid fa-users"></i>
+            </div>
+            <h3>Sub-User Management</h3>
+            <p>Create accounts for your drivers or managers and restrict their access to specific vehicles with ease.</p>
+        </div>
+        <div class="feature-card">
+            <div class="feature-icon">
+                <i class="fa-solid fa-sliders"></i>
+            </div>
+            <h3>Device Settings</h3>
+            <p>Remotely manage device parameters, update driver profiles, and configure vehicle details directly from your portal.</p>
+        </div>
+    </section>
+
+    <footer>
+        <p>&copy; 2026 Alienware GPS Tracking. Built for Customers.</p>
+    </footer>
+
+    <!-- Demo Modal -->
+    <div class="modal-overlay" id="demoModal">
+        <div class="modal-content">
+            <button class="close-modal" id="closeModal">&times;</button>
+            <div class="modal-icon">
+                <i class="fa-solid fa-check"></i>
+            </div>
+            <h2>Account Created!</h2>
+            <p>Your demo customer account is ready. Please save these credentials, then log in to explore the portal.</p>
+            
+            <div class="credentials-box">
+                <div class="cred-row">
+                    <span class="cred-label">Username:</span>
+                    <span class="cred-val" id="modalUsername">loading...</span>
+                </div>
+                <div class="cred-row">
+                    <span class="cred-label">Password:</span>
+                    <span class="cred-val" id="modalPassword">loading...</span>
+                </div>
+            </div>
+            
+            <a href="login.html" class="btn-primary" style="width: 100%; justify-content: center;">
+                Log In Now <i class="fa-solid fa-arrow-right"></i>
+            </a>
         </div>
     </div>
 
-    <!-- Script to handle floating labels (micro-animation) -->
     <script>
-        document.querySelectorAll('.form-control').forEach(input => {
-            const label = input.nextElementSibling;
+        document.getElementById('demoForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('demoEmail').value;
+            const btn = document.getElementById('demoSubmitBtn');
+            const originalText = btn.innerHTML;
             
-            // Initial placeholder setting to show label text when empty
-            input.placeholder = label.innerText;
-            
-            input.addEventListener('focus', () => {
-                input.placeholder = '';
-                label.style.opacity = '1';
-                label.style.top = '-20px';
-                label.style.left = '0';
-                label.style.fontSize = '0.8rem';
-            });
-            
-            input.addEventListener('blur', () => {
-                if(input.value === '') {
-                    input.placeholder = label.innerText;
-                    label.style.opacity = '0';
-                    label.style.top = '12px';
-                    label.style.left = '20px';
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> Generating...';
+            btn.disabled = true;
+
+            try {
+                const res = await fetch('/api/request-demo', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email })
+                });
+                const data = await res.json();
+                
+                if (data.success) {
+                    document.getElementById('modalUsername').innerText = data.username;
+                    document.getElementById('modalPassword').innerText = data.password;
+                    document.getElementById('demoModal').style.display = 'flex';
+                } else {
+                    alert('Error creating demo account: ' + data.error);
                 }
-            });
+            } catch (error) {
+                alert('Network error while requesting demo.');
+                console.error(error);
+            } finally {
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
         });
+
+        document.getElementById('closeModal').addEventListener('click', () => {
+            document.getElementById('demoModal').style.display = 'none';
+        });
+
+        // Slideshow Logic
+        let currentSlide = 0;
+        const totalSlides = 4;
+        const slideshowInner = document.getElementById('slideshowInner');
+        const slideshowDots = document.querySelectorAll('.slideshow-dot');
+        let autoSlideInterval;
+
+        function updateSlidePosition() {
+            if(!slideshowInner) return;
+            slideshowInner.style.transform = `translateX(-${currentSlide * 100}%)`;
+            slideshowDots.forEach((dot, index) => {
+                if(index === currentSlide) dot.classList.add('active');
+                else dot.classList.remove('active');
+            });
+        }
+
+        window.changeSlide = function(direction) {
+            currentSlide += direction;
+            if (currentSlide < 0) currentSlide = totalSlides - 1;
+            if (currentSlide >= totalSlides) currentSlide = 0;
+            updateSlidePosition();
+            resetAutoSlide();
+        }
+
+        window.goToSlide = function(index) {
+            currentSlide = index;
+            updateSlidePosition();
+            resetAutoSlide();
+        }
+
+        function startAutoSlide() {
+            autoSlideInterval = setInterval(() => {
+                window.changeSlide(1);
+            }, 4000);
+        }
+
+        function resetAutoSlide() {
+            clearInterval(autoSlideInterval);
+            startAutoSlide();
+        }
+
+        startAutoSlide();
     </script>
-    <script src="js/login.js"></script>
 </body>
 </html>

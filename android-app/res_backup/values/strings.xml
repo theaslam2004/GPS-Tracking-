@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Fleetly GPS</string>
+    <string name="title_activity_main">Fleetly GPS</string>
+    <string name="package_name">com.fleetly.gpstracker</string>
+    <string name="custom_url_scheme">com.fleetly.gpstracker</string>
+</resources>

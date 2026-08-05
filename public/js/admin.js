@@ -6,14 +6,14 @@ let user = null;
         if (response.status === 401) {
             console.warn('[Auth Check] Unauthorized: Redirecting to login...');
             localStorage.removeItem('user');
-            window.location.href = 'index.html';
+            window.location.href = 'login.html';
             return;
         }
         const data = await response.json();
         if (!data.success || !data.user || data.user.role !== 'admin') {
             console.warn('[Auth Check] Access Denied or Session Stale. Redirecting to login...');
             localStorage.removeItem('user');
-            window.location.href = 'index.html';
+            window.location.href = 'login.html';
             return;
         }
         
@@ -38,13 +38,13 @@ let user = null;
     } catch (e) {
         console.error('[Auth Check] Error validating session:', e);
         localStorage.removeItem('user');
-        window.location.href = 'index.html';
+        window.location.href = 'login.html';
     }
 })();
 
 function logout() {
     localStorage.removeItem('user');
-    window.location.href = 'index.html';
+    window.location.href = 'login.html';
 }
 
 let dashboardCache = null;
@@ -63,10 +63,10 @@ function initCharts() {
         statusChartInstance = new Chart(statusCtx, {
             type: 'doughnut',
             data: {
-                labels: ['Active (Moving)', 'Idle (Stationary)', 'Offline (Halt)'],
+                labels: ['Active', 'Idle', 'Halt', 'Offline'],
                 datasets: [{
-                    data: [0, 0, 0],
-                    backgroundColor: ['#ff3b70', '#ffab00', '#ff3d00'],
+                    data: [0, 0, 0, 0],
+                    backgroundColor: ['#ff3b70', '#ffab00', '#ff3d00', '#94a3b8'],
                     borderWidth: 0
                 }]
             },
@@ -232,8 +232,11 @@ function exportAllCustomers() {
     window.location.href = `/api/export/devices?userId=admin&role=admin`;
 }
 
-function switchPage(pageId) {
-    const pages = ['dashboard', 'customers', 'requests', 'payments', 'terminal'];
+function switchPage(pageId, pushToHistory = true) {
+    const pages = ['dashboard', 'devices', 'customers', 'requests', 'payments', 'terminal'];
+    if (pushToHistory) {
+        history.pushState({ page: pageId }, '', `#${pageId}`);
+    }
     pages.forEach(p => {
         const pageEl = document.getElementById(`page-${p}`);
         const btnEl = document.getElementById(`nav-btn-${p}`);
@@ -247,24 +250,129 @@ function switchPage(pageId) {
     if (targetBtn) targetBtn.classList.add('active');
     
     if (pageId !== 'customers') {
-        closeCustomerDetail();
+        closeCustomerDetail(false);
     }
 }
 
-function showValidityModal(userId) {
-    document.getElementById('valUserId').value = userId;
-    const customer = dashboardCache.customers.find(c => c.id === userId);
-    
-    if (customer && customer.subscription && customer.subscription.deviceLimit !== undefined) {
-        document.getElementById('valDeviceLimit').value = customer.subscription.deviceLimit;
+window.addEventListener('popstate', (e) => {
+    if (e.state && e.state.modal === 'customer') {
+        openCustomerDetail(e.state.userId, e.state.username, false);
+    } else if (e.state && e.state.page) {
+        switchPage(e.state.page, false);
     } else {
-        document.getElementById('valDeviceLimit').value = 1;
+        switchPage('dashboard', false);
     }
-    document.getElementById('valExtraDays').value = 30;
-    
-    document.getElementById('validityModal').classList.add('active');
+});
+
+let currentGlobalDeviceFilter = 'all';
+
+function applyGlobalDeviceFilter() {
+    const filterSelect = document.getElementById('globalDeviceFilter');
+    if (filterSelect) {
+        renderAllDevices(filterSelect.value);
+    }
 }
-function closeValidityModal() { document.getElementById('validityModal').classList.remove('active'); }
+
+function renderAllDevices(filter = 'all') {
+    currentGlobalDeviceFilter = filter;
+    const filterSelect = document.getElementById('globalDeviceFilter');
+    if (filterSelect) filterSelect.value = filter;
+
+    const tbody = document.getElementById('globalDevicesTableBody');
+    if (!tbody) return;
+
+    if (!dashboardCache || !dashboardCache.allDevices) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No devices found.</td></tr>';
+        return;
+    }
+
+    const lastSeen = dashboardCache.lastSeen || {};
+    const now = Date.now();
+
+    const filteredDevices = dashboardCache.allDevices.filter(d => {
+        const ls = lastSeen[d.imei] || {};
+        const isOnline = ls.timestamp && (now - new Date(ls.timestamp)) < 120000;
+        let s = 'offline';
+        if (isOnline) {
+            s = ls.status || 'halt';
+        }
+
+        if (filter === 'active' && s !== 'running') return false;
+        if (filter === 'idle' && s !== 'idle') return false;
+        if (filter === 'halt' && s !== 'halt') return false;
+        if (filter === 'offline' && s !== 'offline') return false;
+        return true;
+    });
+
+    const countEl = document.getElementById('globalDevicesCount');
+    if (countEl) countEl.innerText = `(${filteredDevices.length})`;
+
+    if (filteredDevices.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No devices match this filter.</td></tr>';
+        return;
+    }
+
+    tbody.innerHTML = filteredDevices.map(d => {
+        const ls = lastSeen[d.imei] || {};
+        const isOnline = ls.timestamp && (now - new Date(ls.timestamp)) < 120000;
+        let statusText = 'Offline';
+        let statusColor = '#94a3b8';
+        if (isOnline) {
+            const s = ls.status || 'halt';
+            if (s === 'running') { statusText = 'Active'; statusColor = 'var(--accent)'; }
+            else if (s === 'idle') { statusText = 'Idle'; statusColor = 'var(--amber)'; }
+            else { statusText = 'Halt'; statusColor = 'var(--red)'; }
+        }
+
+        const customer = dashboardCache.customers.find(c => c.id === d.ownerId);
+        const ownerName = customer ? (customer.name || customer.username) : 'Unknown';
+
+        return `
+            <tr>
+                <td>
+                    <div style="font-weight:700; color:var(--text);">${d.name || 'Unnamed Device'}</div>
+                    <div style="font-size:10px; color:var(--muted); font-family:monospace;">IMEI: ${d.imei}</div>
+                </td>
+                <td>
+                    <div style="color:var(--text);">${ownerName}</div>
+                    <div style="font-size:10px; color:var(--muted); font-family:monospace;">ID: ${d.ownerId}</div>
+                </td>
+                <td>
+                    <span class="badge" style="background:rgba(255,255,255,0.03); color:${statusColor}; border-color:${statusColor}44">
+                        ${statusText}
+                    </span>
+                </td>
+                <td style="font-size:11px;">
+                    <div>Speed: <span style="font-weight:700; color:var(--text);">${ls.speed || 0}</span> km/h</div>
+                    <div style="color:var(--muted);">Odo: ${ls.odometer ? ls.odometer.toFixed(1) : '0.0'} km</div>
+                    <div style="color:${d.expirationDate && new Date(d.expirationDate) > new Date() ? 'var(--success, #00e676)' : 'var(--red)'}; font-weight: 600; margin-top: 2px;">
+                        Validity: ${d.expirationDate ? Math.ceil((new Date(d.expirationDate) - new Date()) / (1000 * 60 * 60 * 24)) + ' days' : 'N/A'}
+                    </div>
+                </td>
+                <td style="font-size:11px; font-family:monospace; color:var(--muted);">
+                    ${ls.latitude ? ls.latitude.toFixed(4) : '0'}, ${ls.longitude ? ls.longitude.toFixed(4) : '0'}
+                </td>
+                <td style="text-align:right;">
+                    <div class="actions-cell">
+                        <button class="icon-btn" onclick="downloadDeviceData('${d.imei}')" title="Download History">
+                            <i class="fa-solid fa-download"></i>
+                        </button>
+                        <button class="icon-btn" onclick="showDeviceValidityModal('${d.imei}')" title="Recharge Device" style="color:var(--green); border-color:var(--green-dim);">
+                            <i class="fa-solid fa-bolt"></i>
+                        </button>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function showDeviceValidityModal(imei) {
+    document.getElementById('valImei').value = imei;
+    document.getElementById('valDeviceExtraDays').value = 30;
+    document.getElementById('deviceValidityModal').classList.add('active');
+}
+function closeDeviceValidityModal() { document.getElementById('deviceValidityModal').classList.remove('active'); }
 
 function showContactModal(userId, phone, email) {
     document.getElementById('contactUserId').value = userId;
@@ -296,7 +404,10 @@ function closeFeaturesModal() {
     document.getElementById('featuresModal').classList.remove('active');
 }
 
-async function openCustomerDetail(userId, username) {
+async function openCustomerDetail(userId, username, pushToHistory = true) {
+    if (pushToHistory) {
+        history.pushState({ modal: 'customer', userId, username }, '', `#customer-${userId}`);
+    }
     currentViewUserId = userId;
     document.getElementById('customersPanel').style.display = 'none';
     document.getElementById('customerDetailView').style.display = 'block';
@@ -309,7 +420,11 @@ async function openCustomerDetail(userId, username) {
     renderCustomerFleet(userId);
 }
 
-function closeCustomerDetail() {
+function closeCustomerDetail(pushToHistory = true) {
+    if (pushToHistory && history.state && history.state.modal === 'customer') {
+        history.back();
+        return;
+    }
     currentViewUserId = null;
     currentViewSettings = null;
     document.getElementById('customersPanel').style.display = '';
@@ -327,12 +442,12 @@ function renderCustomerFleet(userId) {
     const body = document.getElementById('deviceDetailTableBody');
     body.innerHTML = '';
     
-    let active = 0, idle = 0, halt = 0;
+    let active = 0, idle = 0, halt = 0, offline = 0;
     const now = Date.now();
 
     devices.forEach(d => {
         const ls = lastSeen[d.imei] || {};
-        const isOnline = ls.timestamp && (now - new Date(ls.timestamp)) < 60000;
+        const isOnline = ls.timestamp && (now - new Date(ls.timestamp)) < 120000;
         const speed = ls.speed || 0;
         
         let status = 'Offline';
@@ -353,7 +468,7 @@ function renderCustomerFleet(userId) {
                 halt++;
             }
         } else {
-            halt++;
+            offline++;
         }
 
         body.innerHTML += `
@@ -377,6 +492,9 @@ function renderCustomerFleet(userId) {
                             <span>Odo</span> <span id="odo-${d.imei}">${ls.odometer ? ls.odometer.toFixed(2) : '0.00'} km</span>
                         </div>
                         <div class="detail-row">
+                            <span>Validity</span> <span style="color: ${d.expirationDate && new Date(d.expirationDate) > new Date() ? 'var(--success, #00e676)' : 'var(--red)'}; font-weight:bold;">${d.expirationDate ? Math.ceil((new Date(d.expirationDate) - new Date()) / (1000 * 60 * 60 * 24)) + ' days' : 'N/A'}</span>
+                        </div>
+                        <div class="detail-row">
                             <span>Voltage</span> <span id="bat-${d.imei}" style="${ls.powerSource === 'secondary' ? 'color: var(--red); font-weight: bold;' : ''}">${ls.voltage !== undefined ? ls.voltage.toFixed(1) : '12.0'} V${ls.powerSource === 'secondary' ? ' (Backup ⚠️)' : ''}</span>
                         </div>
                         <div class="detail-row">
@@ -389,6 +507,12 @@ function renderCustomerFleet(userId) {
                         <button class="icon-btn" onclick="downloadDeviceData('${d.imei}')" title="Download History (CSV)">
                             <i class="fa-solid fa-download"></i>
                         </button>
+                        <button class="icon-btn" onclick="showDeviceValidityModal('${d.imei}')" title="Recharge Device" style="color:var(--green); border-color:var(--green-dim);">
+                            <i class="fa-solid fa-bolt"></i>
+                        </button>
+                        <button class="icon-btn" onclick="deleteDeviceAdmin('${d.imei}')" title="Delete Device" style="color:var(--red); border-color:var(--red-dim);">
+                            <i class="fa-solid fa-trash"></i>
+                        </button>
                     </div>
                 </td>
             </tr>
@@ -398,6 +522,7 @@ function renderCustomerFleet(userId) {
     document.getElementById('countActive').innerText = active;
     document.getElementById('countIdle').innerText = idle;
     document.getElementById('countHalt').innerText = halt;
+    if(document.getElementById('countOffline')) document.getElementById('countOffline').innerText = offline;
 }
 
 async function submitFeatures() {
@@ -519,7 +644,7 @@ async function loadDashboard() {
         if (res.status === 401 || res.status === 403) {
             console.warn('[Dashboard] Unauthorized/Forbidden: Redirecting to login...');
             localStorage.removeItem('user');
-            window.location.href = 'index.html';
+            window.location.href = 'login.html';
             return;
         }
         const data = await res.json();
@@ -533,12 +658,13 @@ async function loadDashboard() {
         let activeCount = 0;
         let idleCount = 0;
         let haltCount = 0;
+        let offlineCount = 0;
         const now = Date.now();
         const lastSeen = data.lastSeen || {};
         
         data.allDevices.forEach(d => {
             const ls = lastSeen[d.imei] || {};
-            const isOnline = ls.timestamp && (now - new Date(ls.timestamp)) < 60000;
+            const isOnline = ls.timestamp && (now - new Date(ls.timestamp)) < 120000;
             if (isOnline) {
                 const s = ls.status || 'halt';
                 if (s === 'running') {
@@ -549,7 +675,7 @@ async function loadDashboard() {
                     haltCount++;
                 }
             } else {
-                haltCount++;
+                offlineCount++;
             }
         });
         
@@ -559,12 +685,15 @@ async function loadDashboard() {
         const idleEl = document.getElementById('statOnlineIdle');
         if (idleEl) idleEl.innerText = idleCount;
         
+        const haltEl = document.getElementById('statHaltDevices');
+        if (haltEl) haltEl.innerText = haltCount;
+
         const offlineEl = document.getElementById('statOfflineDevices');
-        if (offlineEl) offlineEl.innerText = haltCount;
+        if (offlineEl) offlineEl.innerText = offlineCount;
         
         // Update Doughnut Status Chart
         if (statusChartInstance) {
-            statusChartInstance.data.datasets[0].data = [activeCount, idleCount, haltCount];
+            statusChartInstance.data.datasets[0].data = [activeCount, idleCount, haltCount, offlineCount];
             statusChartInstance.update();
         }
 
@@ -622,7 +751,6 @@ async function loadDashboard() {
                     <td>
                         <div class="actions-cell">
                             <div class="icon-btn" title="Features" onclick="showFeaturesModal('${c.id}')" style="color:var(--accent)"><i class="fa-solid fa-sliders"></i></div>
-                            <div class="icon-btn" title="Recharge" onclick="showValidityModal('${c.id}')"><i class="fa-solid fa-bolt"></i></div>
                             <div class="icon-btn" title="Edit Contact" onclick="showContactModal('${c.id}', '${c.phone||''}', '${c.email||''}')"><i class="fa-solid fa-pen"></i></div>
                             <div class="icon-btn" title="Delete" onclick="deleteCustomer('${c.id}')" style="color:var(--red)"><i class="fa-solid fa-trash"></i></div>
                         </div>
@@ -637,7 +765,10 @@ async function loadDashboard() {
         if (activeRequests.length > 0) {
             requestBody.innerHTML = activeRequests.map(r => {
                 const ls = data.lastSeen && data.lastSeen[r.imei];
-                const isOnline = ls && ls.timestamp && (Date.now() - new Date(ls.timestamp)) < 60000;
+                const cust = data.customers.find(c => c.id === r.userId);
+                const requestedBy = cust ? cust.username : '<span style="color:var(--muted)">Unknown</span>';
+                
+                const isOnline = ls && ls.timestamp && (Date.now() - new Date(ls.timestamp)) < 120000;
                 const dataStatus = ls && ls.timestamp ? 
                     (isOnline ? `<span class="badge green" style="font-size:10px;"><i class="fa-solid fa-signal"></i> Receiving</span>` : `<span class="badge red" style="font-size:10px;"><i class="fa-solid fa-signal"></i> Offline</span>`) : 
                     `<span class="badge red" style="font-size:10px; background: rgba(0,0,0,0.03); color: var(--muted); border-color: var(--border);"><i class="fa-solid fa-signal"></i> No Data</span>`;
@@ -646,23 +777,24 @@ async function loadDashboard() {
                     <tr>
                         <td><code style="color:var(--accent); font-weight:700">${r.imei}</code></td>
                         <td><span class="badge amber">Pending</span></td>
+                        <td><span style="font-weight:600; color:var(--text);">${requestedBy}</span></td>
                         <td>
                             ${dataStatus}
                             ${ls && ls.timestamp ? `<div style="font-size:9px;color:var(--muted);margin-top:2px;">Last: ${new Date(ls.timestamp).toLocaleTimeString()}</div>` : ''}
                         </td>
                         <td style="text-align:right; display:flex; align-items:center; justify-content:flex-end; gap:8px;">
                             <select id="ownerSelect-${r.imei}" style="background:var(--surface-2); color:var(--text); border:1px solid var(--border); padding:5px; border-radius:5px; margin-right:4px; font-size:11px; font-family:var(--font-body);">
-                                <option value="">Assign to...</option>
-                                ${data.customers.map(cust => `<option value="${cust.id}">${cust.username}</option>`).join('')}
+                                <option value="${cust ? cust.id : ''}">Assign to...</option>
+                                ${data.customers.map(customer => `<option value="${customer.id}" ${cust && cust.id === customer.id ? 'selected' : ''}>${customer.username}</option>`).join('')}
                             </select>
-                            <button class="icon-btn" style="display:inline-flex; border-color: rgba(0, 230, 118, 0.3); color: var(--success); background: rgba(0, 230, 118, 0.05);" onclick="approveRequest('${r.imei}')" title="Approve"><i class="fa-solid fa-check"></i></button>
-                            <button class="icon-btn" style="display:inline-flex; border-color: rgba(255, 61, 0, 0.3); color: var(--red); background: rgba(255, 61, 0, 0.05);" onclick="declineRequest('${r.imei}')" title="Decline"><i class="fa-solid fa-xmark"></i></button>
+                            <button class="icon-btn" style="border-color: rgba(0, 230, 118, 0.3); color: var(--success); background: rgba(0, 230, 118, 0.05);" onclick="approveRequest('${r.imei}')" title="Approve"><i class="fa-solid fa-check"></i></button>
+                            <button class="icon-btn" style="border-color: rgba(255, 61, 0, 0.3); color: var(--red); background: rgba(255, 61, 0, 0.05);" onclick="declineRequest('${r.imei}')" title="Decline"><i class="fa-solid fa-xmark"></i></button>
                         </td>
                     </tr>
                 `;
             }).join('');
         } else {
-            requestBody.innerHTML = `<tr><td colspan="4" style="text-align:center; color:var(--muted)">No pending requests.</td></tr>`;
+            requestBody.innerHTML = `<tr><td colspan="5" style="text-align:center; color:var(--muted)">No pending requests.</td></tr>`;
         }
 
         // Render History Requests Table
@@ -676,7 +808,7 @@ async function loadDashboard() {
                     const timeStr = r.timestamp ? new Date(r.timestamp).toLocaleString() : 'N/A';
                     
                     const ls = data.lastSeen && data.lastSeen[r.imei];
-                    const isOnline = ls && ls.timestamp && (Date.now() - new Date(ls.timestamp)) < 60000;
+                    const isOnline = ls && ls.timestamp && (Date.now() - new Date(ls.timestamp)) < 120000;
                     const dataStatus = ls && ls.timestamp ? 
                         (isOnline ? `<span class="badge green" style="font-size:10px;"><i class="fa-solid fa-signal"></i> Receiving</span>` : `<span class="badge red" style="font-size:10px;"><i class="fa-solid fa-signal"></i> Offline</span>`) : 
                         `<span class="badge red" style="font-size:10px; background: rgba(0,0,0,0.03); color: var(--muted); border-color: var(--border);"><i class="fa-solid fa-signal"></i> No Data</span>`;
@@ -723,6 +855,8 @@ async function loadDashboard() {
         if (currentViewUserId) {
             renderCustomerFleet(currentViewUserId);
         }
+        
+        renderAllDevices(currentGlobalDeviceFilter);
 
     } catch (err) { console.error('Dashboard Sync Error:', err); }
 }
@@ -730,13 +864,24 @@ async function loadDashboard() {
 async function approveRequest(imei) {
     const ownerId = document.getElementById(`ownerSelect-${imei}`).value;
     if (!ownerId) return alert('Select a customer for this device.');
+
+    if (dashboardCache && dashboardCache.allDevices) {
+        const existingDevice = dashboardCache.allDevices.find(d => d.imei === imei);
+        if (existingDevice) {
+            return alert(`Cannot approve! IMEI ${imei} is already registered.`);
+        }
+    }
+
     const res = await fetch('/api/admin/approve-request', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ imei, ownerId })
     });
     const result = await res.json();
-    if (result.success) loadDashboard();
+    if (result.success) {
+        alert('Device approved and linked successfully!');
+        loadDashboard();
+    }
 }
 
 async function declineRequest(imei) {
@@ -757,18 +902,29 @@ async function deleteCustomer(userId) {
     if (result.success) loadDashboard();
 }
 
-async function submitValidity() {
-    const userId = document.getElementById('valUserId').value;
-    const deviceLimit = document.getElementById('valDeviceLimit').value;
-    const extraDays = document.getElementById('valExtraDays').value;
-    const res = await fetch('/api/admin/update-plan', {
+async function deleteDeviceAdmin(imei) {
+    if (!confirm(`Permanently delete device IMEI: ${imei}?`)) return;
+    const res = await fetch(`/api/admin/delete-device/${imei}`, { method: 'DELETE' });
+    const result = await res.json();
+    if (result.success) {
+        alert('Device deleted successfully.');
+        loadDashboard(); // Refresh data
+    } else {
+        alert('Failed to delete device.');
+    }
+}
+
+async function submitDeviceValidity() {
+    const imei = document.getElementById('valImei').value;
+    const extraDays = document.getElementById('valDeviceExtraDays').value;
+    const res = await fetch('/api/admin/update-device-validity', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ userId, deviceLimit, extraDays })
+        body: JSON.stringify({ imei, extraDays })
     });
     const result = await res.json();
-    if (result.success) { closeValidityModal(); loadDashboard(); }
-    else { alert(result.error || 'Failed to update user subscription.'); }
+    if (result.success) { closeDeviceValidityModal(); loadDashboard(); }
+    else { alert(result.error || 'Failed to update device validity.'); }
 }
 
 function showPricingModal() {
@@ -865,7 +1021,7 @@ async function submitCustomer() {
     });
     if (res.status === 401 || res.status === 403) {
         alert('Session expired or access denied. Please log in again.');
-        window.location.href = 'index.html';
+        window.location.href = 'login.html';
         return;
     }
     const result = await res.json();
