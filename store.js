@@ -1234,10 +1234,6 @@ module.exports = {
             if (!user) return [];
             
             const subUserId = user.parentId || user.id;
-            const sub = await Subscription.findOne({ userId: subUserId });
-            if (sub && new Date() > new Date(sub.expirationDate)) {
-                return []; // Subscription expired
-            }
             
             if (user.parentId) {
                 const list = await Device.find({ assignedTo: userId });
