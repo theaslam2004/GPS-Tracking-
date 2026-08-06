@@ -12,23 +12,23 @@ function generatePacket(imei, speed, lat, lng, eventType = 'NR', vehicleProfile 
     const month = String(now.getUTCMonth() + 1).padStart(2, '0');
     const year = String(now.getUTCFullYear());
     const dateStr = `${day}${month}${year}`;
-    
+
     const hours = String(now.getUTCHours()).padStart(2, '0');
     const mins = String(now.getUTCMinutes()).padStart(2, '0');
     const secs = String(now.getUTCSeconds()).padStart(2, '0');
     const timeStr = `${hours}${mins}${secs}`;
-    
+
     // Ignition is 1 if speed > 0 or if eventType is IN (Ignition On), except during Towing
     let ign = (speed > 0 && eventType !== 'TS' && eventType !== 'TE' || eventType === 'IN') ? '1' : '0';
     if (eventType === 'IF') ign = '0';
-    
+
     const isPanic = (eventType === 'EA');
     const isTamper = (eventType === 'TA' || eventType === 'DT');
     const mainPower = (eventType === 'BD') ? '0' : '1';
-    
+
     // Internal battery voltage: low battery if BL event, else normal
     const batVolt = (eventType === 'BL') ? '3.45' : '4.12';
-    
+
     // Determine Alert ID dynamically matching the iTriangle spec
     let alertId = 1;
     switch (eventType) {
@@ -48,7 +48,7 @@ function generatePacket(imei, speed, lat, lng, eventType = 'NR', vehicleProfile 
         case 'TE': alertId = 53; break;
         case 'DT': alertId = 16; break;
     }
-    
+
     // Determine vehicle main power voltage based on profile
     let mainVolt = '12.4';
     if (vehicleProfile === 'heavy') {
@@ -56,9 +56,9 @@ function generatePacket(imei, speed, lat, lng, eventType = 'NR', vehicleProfile 
     } else if (imei === '862170070000002') {
         mainVolt = '24.4'; // 24V standard vehicle
     }
-    
+
     // Standard Bharat-101 Packet structure (indices align with real manual)
-    return `$Header,iTriangle1,010013,${eventType},${alertId},L,${imei},KA01GPS,1,${dateStr},${timeStr},${lat},N,${lng},E,${speed}.0,180.0,12,206.0,1.26,0.68,Airtel,${ign},${mainPower},${mainVolt},${batVolt},${isPanic ? '1' : '0'},${isTamper ? 'O' : 'C'},31,404,10,8ab,975e416,45,ab,de74335,38,8ab,e09c934,43,8ab,951a834,0000,0001,008273,0.0,0.0,${(Math.random()*5000).toFixed(2)}*FF\r\n`;
+    return `$Header,iTriangle1,010013,${eventType},${alertId},L,${imei},KA01GPS,1,${dateStr},${timeStr},${lat},N,${lng},E,${speed}.0,180.0,12,206.0,1.26,0.68,Airtel,${ign},${mainPower},${mainVolt},${batVolt},${isPanic ? '1' : '0'},${isTamper ? 'O' : 'C'},31,404,10,8ab,975e416,45,ab,de74335,38,8ab,e09c934,43,8ab,951a834,0000,0001,008273,0.0,0.0,${(Math.random() * 5000).toFixed(2)}*FF\r\n`;
 }
 
 async function startSimulation() {
@@ -70,7 +70,7 @@ async function startSimulation() {
     const data = JSON.parse(fs.readFileSync(DATA_FILE, 'utf8'));
     const simulatorUser = (data.users || []).find(u => u.username === 'simulator');
     const simulatorUserId = simulatorUser ? simulatorUser.id : null;
-    
+
     const devices = (data.devices || []).filter(d => {
         return simulatorUserId && d.ownerId === simulatorUserId;
     });
@@ -82,10 +82,9 @@ async function startSimulation() {
 
     console.log(`\n🚀 [FLEET SIMULATOR] Starting live data feed for ${devices.length} devices...`);
     console.log(`📍 Connecting to ${SERVER_HOST}:${SERVER_PORT}\n`);
-
     devices.forEach((device, index) => {
         const client = new net.Socket();
-        
+
         // Starting position near Gujarat
         let lat = 22.566216 + (index * 0.01);
         let lng = 71.8072 + (index * 0.01);
@@ -95,11 +94,11 @@ async function startSimulation() {
 
         client.connect(SERVER_PORT, SERVER_HOST, () => {
             console.log(`✅ [${device.imei}] Linked to server.`);
-            
+
             setInterval(() => {
                 let speed = 0;
                 let eventType = 'NR';
-                
+
                 if (isTowed) {
                     towingTicks--;
                     if (towingTicks <= 0) {
@@ -114,7 +113,7 @@ async function startSimulation() {
                     // 75% chance vehicle is moving normally
                     if (Math.random() > 0.25) {
                         speed = Math.floor(Math.random() * 85) + 15;
-                        
+
                         // Harsh Braking (speed drops suddenly by more than 35)
                         if (prevSpeed - speed > 35) {
                             eventType = 'HB';
@@ -139,15 +138,15 @@ async function startSimulation() {
                             eventType = 'TS'; // Towing Started (Alert ID 52)
                         }
                     }
-                    
+
                     // Ignition On if stationary to moving normally
                     if (!isTowed && prevSpeed === 0 && speed > 0) {
                         eventType = 'IN';
                     }
                 }
-                
+
                 prevSpeed = speed;
-                
+
                 // Random Alert Packets simulation disabled for clean demo
                 /*
                 if (!isTowed && eventType === 'NR') {
@@ -171,7 +170,7 @@ async function startSimulation() {
 
                 const packet = generatePacket(device.imei, speed, lat.toFixed(6), lng.toFixed(6), eventType, device.vehicleProfile || 'standard');
                 client.write(packet);
-                
+
                 if (eventType !== 'NR') {
                     console.log(`🚨 [${device.imei}] Sent Event Packet: ${eventType} (Speed: ${speed} km/h)`);
                 }

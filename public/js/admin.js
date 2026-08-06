@@ -374,6 +374,13 @@ function showDeviceValidityModal(imei) {
 }
 function closeDeviceValidityModal() { document.getElementById('deviceValidityModal').classList.remove('active'); }
 
+function showDeviceLimitModal(userId, currentLimit) {
+    document.getElementById('limitUserId').value = userId;
+    document.getElementById('editDeviceLimit').value = currentLimit || 1;
+    document.getElementById('deviceLimitModal').classList.add('active');
+}
+function closeDeviceLimitModal() { document.getElementById('deviceLimitModal').classList.remove('active'); }
+
 function showContactModal(userId, phone, email) {
     document.getElementById('contactUserId').value = userId;
     document.getElementById('editPhone').value = phone || '';
@@ -750,6 +757,7 @@ async function loadDashboard() {
                     </td>
                     <td>
                         <div class="actions-cell">
+                            <div class="icon-btn" title="Set Limit" onclick="showDeviceLimitModal('${c.id}', ${deviceLimit})" style="color:var(--green)"><i class="fa-solid fa-layer-group"></i></div>
                             <div class="icon-btn" title="Features" onclick="showFeaturesModal('${c.id}')" style="color:var(--accent)"><i class="fa-solid fa-sliders"></i></div>
                             <div class="icon-btn" title="Edit Contact" onclick="showContactModal('${c.id}', '${c.phone||''}', '${c.email||''}')"><i class="fa-solid fa-pen"></i></div>
                             <div class="icon-btn" title="Delete" onclick="deleteCustomer('${c.id}')" style="color:var(--red)"><i class="fa-solid fa-trash"></i></div>
@@ -925,6 +933,18 @@ async function submitDeviceValidity() {
     const result = await res.json();
     if (result.success) { closeDeviceValidityModal(); loadDashboard(); }
     else { alert(result.error || 'Failed to update device validity.'); }
+}
+async function submitDeviceLimit() {
+    const userId = document.getElementById('limitUserId').value;
+    const deviceLimit = document.getElementById('editDeviceLimit').value;
+    const res = await fetch('/api/admin/update-plan', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ userId, deviceLimit, extraDays: 0 })
+    });
+    const result = await res.json();
+    if (result.success) { closeDeviceLimitModal(); loadDashboard(); }
+    else { alert(result.error || 'Failed to update device limit.'); }
 }
 
 function showPricingModal() {

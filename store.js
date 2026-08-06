@@ -1260,9 +1260,6 @@ module.exports = {
             if (!user) return [];
             
             const subUserId = user.parentId || user.id;
-            const sub = data.subscriptions && data.subscriptions.find(s => s.userId === subUserId);
-            // We no longer completely hide based on global subscription, but we could mark all as expired if global is expired.
-            const globalExpired = sub && new Date() > new Date(sub.expirationDate);
             
             let list = [];
             if (user.parentId) {
@@ -1272,7 +1269,7 @@ module.exports = {
             }
             return list.map(d => ({
                 ...d,
-                isExpired: globalExpired || (d.expirationDate && new Date() > new Date(d.expirationDate))
+                isExpired: (d.expirationDate && new Date() > new Date(d.expirationDate))
             }));
         }
     },

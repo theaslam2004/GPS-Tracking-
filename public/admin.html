@@ -770,6 +770,22 @@
     </div>
 </div>
 
+<div class="modal-overlay" id="deviceLimitModal">
+    <div class="modal">
+        <div class="modal-header">
+            <h2>Set Device Limit</h2>
+            <button onclick="closeDeviceLimitModal()" style="background:none; border:none; color:var(--muted); cursor:pointer"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <input type="hidden" id="limitUserId">
+        <div class="form-group">
+            <label>Max Allowed Devices</label>
+            <input type="number" id="editDeviceLimit" class="form-control" value="1">
+        </div>
+        <button class="modal-btn" onclick="submitDeviceLimit()">Save Limit</button>
+    </div>
+</div>
+
+
 <div class="modal-overlay" id="featuresModal">
     <div class="modal" style="width: 500px; max-height: 90vh; overflow-y: auto;">
         <div class="modal-header">

@@ -614,22 +614,13 @@ async function loadData() {
         loadGeofences();
         
         if (data.subscription) {
-            const expDate = new Date(data.subscription.expirationDate);
-            const daysLeft = Math.ceil((expDate - new Date()) / (1000 * 60 * 60 * 24));
-            document.getElementById('validityDays').innerText = `${daysLeft > 0 ? daysLeft : 0} days left`;
+            document.getElementById('validityDays').innerText = 'Per Device';
             
             // Set plan details and device limits
-            document.getElementById('activePlanName').innerText = data.subscription.planName || 'Trial';
+            document.getElementById('activePlanName').innerText = data.subscription.planName || 'Base Plan';
             document.getElementById('deviceUsage').innerText = `${data.deviceCount} / ${data.subscription.deviceLimit || 1}`;
             window.pricingConfig = data.pricing;
-            window.currentPlanName = data.subscription.planName || 'Trial';
-            
-            if(daysLeft <= 0) {
-                const subBanner = document.getElementById('subBanner');
-                if (subBanner) subBanner.style.background = '#fee2e2';
-                const lockoutOverlay = document.getElementById('lockoutOverlay');
-                if (lockoutOverlay) lockoutOverlay.classList.add('active');
-            }
+            window.currentPlanName = data.subscription.planName || 'Base Plan';
         }
         
         renderDeviceList();
@@ -1237,20 +1228,20 @@ function renderDeviceList() {
 
                     <!-- Stats Grid -->
                     <div class="device-stats" style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.25rem; background: none; border: none; padding: 0.5rem 0 0; margin-top: 0.5rem;">
-                        <div class="stat-item" style="display: flex; flex-direction: column; align-items: center; text-align: center; justify-content: center; ${speedHidden}">
-                            <i class="fa-solid fa-gauge-high" style="color: var(--success); font-size: 0.95rem; margin-bottom: 2px;"></i>
-                            <span style="color: var(--text-primary); font-weight: 700; font-family: 'Outfit', sans-serif; font-size: 0.82rem;" id="speed-${d.imei}">${speedVal}</span>
-                            <span style="color: var(--text-secondary); font-size: 0.65rem; text-transform: uppercase; font-weight: 500; letter-spacing: 0.3px;">km/h</span>
+                        <div class="stat-item" style="display: flex; flex-direction: column; align-items: center; text-align: center; justify-content: flex-start; ${speedHidden}">
+                            <i class="fa-solid fa-gauge-high" style="color: var(--primary); font-size: 0.95rem; margin-bottom: 6px;"></i>
+                            <span style="color: var(--text-primary); font-weight: 800; font-family: 'Outfit', sans-serif; font-size: 0.82rem; line-height: 1; margin-bottom: 4px;" id="speed-${d.imei}">${speedVal}</span>
+                            <span style="color: var(--text-secondary); font-size: 0.65rem; text-transform: uppercase; font-weight: 600; letter-spacing: 0.3px; line-height: 1;">KM/H</span>
                         </div>
-                        <div class="stat-item" style="display: flex; flex-direction: column; align-items: center; text-align: center; justify-content: center; ${odoHidden}">
-                            <i class="fa-solid fa-road" style="color: var(--primary); font-size: 0.95rem; margin-bottom: 2px;"></i>
-                            <span style="color: var(--text-primary); font-weight: 700; font-family: 'Outfit', sans-serif; font-size: 0.82rem;" id="odo-${d.imei}">${odoVal}</span>
-                            <span style="color: var(--text-secondary); font-size: 0.65rem; text-transform: uppercase; font-weight: 500; letter-spacing: 0.3px;">km</span>
+                        <div class="stat-item" style="display: flex; flex-direction: column; align-items: center; text-align: center; justify-content: flex-start; ${odoHidden}">
+                            <i class="fa-solid fa-road" style="color: var(--primary); font-size: 0.95rem; margin-bottom: 6px;"></i>
+                            <span style="color: var(--text-primary); font-weight: 800; font-family: 'Outfit', sans-serif; font-size: 0.82rem; line-height: 1; margin-bottom: 4px;" id="odo-${d.imei}">${odoVal}</span>
+                            <span style="color: var(--text-secondary); font-size: 0.65rem; text-transform: uppercase; font-weight: 600; letter-spacing: 0.3px; line-height: 1;">KM</span>
                         </div>
-                        <div class="stat-item" style="display: flex; flex-direction: column; align-items: center; text-align: center; justify-content: center;">
-                            <i class="fa-regular fa-clock" style="color: var(--primary); font-size: 0.95rem; margin-bottom: 2px;"></i>
-                            <span style="color: var(--text-primary); font-weight: 700; font-family: 'Outfit', sans-serif; font-size: 0.72rem; line-height: 1.2; word-break: break-word; white-space: normal;" id="time-${d.imei}">${timeVal}</span>
-                            <span style="color: var(--text-secondary); font-size: 0.65rem; text-transform: uppercase; font-weight: 500; letter-spacing: 0.3px;">Updated</span>
+                        <div class="stat-item" style="display: flex; flex-direction: column; align-items: center; text-align: center; justify-content: flex-start;">
+                            <i class="fa-regular fa-clock" style="color: var(--primary); font-size: 0.95rem; margin-bottom: 6px;"></i>
+                            <span style="color: var(--text-primary); font-weight: 800; font-family: 'Outfit', sans-serif; font-size: 0.75rem; line-height: 1; white-space: nowrap; margin-bottom: 4px;" id="time-${d.imei}">${timeVal}</span>
+                            <span style="color: var(--text-secondary); font-size: 0.65rem; text-transform: uppercase; font-weight: 600; letter-spacing: 0.3px; line-height: 1;">UPDATED</span>
                         </div>
                     </div>
                 </div>
