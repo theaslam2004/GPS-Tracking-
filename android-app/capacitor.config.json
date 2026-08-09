@@ -3,7 +3,7 @@
   "appName": "Fleetly GPS",
   "webDir": "www",
   "server": {
-    "url": "https://gps-tracking-production-fdef.up.railway.app",
+    "url": "https://gps-tracking-production-fdef.up.railway.app/customer.html",
     "cleartext": true
   },
   "android": {
