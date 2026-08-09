@@ -56,6 +56,12 @@ let user = null;
         if (exportBtn) {
             exportBtn.href = `/api/export/devices?userId=${user.id}&role=${user.role}`;
         }
+
+        // Hide APK download button if inside mobile app wrapper (Capacitor)
+        if (window.Capacitor) {
+            const apkSection = document.getElementById('apk-download-section');
+            if (apkSection) apkSection.style.display = 'none';
+        }
         
         // Initialize Map and Load Data
         initMap();
