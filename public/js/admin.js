@@ -750,11 +750,6 @@ async function loadDashboard() {
                             <i class="fa-solid fa-key"></i> View
                         </button>
                     </td>
-                    <td style="text-align:center;">
-                        <span class="badge ${isExpired ? 'red' : (daysLeft < 10 ? 'amber' : 'green')}">
-                            ${isExpired ? 'Expired' : daysLeft + ' days'}
-                        </span>
-                    </td>
                     <td>
                         <div class="actions-cell">
                             <div class="icon-btn" title="Set Limit" onclick="showDeviceLimitModal('${c.id}', ${deviceLimit})" style="color:var(--green)"><i class="fa-solid fa-layer-group"></i></div>
