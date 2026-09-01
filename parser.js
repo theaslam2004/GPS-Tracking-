@@ -81,10 +81,10 @@ function parseDeviceData(buffer) {
                 const timeStr = parts[latDirIndex - 2];
                 
                 let timestamp = new Date().toISOString();
-                if (dateStr && dateStr.length === 8 && timeStr && timeStr.length >= 6) {
+                if (dateStr && (dateStr.length === 6 || dateStr.length === 8) && timeStr && timeStr.length >= 6) {
                     const day = dateStr.substring(0, 2);
                     const month = dateStr.substring(2, 4);
-                    const year = dateStr.substring(4, 8);
+                    const year = dateStr.length === 8 ? dateStr.substring(4, 8) : `20${dateStr.substring(4, 6)}`;
                     
                     const hours = timeStr.substring(0, 2);
                     const mins = timeStr.substring(2, 4);

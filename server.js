@@ -905,11 +905,22 @@ const tcpServer = net.createServer((socket) => {
     const clientAddress = `${socket.remoteAddress}:${socket.remotePort}`;
     console.log(`[TCP] Device connected from: ${clientAddress}`);
 
+    let buffer = '';
+
     socket.on('data', async (data) => {
         console.log(`[TCP] Received raw data from ${clientAddress} (${data.length} bytes)`);
         
-        // Pass the raw buffer to our parser
-        const parsedData = parseDeviceData(data);
+        buffer += data.toString('ascii');
+        const lines = buffer.split(/\r?\n/);
+        // Retain incomplete trailing fragment in buffer
+        buffer = lines.pop();
+
+        for (const line of lines) {
+            const trimmedLine = line.trim();
+            if (!trimmedLine) continue;
+
+            // Pass each complete packet string to our parser
+            const parsedData = parseDeviceData(Buffer.from(trimmedLine));
         
         if (parsedData) {
             console.log(`[TCP] Parsed Data:`, parsedData);
@@ -1073,14 +1084,15 @@ const tcpServer = net.createServer((socket) => {
             currentMinutePackets++;
             io.emit('raw_log', {
                 time: new Date().toISOString(),
-                hex: data.toString('ascii')
+                hex: trimmedLine
             });
             io.emit('admin_live_log', {
                 time: new Date().toISOString(),
                 imei: 'Unknown',
-                hex: data.toString('ascii'),
+                hex: trimmedLine,
                 status: 'raw'
             });
+        }
         }
     });
 

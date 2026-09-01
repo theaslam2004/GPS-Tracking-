@@ -196,7 +196,7 @@ function copyToClipboard(elementId, btnId, usePlain = false) {
 function copyAllCredentials() {
     const username = document.getElementById('credUsername').innerText;
     const password = document.getElementById('credPassword').dataset.plain || '';
-    const text = `Aleanvition Login\nUsername: ${username}\nPassword: ${password}\nPortal: ${window.location.origin}`;
+    const text = `Fleetly GPS Login\nUsername: ${username}\nPassword: ${password}\nPortal: ${window.location.origin}`;
     navigator.clipboard.writeText(text).then(() => {
         const btn = document.querySelector('#credentialsModal .modal-btn');
         const orig = btn.innerHTML;
