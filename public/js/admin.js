@@ -345,9 +345,6 @@ function renderAllDevices(filter = 'all') {
                 <td style="font-size:11px;">
                     <div>Speed: <span style="font-weight:700; color:var(--text);">${ls.speed || 0}</span> km/h</div>
                     <div style="color:var(--muted);">Odo: ${ls.odometer ? ls.odometer.toFixed(1) : '0.0'} km</div>
-                    <div style="color:${d.expirationDate && new Date(d.expirationDate) > new Date() ? 'var(--success, #00e676)' : 'var(--red)'}; font-weight: 600; margin-top: 2px;">
-                        Validity: ${d.expirationDate ? Math.ceil((new Date(d.expirationDate) - new Date()) / (1000 * 60 * 60 * 24)) + ' days' : 'N/A'}
-                    </div>
                 </td>
                 <td style="font-size:11px; font-family:monospace; color:var(--muted);">
                     ${ls.latitude ? ls.latitude.toFixed(4) : '0'}, ${ls.longitude ? ls.longitude.toFixed(4) : '0'}
@@ -357,9 +354,6 @@ function renderAllDevices(filter = 'all') {
                         <button class="icon-btn" onclick="downloadDeviceData('${d.imei}')" title="Download History">
                             <i class="fa-solid fa-download"></i>
                         </button>
-                        <button class="icon-btn" onclick="showDeviceValidityModal('${d.imei}')" title="Recharge Device" style="color:var(--green); border-color:var(--green-dim);">
-                            <i class="fa-solid fa-bolt"></i>
-                        </button>
                     </div>
                 </td>
             </tr>
@@ -367,12 +361,6 @@ function renderAllDevices(filter = 'all') {
     }).join('');
 }
 
-function showDeviceValidityModal(imei) {
-    document.getElementById('valImei').value = imei;
-    document.getElementById('valDeviceExtraDays').value = 30;
-    document.getElementById('deviceValidityModal').classList.add('active');
-}
-function closeDeviceValidityModal() { document.getElementById('deviceValidityModal').classList.remove('active'); }
 
 function showDeviceLimitModal(userId, currentLimit) {
     document.getElementById('limitUserId').value = userId;
@@ -499,9 +487,6 @@ function renderCustomerFleet(userId) {
                             <span>Odo</span> <span id="odo-${d.imei}">${ls.odometer ? ls.odometer.toFixed(2) : '0.00'} km</span>
                         </div>
                         <div class="detail-row">
-                            <span>Validity</span> <span style="color: ${d.expirationDate && new Date(d.expirationDate) > new Date() ? 'var(--success, #00e676)' : 'var(--red)'}; font-weight:bold;">${d.expirationDate ? Math.ceil((new Date(d.expirationDate) - new Date()) / (1000 * 60 * 60 * 24)) + ' days' : 'N/A'}</span>
-                        </div>
-                        <div class="detail-row">
                             <span>Voltage</span> <span id="bat-${d.imei}" style="${ls.powerSource === 'secondary' ? 'color: var(--red); font-weight: bold;' : ''}">${ls.voltage !== undefined ? ls.voltage.toFixed(1) : '12.0'} V${ls.powerSource === 'secondary' ? ' (Backup ⚠️)' : ''}</span>
                         </div>
                         <div class="detail-row">
@@ -513,9 +498,6 @@ function renderCustomerFleet(userId) {
                     <div class="actions-cell">
                         <button class="icon-btn" onclick="downloadDeviceData('${d.imei}')" title="Download History (CSV)">
                             <i class="fa-solid fa-download"></i>
-                        </button>
-                        <button class="icon-btn" onclick="showDeviceValidityModal('${d.imei}')" title="Recharge Device" style="color:var(--green); border-color:var(--green-dim);">
-                            <i class="fa-solid fa-bolt"></i>
                         </button>
                         <button class="icon-btn" onclick="deleteDeviceAdmin('${d.imei}')" title="Delete Device" style="color:var(--red); border-color:var(--red-dim);">
                             <i class="fa-solid fa-trash"></i>
@@ -917,18 +899,6 @@ async function deleteDeviceAdmin(imei) {
     }
 }
 
-async function submitDeviceValidity() {
-    const imei = document.getElementById('valImei').value;
-    const extraDays = document.getElementById('valDeviceExtraDays').value;
-    const res = await fetch('/api/admin/update-device-validity', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ imei, extraDays })
-    });
-    const result = await res.json();
-    if (result.success) { closeDeviceValidityModal(); loadDashboard(); }
-    else { alert(result.error || 'Failed to update device validity.'); }
-}
 async function submitDeviceLimit() {
     const userId = document.getElementById('limitUserId').value;
     const deviceLimit = document.getElementById('editDeviceLimit').value;
