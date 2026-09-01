@@ -1672,16 +1672,18 @@ module.exports = {
     },
     getAlertHistory: async (imei, startTimestamp, endTimestamp) => {
         await ensureDbConnected();
+        const startValid = startTimestamp && !isNaN(new Date(startTimestamp).getTime());
+        const endValid = endTimestamp && !isNaN(new Date(endTimestamp).getTime());
         if (useMongo) {
             let query = { imei };
-            if (startTimestamp || endTimestamp) {
+            if (startValid || endValid) {
                 query.timestamp = {};
-                if (startTimestamp) query.timestamp.$gte = new Date(startTimestamp);
-                if (endTimestamp) query.timestamp.$lte = new Date(endTimestamp);
+                if (startValid) query.timestamp.$gte = new Date(startTimestamp);
+                if (endValid) query.timestamp.$lte = new Date(endTimestamp);
             }
             const list = await DeviceAlertHistory.find(query).sort({ timestamp: -1 }).limit(1000);
             return list.map(a => ({
-                timestamp: a.timestamp.toISOString(),
+                timestamp: a.timestamp ? a.timestamp.toISOString() : new Date().toISOString(),
                 type: a.type,
                 message: a.message,
                 latitude: a.latitude,
@@ -1694,12 +1696,12 @@ module.exports = {
             try {
                 const raw = fs.readFileSync(alertsFile, 'utf8');
                 const list = JSON.parse(raw);
-                const start = startTimestamp ? new Date(startTimestamp) : new Date(0);
-                const end = endTimestamp ? new Date(endTimestamp) : new Date(8640000000000000);
+                const start = startValid ? new Date(startTimestamp) : new Date(0);
+                const end = endValid ? new Date(endTimestamp) : new Date(8640000000000000);
                 return list
                     .filter(a => {
                         const t = new Date(a.timestamp);
-                        return t >= start && t <= end;
+                        return !isNaN(t.getTime()) && t >= start && t <= end;
                     })
                     .sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp))
                     .slice(0, 1000);
@@ -1711,11 +1713,25 @@ module.exports = {
     getDaySummary: async (imei, startStr, endStr) => {
         await ensureDbConnected();
         
-        const start = new Date(startStr);
-        const end = new Date(endStr);
+        const startDate = new Date(startStr);
+        const endDate = new Date(endStr);
+        if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+            return {
+                start: startStr,
+                end: endStr,
+                distance: 0,
+                maxSpeed: 0,
+                engineOnTime: 0,
+                driveMs: 0,
+                idleMs: 0,
+                haltMs: 0,
+                alertCount: 0,
+                alerts: []
+            };
+        }
         
-        let history = await module.exports.getHistory(imei, start.toISOString(), end.toISOString());
-        let alerts = await module.exports.getAlertHistory(imei, start.toISOString(), end.toISOString());
+        let history = await module.exports.getHistory(imei, startDate.toISOString(), endDate.toISOString());
+        let alerts = await module.exports.getAlertHistory(imei, startDate.toISOString(), endDate.toISOString());
         
         let distance = 0;
         let maxSpeed = 0;
@@ -1766,16 +1782,18 @@ module.exports = {
     },
     getHistory: async (imei, startTimestamp, endTimestamp) => {
         await ensureDbConnected();
+        const startValid = startTimestamp && !isNaN(new Date(startTimestamp).getTime());
+        const endValid = endTimestamp && !isNaN(new Date(endTimestamp).getTime());
         if (useMongo) {
             let query = { imei };
-            if (startTimestamp || endTimestamp) {
+            if (startValid || endValid) {
                 query.timestamp = {};
-                if (startTimestamp) query.timestamp.$gte = new Date(startTimestamp);
-                if (endTimestamp) query.timestamp.$lte = new Date(endTimestamp);
+                if (startValid) query.timestamp.$gte = new Date(startTimestamp);
+                if (endValid) query.timestamp.$lte = new Date(endTimestamp);
             }
             const list = await DeviceHistoryPoint.find(query).sort({ timestamp: 1 }).limit(20000);
             return list.map(p => ({
-                timestamp: p.timestamp.toISOString(),
+                timestamp: p.timestamp ? p.timestamp.toISOString() : new Date().toISOString(),
                 latitude: p.latitude,
                 longitude: p.longitude,
                 speed: p.speed,
@@ -1811,12 +1829,12 @@ module.exports = {
                 historyData = data.deviceHistory[imei] || [];
             }
             
-            if (startTimestamp || endTimestamp) {
-                const startLimit = startTimestamp ? new Date(startTimestamp).getTime() : 0;
-                const endLimit = endTimestamp ? new Date(endTimestamp).getTime() : Infinity;
+            if (startValid || endValid) {
+                const startLimit = startValid ? new Date(startTimestamp).getTime() : 0;
+                const endLimit = endValid ? new Date(endTimestamp).getTime() : Infinity;
                 historyData = historyData.filter(pt => {
                     const ptTime = new Date(pt.timestamp).getTime();
-                    return ptTime >= startLimit && ptTime <= endLimit;
+                    return !isNaN(ptTime) && ptTime >= startLimit && ptTime <= endLimit;
                 });
             }
             
